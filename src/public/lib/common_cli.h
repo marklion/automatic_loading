@@ -1,0 +1,29 @@
+#if !defined(_COMMON_CLI_H_)
+#define _COMMON_CLI_H_
+
+#include <memory>
+#include <string>
+#include <yaml-cpp/yaml.h>
+#include "cli.h"
+#include "ad_rpc.h"
+#include "tabulate.hpp"
+
+class common_cli {
+public:
+    std::unique_ptr<cli::Menu> menu;
+    std::string menu_name;
+    common_cli(std::unique_ptr<cli::Menu> _menu, const std::string &_menu_name):menu(_menu.release()),menu_name(_menu_name) {
+        menu->Insert("bdr", [this](std::ostream &_out) {
+            _out << make_bdr() << std::endl;
+        });
+        menu->Insert("clear", [this](std::ostream &_out) {
+            clear();
+        });
+    }
+    virtual std::string make_bdr() = 0;
+    virtual void clear() = 0;
+    static std::string check_params(const std::vector<std::string> &_params, uint32_t _index, const std::string &_prompt);
+};
+#define CLI_MENU_ITEM(x) #x, [](std::ostream &out, std::vector<std::string> _params) { x(out, _params); }
+
+#endif // _COMMON_CLI_H_

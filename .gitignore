@@ -1,0 +1,8 @@
+.DS_Store
+build/
+**/build/
+**/node_modules/
+**/dist/
+**/.build_timestamp
+**/cmake_tmp_dir/
+**/gen_code/

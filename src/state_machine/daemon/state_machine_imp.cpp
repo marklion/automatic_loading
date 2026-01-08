@@ -1,0 +1,571 @@
+#include "state_machine_imp.h"
+#include "../../config/lib/config_lib.h"
+
+// al_sm_state_init 实现
+al_sm_state_init::al_sm_state_init()
+{
+    m_name = "空闲";
+}
+
+void al_sm_state_init::after_enter()
+{
+    m_sm->sm_set_current_kit("");
+    m_sm->sm_set_stuff_full_offset(100);
+    m_sm->sm_set_vehicle_info(vehicle_info());
+    m_sm->sm_set_vehicle_front_x(100);
+    m_sm->sm_set_vehicle_tail_x(100);
+}
+
+void al_sm_state_init::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_init::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_GET_READY:
+        new_state = std::make_unique<al_sm_state_ready>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+// al_sm_state_ready 实现
+al_sm_state_ready::al_sm_state_ready()
+{
+    m_name = "就绪";
+}
+
+void al_sm_state_ready::after_enter()
+{
+}
+
+void al_sm_state_ready::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_ready::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_VEHICLE_COME:
+        new_state = std::make_unique<al_sm_state_working>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+// al_sm_state_emergency 实现
+al_sm_state_emergency::al_sm_state_emergency()
+{
+    m_name = "急停";
+}
+
+void al_sm_state_emergency::after_enter()
+{
+}
+
+void al_sm_state_emergency::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_emergency::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_RESET_TO_INIT:
+        new_state = std::make_unique<al_sm_state_init>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+// al_sm_state_manual 实现
+al_sm_state_manual::al_sm_state_manual()
+{
+    m_name = "手动";
+}
+
+void al_sm_state_manual::after_enter()
+{
+}
+
+void al_sm_state_manual::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_manual::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_RESET_TO_INIT:
+        new_state = std::make_unique<al_sm_state_init>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+void state_machine_imp::sm_handle_event(al_sm_state::al_sm_event event)
+{
+    m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Event %d pushed", event);
+    AD_RPC_SC::get_instance()->add_co(
+        [this, event]()
+        {
+            auto orig_state_name = m_state->m_name;
+            auto new_state = m_state->handle_event(event);
+            if (new_state)
+            {
+                m_state->before_exit();
+                m_state = std::move(new_state);
+                m_state->m_sm = this;
+                m_state->after_enter();
+            }
+            auto new_state_name = m_state->m_name;
+            m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Event %d handled, from %s to %s", event, orig_state_name.c_str(), new_state_name.c_str());
+        });
+}
+
+void state_machine_imp::get_state_machine_status(state_machine_status &_return)
+{
+    _return.status = m_state->m_name;
+    _return.current_load = sm_get_current_load();
+    _return.stuff_full_offset = sm_get_stuff_full_offset();
+    _return.v_info = sm_get_vehicle_info();
+    _return.vehicle_front_x = sm_get_vehicle_front_x();
+    _return.vehicle_tail_x = sm_get_vehicle_tail_x();
+}
+
+void state_machine_imp::push_cur_load(const double cur_load)
+{
+    sm_set_current_load(cur_load);
+    auto &ci = config::root_config::get_instance();
+    auto max_load_str = ci(CONFIG_ITEM_SM_CONFIG_MAX_LOAD);
+    double max_load = 0.0;
+    try
+    {
+        max_load = std::stod(max_load_str);
+    }
+    catch(...)
+    {
+        max_load = 0.0;
+        m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid max_load config: %s", max_load_str.c_str());
+    }
+    if (max_load > 0.0 && sm_get_current_load() >= max_load)
+    {
+        sm_handle_event(al_sm_state::AL_SM_EVENT_LOAD_ACHIEVED);
+    }
+    else if (sm_get_current_load() == 0)
+    {
+        sm_handle_event(al_sm_state::AL_SM_EVENT_LOAD_CLEAR);
+    }
+}
+
+void state_machine_imp::push_stuff_full_offset(const double offset)
+{
+    sm_set_stuff_full_offset(offset);
+    auto &ci = config::root_config::get_instance();
+    auto max_offset_str = ci(CONFIG_ITEM_SM_CONFIG_MAX_FULL_OFFSET);
+    double max_offset = -10;
+    try
+    {
+        max_offset = std::stod(max_offset_str);
+    }
+    catch (...)
+    {
+        max_offset = -10;
+        m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid max_full_offset config: %s", max_offset_str.c_str());
+    }
+    if (max_offset > -10)
+    {
+        if (sm_get_stuff_full_offset() >= max_offset)
+        {
+            sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
+        }
+        else
+        {
+            sm_handle_event(al_sm_state::AL_SM_EVENT_BACK_TO_EMPTY);
+        }
+    }
+}
+
+void state_machine_imp::trigger_sm(const vehicle_info &v_info)
+{
+    sm_set_vehicle_info(v_info);
+    apply_config_kit(v_info.stuff_name);
+}
+
+void state_machine_imp::push_vehicle_front_position(const double front_x)
+{
+    sm_set_vehicle_front_x(front_x);
+    auto &ci = config::root_config::get_instance();
+    double front_min_x = 0.0;
+    double front_max_x = 0.0;
+    try
+    {
+        front_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_FRONT_MIN_X));
+        front_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X));
+    }
+    catch (...)
+    {
+        front_min_x = 0.0;
+        front_max_x = 0.0;
+        m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid front_x config: min=%s, max=%s",
+                            ci(CONFIG_ITEM_SM_CONFIG_FRONT_MIN_X).c_str(),
+                            ci(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X).c_str());
+    }
+    if (front_min_x < front_max_x &&
+        sm_get_vehicle_front_x() >= front_min_x &&
+        sm_get_vehicle_front_x() <= front_max_x)
+    {
+        sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_COME);
+    }
+}
+
+void state_machine_imp::push_vehicle_tail_position(const double tail_x)
+{
+    sm_set_vehicle_tail_x(tail_x);
+    auto &ci = config::root_config::get_instance();
+    double tail_min_x = 0.0;
+    double tail_max_x = 0.0;
+    try
+    {
+        tail_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X));
+        tail_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X));
+    }
+    catch (...)
+    {
+        tail_min_x = 0.0;
+        tail_max_x = 0.0;
+        m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid tail_x config: min=%s, max=%s",
+                            ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X).c_str(),
+                            ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X).c_str());
+    }
+    if (tail_min_x < tail_max_x)
+    {
+        if (sm_get_vehicle_tail_x() >= tail_min_x &&
+            sm_get_vehicle_tail_x() <= tail_max_x)
+        {
+            sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_LEAVE);
+        }
+        else if (sm_get_vehicle_tail_x() > tail_max_x)
+        {
+            sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_DISAPPEAR);
+        }
+    }
+}
+
+bool state_machine_imp::set_basic_config(const sm_basic_config &config)
+{
+    auto &ci = config::root_config::get_instance();
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_MAX_LOAD, std::to_string(config.max_load));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_MAX_FULL_OFFSET, std::to_string(config.max_full_offset));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_FRONT_MIN_X, std::to_string(config.front_min_x));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X, std::to_string(config.front_max_x));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X, std::to_string(config.tail_min_x));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X, std::to_string(config.tail_max_x));
+    return true;
+}
+
+void state_machine_imp::get_basic_config(sm_basic_config &_return)
+{
+    auto &ci = config::root_config::get_instance();
+    try
+    {
+        _return.max_load = std::stod(ci(CONFIG_ITEM_SM_CONFIG_MAX_LOAD));
+        _return.max_full_offset = std::stod(ci(CONFIG_ITEM_SM_CONFIG_MAX_FULL_OFFSET));
+        _return.front_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_FRONT_MIN_X));
+        _return.front_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X));
+        _return.tail_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X));
+        _return.tail_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X));
+    }
+    catch (...)
+    {
+        m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid basic config:%s", ci.expend_to_string().c_str());
+    }
+}
+
+state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_init>()), m_logger(al_log::LOG_STATE_MACHINE)
+{
+}
+
+void state_machine_imp::emergency_shutdown()
+{
+    sm_handle_event(al_sm_state::AL_SM_EVENT_EMERGENCY_SHUTDOWN);
+}
+
+bool state_machine_imp::switch_to_manual_mode()
+{
+    sm_handle_event(al_sm_state::AL_SM_EVENT_SWITCH_TO_MANUAL_MODE);
+    return true;
+}
+
+bool state_machine_imp::reset_to_init()
+{
+    sm_handle_event(al_sm_state::AL_SM_EVENT_RESET_TO_INIT);
+    return true;
+}
+
+bool state_machine_imp::apply_config_kit(const std::string &kit_name)
+{
+    sm_set_current_kit(kit_name);
+    sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
+    return true;
+}
+
+bool state_machine_imp::add_config_kit(const std::string &kit_name)
+{
+    auto &ci = config::root_config::get_instance();
+    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    if (!all_kits)
+    {
+        all_kits = std::make_unique<config::config_item>(CONFIG_ITEM_SM_CONFIG_KITS);
+    }
+    auto found_kit = all_kits->get_child(kit_name);
+    if (!found_kit)
+    {
+        config::config_item new_kit(kit_name);
+        all_kits->set_child(kit_name, new_kit);
+    }
+
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS, *(all_kits));
+
+    return true;
+}
+
+void state_machine_imp::del_config_kit(const std::string &kit_name)
+{
+    auto &ci = config::root_config::get_instance();
+    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    if (all_kits)
+    {
+        all_kits->remove_child(kit_name);
+        ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS, *(all_kits));
+    }
+}
+
+void state_machine_imp::get_all_config_kits(std::vector<config_kit> &_return)
+{
+    auto &ci = config::root_config::get_instance();
+    m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Getting all config kits : %s", ci.expend_to_string().c_str());
+    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    if (all_kits)
+    {
+        auto children = all_kits->get_children();
+        for (const auto &child : children)
+        {
+            config_kit kit;
+            kit.kit_name = child->get_key();
+            auto kit_items = child->get_children();
+            for (const auto &item : kit_items)
+            {
+                std::map<std::string, std::string> kit_item;
+                kit.config_items[item->get_key()] = item->get_value();
+            }
+            _return.push_back(kit);
+        }
+    }
+}
+
+bool state_machine_imp::add_kit_item(const std::string &kit_name, const std::string &item_key, const std::string &item_value)
+{
+    auto &ci = config::root_config::get_instance();
+    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    if (all_kits)
+    {
+        auto one_kit = all_kits->get_child(kit_name);
+        if (one_kit)
+        {
+            one_kit->set_child(item_key, item_value);
+            all_kits->set_child(kit_name, *(one_kit));
+        }
+        ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS, *(all_kits));
+    }
+
+    return true;
+}
+
+void state_machine_imp::del_kit_item(const std::string &kit_name, const std::string &item_key)
+{
+    auto &ci = config::root_config::get_instance();
+    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    if (all_kits)
+    {
+        auto one_kit = all_kits->get_child(kit_name);
+        if (one_kit)
+        {
+            one_kit->remove_child(item_key);
+            all_kits->set_child(kit_name, *(one_kit));
+        }
+        ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS, *(all_kits));
+    }
+}
+
+al_sm_state_working::al_sm_state_working()
+{
+    m_name = "工作中";
+}
+
+void al_sm_state_working::after_enter()
+{
+}
+
+void al_sm_state_working::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+    case AL_SM_EVENT_VEHICLE_DISAPPEAR:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_VEHICLE_LEAVE:
+        new_state = std::make_unique<al_sm_state_ending>();
+        break;
+    case AL_SM_EVENT_LOAD_ACHIEVED:
+        new_state = std::make_unique<al_sm_state_cleanup>();
+        break;
+    case AL_SM_EVENT_REACH_FULL:
+        new_state = std::make_unique<al_sm_state_pause>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+al_sm_state_cleanup::al_sm_state_cleanup()
+{
+    m_name = "清理";
+}
+
+void al_sm_state_cleanup::after_enter()
+{
+}
+
+void al_sm_state_cleanup::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_cleanup::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_LOAD_CLEAR:
+        new_state = std::make_unique<al_sm_state_init>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+al_sm_state_ending::al_sm_state_ending()
+{
+    m_name = "收尾";
+}
+
+void al_sm_state_ending::after_enter()
+{
+}
+
+void al_sm_state_ending::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_VEHICLE_DISAPPEAR:
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_REACH_FULL:
+    case AL_SM_EVENT_LOAD_ACHIEVED:
+        new_state = std::make_unique<al_sm_state_cleanup>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+al_sm_state_pause::al_sm_state_pause()
+{
+    m_name = "暂停";
+}
+
+void al_sm_state_pause::after_enter()
+{
+}
+
+void al_sm_state_pause::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_pause::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_VEHICLE_DISAPPEAR:
+    case AL_SM_EVENT_LOAD_ACHIEVED:
+        new_state = std::make_unique<al_sm_state_cleanup>();
+        break;
+    case AL_SM_EVENT_BACK_TO_EMPTY:
+        new_state = std::make_unique<al_sm_state_working>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
