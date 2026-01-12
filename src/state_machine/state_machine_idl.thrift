@@ -11,14 +11,7 @@ struct vehicle_info {
     1: string plate,
     2: string stuff_name,
 }
-struct state_machine_status{
-    1: string status,
-    2: double current_load,
-    3: double stuff_full_offset,
-    4: double vehicle_front_x,
-    5: double vehicle_tail_x,
-    6: vehicle_info v_info,
-}
+
 struct sm_basic_config{
     1: double max_load,
     2: double max_full_offset,
@@ -27,7 +20,15 @@ struct sm_basic_config{
     5: double tail_min_x,
     6: double tail_max_x,
 }
-
+struct state_machine_status{
+    1: string status,
+    2: double current_load,
+    3: double stuff_full_offset,
+    4: double vehicle_front_x,
+    5: double vehicle_tail_x,
+    6: vehicle_info v_info,
+    7: sm_basic_config basic_config,
+}
 
 service state_machine_service{
     oneway void emergency_shutdown(),

@@ -169,13 +169,38 @@ static void show_status(std::ostream &out, std::vector<std::string> _params)
         {
             state_machine_status status;
             client.get_state_machine_status(status);
-            out << "当前状态: " << status.status << std::endl;
-            out << "重量: " << status.current_load << std::endl;
-            out << "满载偏移: " << status.stuff_full_offset << std::endl;
-            out << "车头位置: " << status.vehicle_front_x << std::endl;
-            out << "车尾位置: " << status.vehicle_tail_x << std::endl;
-            out << "车牌号: " << status.v_info.plate << std::endl;
-            out << "货物名称: " << status.v_info.stuff_name << std::endl;
+            if (_params.size() > 0 && _params[0] == "json")
+            {
+                neb::CJsonObject status_json;
+                status_json.Add("status", status.status);
+                status_json.Add("current_load", status.current_load);
+                status_json.Add("stuff_full_offset", status.stuff_full_offset);
+                status_json.Add("vehicle_front_x", status.vehicle_front_x);
+                status_json.Add("vehicle_tail_x", status.vehicle_tail_x);
+                neb::CJsonObject v_info_json;
+                v_info_json.Add("plate", status.v_info.plate);
+                v_info_json.Add("stuff_name", status.v_info.stuff_name);
+                status_json.Add("vehicle_info", v_info_json);
+                neb::CJsonObject basic_config_json;
+                basic_config_json.Add("max_load", status.basic_config.max_load);
+                basic_config_json.Add("max_full_offset", status.basic_config.max_full_offset);
+                basic_config_json.Add("front_min_x", status.basic_config.front_min_x);
+                basic_config_json.Add("front_max_x", status.basic_config.front_max_x);
+                basic_config_json.Add("tail_min_x", status.basic_config.tail_min_x);
+                basic_config_json.Add("tail_max_x", status.basic_config.tail_max_x);
+                status_json.Add("basic_config", basic_config_json);
+                out << status_json.ToString() << std::endl;
+            }
+            else
+            {
+                out << "当前状态: " << status.status << std::endl;
+                out << "重量(最大" << status.basic_config.max_load << "): " << status.current_load << std::endl;
+                out << "满载偏移(最大" << status.basic_config.max_full_offset << "): " << status.stuff_full_offset << std::endl;
+                out << "车头位置(最小" << status.basic_config.front_min_x << ", 最大" << status.basic_config.front_max_x << "): " << status.vehicle_front_x << std::endl;
+                out << "车尾位置(最小" << status.basic_config.tail_min_x << ", 最大" << status.basic_config.tail_max_x << "): " << status.vehicle_tail_x << std::endl;
+                out << "车牌号: " << status.v_info.plate << std::endl;
+                out << "货物名称: " << status.v_info.stuff_name << std::endl;
+            }
         });
 }
 static void mock_vehicle_info(std::ostream &out, std::vector<std::string> _params)
@@ -236,6 +261,31 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
     }
 }
 
+static void sm_opt(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请输入操作指令(e-急停，r-重置):");
+    if (check_resp.empty() && (_params[0] == "e" || _params[0] == "r"))
+    {
+        std::string opt = _params[0];
+        state_machine::call_sm_remote(
+            [&](state_machine_serviceClient &client)
+            {
+                if (opt == "e")
+                {
+                    client.emergency_shutdown();
+                }
+                else if (opt == "r")
+                {
+                    client.reset_to_init();
+                }
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     g_sm_kit_cli = new state_machine_kit_cli();
@@ -251,6 +301,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(mock_tail_x), "模拟车尾位置", {"<tail_x>"});
     sm_menu->Insert(CLI_MENU_ITEM(show_status), "显示状态机状态", {});
     sm_menu->Insert(CLI_MENU_ITEM(mock_vehicle_info), "模拟车辆信息", {"<plate>", "<stuff_name>"});
+    sm_menu->Insert(CLI_MENU_ITEM(sm_opt), "状态机操作", {"<e|r>"});
     sm_menu->Insert(std::move(g_sm_kit_cli->menu));
 
     return sm_menu;

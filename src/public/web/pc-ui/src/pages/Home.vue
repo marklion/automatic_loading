@@ -12,11 +12,13 @@
       ></iframe>
     </el-dialog>
     <IoPanel> </IoPanel>
+    <StateMachine> </StateMachine>
   </div>
 </template>
 
 <script setup>
 import IoPanel from "../../../../../modbus_io/web/io_panel.vue";
+import StateMachine from "../../../../../state_machine/web/state_machine.vue";
 import { ref, computed } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
 const hostname_store = useRemoteHostName();

@@ -159,6 +159,7 @@ void state_machine_imp::get_state_machine_status(state_machine_status &_return)
     _return.v_info = sm_get_vehicle_info();
     _return.vehicle_front_x = sm_get_vehicle_front_x();
     _return.vehicle_tail_x = sm_get_vehicle_tail_x();
+    get_basic_config(_return.basic_config);
 }
 
 void state_machine_imp::push_cur_load(const double cur_load)
