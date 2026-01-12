@@ -2,7 +2,7 @@
 #include "../../public/lib/ad_rpc.h"
 #include "../../log/lib/log_lib.h"
 
-void modbus_io::set_one_io(std::string &_name, bool _is_set)
+void modbus_io::set_one_io(const std::string &_name, bool _is_set)
 {
     AD_RPC_SC::get_instance()->call_remote<modbus_io_serviceClient>(
         AD_RPC_MODBUS_IO_SERVER_PORT,
@@ -12,7 +12,7 @@ void modbus_io::set_one_io(std::string &_name, bool _is_set)
         });
 }
 
-bool modbus_io::get_one_io(std::string &_name)
+bool modbus_io::get_one_io(const std::string &_name)
 {
     bool ret = false;
     AD_RPC_SC::get_instance()->call_remote<modbus_io_serviceClient>(

@@ -1,5 +1,6 @@
 #include "state_machine_imp.h"
 #include "../../config/lib/config_lib.h"
+#include "../../modbus_io/lib/modbus_io_lib.h"
 
 // al_sm_state_init 实现
 al_sm_state_init::al_sm_state_init()
@@ -309,6 +310,40 @@ void state_machine_imp::get_basic_config(sm_basic_config &_return)
     }
 }
 
+void state_machine_imp::drop_stuff_control(bool _is_open)
+{
+    auto &ci = config::root_config::get_instance();
+    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+    if (cur_kit.get_key() == sm_get_current_kit())
+    {
+        std::string io_name;
+        std::string another_io_name;
+        if (_is_open)
+        {
+            io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
+            another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
+        }
+        else
+        {
+            io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
+            another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
+        }
+        if (!io_name.empty())
+        {
+            modbus_io::set_one_io(another_io_name, false);
+            modbus_io::set_one_io(io_name, true);
+            m_logger.log_print(al_log::LOG_LEVEL_INFO, "Push Button %s", io_name.c_str());
+            AD_RPC_SC::get_instance()->start_one_time_timer(
+                2,
+                [io_name, this]()
+                {
+                    modbus_io::set_one_io(io_name, false);
+                    m_logger.log_print(al_log::LOG_LEVEL_INFO, "Release Button %s", io_name.c_str());
+                });
+        }
+    }
+}
+
 state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_init>()), m_logger(al_log::LOG_STATE_MACHINE)
 {
 }
@@ -340,42 +375,27 @@ bool state_machine_imp::apply_config_kit(const std::string &kit_name)
 bool state_machine_imp::add_config_kit(const std::string &kit_name)
 {
     auto &ci = config::root_config::get_instance();
-    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
-    if (!all_kits)
-    {
-        all_kits = std::make_unique<config::config_item>(CONFIG_ITEM_SM_CONFIG_KITS);
-    }
-    auto found_kit = all_kits->get_child(kit_name);
-    if (!found_kit)
-    {
-        config::config_item new_kit(kit_name);
-        all_kits->set_child(kit_name, new_kit);
-    }
-
-    ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS, *(all_kits));
-
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    auto &all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    all_kits.set_child(kit_name);
     return true;
 }
 
 void state_machine_imp::del_config_kit(const std::string &kit_name)
 {
     auto &ci = config::root_config::get_instance();
-    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
-    if (all_kits)
-    {
-        all_kits->remove_child(kit_name);
-        ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS, *(all_kits));
-    }
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    auto &all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    all_kits.remove_child(kit_name);
 }
 
 void state_machine_imp::get_all_config_kits(std::vector<config_kit> &_return)
 {
     auto &ci = config::root_config::get_instance();
-    m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Getting all config kits : %s", ci.expend_to_string().c_str());
-    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
-    if (all_kits)
+    auto &all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    if (!all_kits.is_empty())
     {
-        auto children = all_kits->get_children();
+        auto children = all_kits.get_children();
         for (const auto &child : children)
         {
             config_kit kit;
@@ -394,17 +414,11 @@ void state_machine_imp::get_all_config_kits(std::vector<config_kit> &_return)
 bool state_machine_imp::add_kit_item(const std::string &kit_name, const std::string &item_key, const std::string &item_value)
 {
     auto &ci = config::root_config::get_instance();
-    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
-    if (all_kits)
-    {
-        auto one_kit = all_kits->get_child(kit_name);
-        if (one_kit)
-        {
-            one_kit->set_child(item_key, item_value);
-            all_kits->set_child(kit_name, *(one_kit));
-        }
-        ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS, *(all_kits));
-    }
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    auto &all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    all_kits.set_child(kit_name);
+    auto &one_kit = all_kits.get_child(kit_name);
+    one_kit.set_child(item_key, item_value);
 
     return true;
 }
@@ -412,17 +426,11 @@ bool state_machine_imp::add_kit_item(const std::string &kit_name, const std::str
 void state_machine_imp::del_kit_item(const std::string &kit_name, const std::string &item_key)
 {
     auto &ci = config::root_config::get_instance();
-    auto all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
-    if (all_kits)
-    {
-        auto one_kit = all_kits->get_child(kit_name);
-        if (one_kit)
-        {
-            one_kit->remove_child(item_key);
-            all_kits->set_child(kit_name, *(one_kit));
-        }
-        ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS, *(all_kits));
-    }
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    auto &all_kits = ci.get_child(CONFIG_ITEM_SM_CONFIG_KITS);
+    all_kits.set_child(kit_name);
+    auto &one_kit = all_kits.get_child(kit_name);
+    one_kit.remove_child(item_key);
 }
 
 al_sm_state_working::al_sm_state_working()
@@ -432,10 +440,12 @@ al_sm_state_working::al_sm_state_working()
 
 void al_sm_state_working::after_enter()
 {
+    m_sm->drop_stuff_control(true);
 }
 
 void al_sm_state_working::before_exit()
 {
+    m_sm->drop_stuff_control(false);
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event)
@@ -505,10 +515,12 @@ al_sm_state_ending::al_sm_state_ending()
 
 void al_sm_state_ending::after_enter()
 {
+    m_sm->drop_stuff_control(true);
 }
 
 void al_sm_state_ending::before_exit()
 {
+    m_sm->drop_stuff_control(false);
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)

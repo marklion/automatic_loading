@@ -1,5 +1,6 @@
 #include "al_utils.h"
 #include "ad_rpc.h"
+#include <sstream>
 namespace al_utils
 {
     std::vector<std::string> split_string(const std::string &str, char delimiter)
@@ -66,4 +67,16 @@ namespace al_utils
 
         return ret;
     }
+    std::string insert_spaces(const std::string &_str)
+    {
+        std::stringstream ss(_str);
+        std::string line;
+        std::string result;
+        while (std::getline(ss, line))
+        {
+            result += "  " + line + "\n";
+        }
+        return result;
+    }
+
 }

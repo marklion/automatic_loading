@@ -4,15 +4,16 @@
 
 namespace config
 {
+    config_item config_item::m_empty_item("");
     root_config* root_config::m_instance = nullptr;
-    std::unique_ptr<config_item> config_item::get_child(const std::string &_index_key) const
+    config_item& config_item::get_child(const std::string &_index_key) const
     {
-        auto it = m_children.find(_index_key);
-        if (it != m_children.end())
+        auto itr = m_children.find(_index_key);
+        if (itr == m_children.end())
         {
-            return std::make_unique<config_item>(*(it->second));
+            return m_empty_item;
         }
-        return nullptr;
+        return *(itr->second);
     }
 
     void config_item::set_child(const std::string &_index_key, const config_item &_item)
@@ -22,6 +23,14 @@ namespace config
     void config_item::set_child(const std::string &_index_key, const std::string &_value)
     {
         m_children[_index_key] = std::make_shared<config_item>(_index_key, _value);
+    }
+    void config_item::set_child(const std::string &_index_key)
+    {
+        if (m_children.find(_index_key) != m_children.end())
+        {
+            return;
+        }
+        m_children[_index_key] = std::make_shared<config_item>(_index_key);
     }
     std::string config_item::expend_to_string(const std::string &_prefix) const
     {

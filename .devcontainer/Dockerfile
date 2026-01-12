@@ -44,3 +44,4 @@ WORKDIR /root/
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y libcdk5-dev
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y libopencv-dev
 RUN n 22.20
+RUN npm install -g wetty@2.5.0

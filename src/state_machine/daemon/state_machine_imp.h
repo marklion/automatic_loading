@@ -134,6 +134,7 @@ public:
     virtual void push_vehicle_tail_position(const double tail_x);
     virtual bool set_basic_config(const sm_basic_config &config);
     virtual void get_basic_config(sm_basic_config &_return);
+    void drop_stuff_control(bool _is_open);
 };
 
 #endif // _STATE_MACHINE_IMP_H_

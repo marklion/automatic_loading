@@ -25,7 +25,7 @@ app.config.globalProperties.$call_remote_cli = async function (cmd) {
     let encoded_cmd = encodeURIComponent(cmd);
     let ret = "";
     try {
-        let resp = await axios.get(`http://${remote_name}:35511/api/cli?cmd=${encoded_cmd}`);
+        let resp = await axios.get(`${remote_name}/api/cli?cmd=${encoded_cmd}`);
         ret = resp.data;
     } catch (error) {
         console.log(error);

@@ -66,6 +66,21 @@ AD_EVENT_SC_TIMER_NODE_PTR AD_EVENT_SC::startTimer(int _timeout, int _micro_time
     return timer;
 }
 
+void AD_EVENT_SC::start_one_time_timer(int _timeout, std::function<void()> _callback)
+{
+    start_one_time_timer(_timeout, 0, _callback);
+}
+
+void AD_EVENT_SC::start_one_time_timer(int _timeout, int _micro_sec, std::function<void()> _callback)
+{
+    auto timer = startTimer(_timeout, _micro_sec, _callback);
+    timer->set_one_time(
+        [this](std::shared_ptr<AD_EVENT_SC_TIMER_NODE> t)
+    {
+        stopTimer(t);
+    });
+}
+
 void AD_EVENT_SC::stopTimer(AD_EVENT_SC_TIMER_NODE_PTR _timer)
 {
     unregisterNode(_timer);
@@ -286,6 +301,10 @@ void AD_EVENT_SC_TIMER_NODE::handleEvent()
     if (read_len == sizeof(exp))
     {
         m_callback();
+        if (m_is_one_time)
+        {
+            m_self_stop_func(std::static_pointer_cast<AD_EVENT_SC_TIMER_NODE>(shared_from_this()));
+        }
     }
 }
 

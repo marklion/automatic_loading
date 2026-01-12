@@ -25,6 +25,9 @@ async function runCommand(command) {
         });
     });
 }
+let gui_static_path = path.join(__dirname, 'dist');
+console.log(gui_static_path);
+app.use(express.static(gui_static_path));
 
 app.get('/api/cli', async (req, res) => {
     let cli_cmd = decodeURIComponent(req.query.cmd || '');

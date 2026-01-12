@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 export const useRemoteHostName = defineStore("remoteName", {
     state: () => ({
-        remoteName: "127.0.0.1",
+        remoteName: "",
     }),
     actions: {
         setRemoteName(name) {

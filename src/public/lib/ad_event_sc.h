@@ -27,6 +27,8 @@ class AD_EVENT_SC_TIMER_NODE : public AD_EVENT_SC_NODE
     std::function<void()> m_callback;
     int m_timeout;
     int m_micro_timeout;
+    bool m_is_one_time = false;
+    std::function<void(std::shared_ptr<AD_EVENT_SC_TIMER_NODE>)> m_self_stop_func;
 public:
     AD_EVENT_SC_TIMER_NODE(int _timeout, std::function<void()> _callback, int _micro_timeout = 0);
 
@@ -35,6 +37,12 @@ public:
     int getFd() const override;
 
     void handleEvent() override;
+
+    void set_one_time(std::function<void(std::shared_ptr<AD_EVENT_SC_TIMER_NODE>)> _self_stop_func)
+    {
+        m_is_one_time = true;
+        m_self_stop_func = _self_stop_func;
+    }
 
     virtual std::string node_name() const
     {
@@ -117,6 +125,8 @@ public:
 
     AD_EVENT_SC_TIMER_NODE_PTR startTimer(int _timeout, std::function<void()> _callback);
     AD_EVENT_SC_TIMER_NODE_PTR startTimer(int _timeout,int _micro_timeout, std::function<void()> _callback);
+    void start_one_time_timer(int _timeout, std::function<void()> _callback);
+    void start_one_time_timer(int _timeout, int _micro_sec, std::function<void()> _callback);
     void stopTimer(AD_EVENT_SC_TIMER_NODE_PTR _timer);
 
     bool yield_by_fd(int _fd, int _micro_sec = 0);

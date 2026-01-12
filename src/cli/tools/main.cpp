@@ -9,20 +9,9 @@
 #include "../../log/lib/log_cli.h"
 #include "../../modbus_io/lib/modbus_io_cli.h"
 #include "../../state_machine/lib/state_machine_cli.h"
+#include "../../public/lib/al_utils.h"
 
 #define CLI_DEFAULT_CONFIG_FILE "/database/init.txt"
-
-static std::string insert_spaces(const std::string &_str)
-{
-    std::stringstream ss(_str);
-    std::string line;
-    std::string result;
-    while (std::getline(ss, line))
-    {
-        result += "  " + line + "\n";
-    }
-    return result;
-}
 
 int un_safe_main(int argc, char const *argv[])
 {
@@ -41,7 +30,7 @@ int un_safe_main(int argc, char const *argv[])
         for (auto &itr : sub_c)
         {
             bdr_str += itr->menu_name + "\n";
-            bdr_str += insert_spaces(itr->make_bdr());
+            bdr_str += al_utils::insert_spaces(itr->make_bdr());
             bdr_str += "ad\n";
         }
         return bdr_str;

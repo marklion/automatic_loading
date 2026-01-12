@@ -5,7 +5,7 @@ OUT_CODE_PATH=$(SRC_DIR)/gen_code
 IDL_FILE=$(SRC_DIR)/public_idl.thrift
 CMAKE_TMP_DIR=$(SRC_DIR)/cmake_tmp_dir
 
-all:$(OUT_CODE_PATH) $(DELIVER_PATH) lib daemon web
+all:$(OUT_CODE_PATH) $(DELIVER_PATH) lib daemon web conf
 	cp -a $(DELIVER_PATH)/* $(OUTBOUND_DELIVER_PATH)/
 
 $(OUT_CODE_PATH):$(OUT_CODE_PATH)/cpp
@@ -30,7 +30,18 @@ web:$(DELIVER_PATH)
 	else \
 		echo "npm dependencies and build are up to date"; \
 	fi
+	if [ -n "$$(find $(SRC_DIR)/web/pc-ui -type f \( -path "*/dist/*" -prune -o \( -name '*.js' -o -name '*.json' -o -name '*.vue' -o -name 'webpack.config.js' \) \) -newer $(SRC_DIR)/web/pc-ui/.build_timestamp 2>/dev/null | head -1)" ] || [ ! -f "$(SRC_DIR)/web/pc-ui/.build_timestamp" ]; then \
+		pushd $(SRC_DIR)/web/pc-ui && npm install && npm run build && touch .build_timestamp; \
+	else \
+		echo "npm dependencies and build are up to date"; \
+	fi
 	cp -a $(SRC_DIR)/web/cli_server/dist/* $(DELIVER_PATH)/dist/
+	mkdir -p $(DELIVER_PATH)/dist/dist/
+	cp -a $(SRC_DIR)/web/pc-ui/dist/* $(DELIVER_PATH)/dist/dist/
+conf:$(DELIVER_PATH)
+	mkdir -p $(DELIVER_PATH)/conf
+	chmod +x $(SRC_DIR)/conf/change_base_url.sh
+	cp -a $(SRC_DIR)/conf/* $(DELIVER_PATH)/conf/
 
 clean:
 	rm -rf $(OUT_CODE_PATH)

@@ -6,8 +6,8 @@
 
 namespace modbus_io
 {
-    void set_one_io(std::string &_name, bool _is_set);
-    bool get_one_io(std::string &_name);
+    void set_one_io(const std::string &_name, bool _is_set);
+    bool get_one_io(const std::string &_name);
     void call_remote_modbus_service(std::function<void(modbus_io_serviceClient &)> _func);
 };
 

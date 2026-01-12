@@ -10,7 +10,7 @@ export OUTBOUND_DELIVER_PATH
 
 .SILENT:
 pack:all
-	tar zcf ad_deliver.tar.gz -C $(DELIVER_PATH) lib bin dist
+	tar zcf ad_deliver.tar.gz -C $(DELIVER_PATH) lib bin dist conf
 	cat $(SRC_DIR)/../deploy.sh ad_deliver.tar.gz > $(DELIVER_PATH)/install.sh
 	chmod +x $(DELIVER_PATH)/install.sh
 	rm ad_deliver.tar.gz

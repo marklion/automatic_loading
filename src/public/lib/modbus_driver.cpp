@@ -80,7 +80,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     {
                         auto addr = itr.second.addr;
                         unsigned char coil_value = 0;
-                        auto modbus_ret = modbus_read_bits(m_ctx, addr, 1, &coil_value);
+                        auto modbus_ret = modbus_read_input_bits(m_ctx, addr, 1, &coil_value);
                         if (modbus_ret == 1)
                         {
                             itr.second.value = (coil_value != 0);
@@ -181,6 +181,11 @@ bool modbus_driver::read_coil(const std::string &_name)
 {
     bool ret = false;
     std::lock_guard<std::mutex> lock(m_mutex);
+    auto itr = m_coil_read_meta.find(_name);
+    if (itr != m_coil_read_meta.end())
+    {
+        ret = itr->second.value;
+    }
 
     return ret;
 }

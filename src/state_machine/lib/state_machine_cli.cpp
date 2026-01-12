@@ -1,7 +1,10 @@
 #include "state_machine_cli.h"
 #include "state_machine_lib.h"
 #include "../../public/lib/CJsonObject.hpp"
+#include "state_machine_kit_cli.h"
+#include "../../public/lib/al_utils.h"
 
+    state_machine_kit_cli *g_sm_kit_cli = nullptr;
 static void kit_config_item(std::ostream &out, std::vector<std::string> _params)
 {
     auto check_resp = common_cli::check_params(_params, 0, "请输入配置套件名称:");
@@ -235,6 +238,7 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
 
 static std::unique_ptr<cli::Menu> make_menu()
 {
+    g_sm_kit_cli = new state_machine_kit_cli();
     std::unique_ptr<cli::Menu> sm_menu(new cli::Menu("state_machine"));
     sm_menu->Insert(CLI_MENU_ITEM(kit_config_item), "添加配置项", {"<kit_name>", "<item_key>", "<item_value>"});
     sm_menu->Insert(CLI_MENU_ITEM(kit_delete_item), "删除配置项", {"<kit_name>", "<item_key>"});
@@ -247,6 +251,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(mock_tail_x), "模拟车尾位置", {"<tail_x>"});
     sm_menu->Insert(CLI_MENU_ITEM(show_status), "显示状态机状态", {});
     sm_menu->Insert(CLI_MENU_ITEM(mock_vehicle_info), "模拟车辆信息", {"<plate>", "<stuff_name>"});
+    sm_menu->Insert(std::move(g_sm_kit_cli->menu));
 
     return sm_menu;
 }
@@ -258,6 +263,9 @@ state_machine_cli::state_machine_cli() : common_cli(make_menu(), "state_machine"
 std::string state_machine_cli::make_bdr()
 {
     std::string ret;
+    ret += g_sm_kit_cli->menu_name + "\n";
+    ret += al_utils::insert_spaces(g_sm_kit_cli->make_bdr());
+    ret += "state_machine\n";
     state_machine::call_sm_remote(
         [&](state_machine_serviceClient &client)
         {
