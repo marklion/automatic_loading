@@ -57,6 +57,17 @@ void lidar_imp::get_lidar_params(lidar_params &_return)
 {
     _return = m_params;
 }
+void lidar_imp::cap_current_ply(ply_file_info &_return)
+{
+    auto drop_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_DROP)];
+    auto tail_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_TAIL)];
+    auto drop_resp = drop_lidar->save_ply2file("manual_save");
+    auto tail_resp = tail_lidar->save_ply2file("manual_save");
+    _return.drop_file_path = drop_resp.focus_ply_file;
+    _return.drop_full_file_path = drop_resp.full_ply_file;
+    _return.tail_file_path = tail_resp.focus_ply_file;
+    _return.tail_full_file_path = tail_resp.full_ply_file;
+}
 long long get_current_us_stamp()
 {
     struct timeval tv;
@@ -480,6 +491,8 @@ lidar_ply_info lidar_driver_info::save_ply2file(const std::string &_file_tag)
     lidar_ply_info ret;
 
     auto date_string = al_utils::ad_utils_date_time().m_datetime;
+    date_string = al_utils::join_strings(al_utils::split_string(date_string, ' '), "_");
+
     auto focus_file = _file_tag + "_focus_" + date_string + ".ply";
     auto full_file = _file_tag + "_full_" + date_string + ".ply";
 

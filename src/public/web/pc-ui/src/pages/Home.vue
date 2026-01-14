@@ -4,23 +4,64 @@
       <template #append>
         <el-button @click="enter_config_page" type="primary">进入配置界面</el-button>
       </template>
+      <template #prepend>
+        <el-switch v-model="resize_switch" active-text="允许调整大小" inactive-text="禁止调整大小"></el-switch>
+      </template>
+      <template #prefix v-if="resize_switch">
+        <el-button @click="reset_layout">重置布局</el-button>
+      </template>
     </el-input>
-    <el-dialog v-model="config_page_should_show" title="配置">
-      <iframe
-        src="/wetty"
-        style="width: 100%; height: 500px; border: none"
-      ></iframe>
+    <el-dialog v-model="config_page_should_show" title="配置" fullscreen>
+      <iframe src="/wetty" style="width: 100%; height: 100%; border: none"></iframe>
     </el-dialog>
-    <IoPanel> </IoPanel>
-    <StateMachine> </StateMachine>
+    <grid-layout :layout="layout" :col-num="12" :row-height="30" :is-draggable="resize_switch"
+      :is-resizable="resize_switch" @layout-updated="saveLayout">
+      <grid-item v-for="item in layout" :key="item.i" :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i">
+        <!-- 你的组件内容 -->
+        <div class="content">
+          <component :is="my_components[item.i]"></component>
+        </div>
+      </grid-item>
+    </grid-layout>
   </div>
 </template>
 
 <script setup>
 import IoPanel from "../../../../../modbus_io/web/io_panel.vue";
 import StateMachine from "../../../../../state_machine/web/state_machine.vue";
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
+import { GridLayout, GridItem } from 'vue3-grid-layout-next';
+const layout = ref([
+  { x: 0, y: 0, w: 6, h: 10, i: '0' },
+  { x: 6, y: 0, w: 6, h: 10, i: '1' },
+])
+const resize_switch = ref(false);
+const my_components = {
+  '0': IoPanel,
+  '1': StateMachine,
+}
+// 保存布局到本地存储
+const saveLayout = (newLayout) => {
+  localStorage.setItem('dashboard-layout', JSON.stringify(newLayout))
+}
+
+function reset_layout() {
+  layout.value = [
+    { x: 0, y: 0, w: 6, h: 10, i: '0' },
+    { x: 6, y: 0, w: 6, h: 10, i: '1' },
+  ]
+  saveLayout(layout.value);
+}
+
+// 恢复布局
+const loadLayout = () => {
+  const saved = localStorage.getItem('dashboard-layout')
+  if (saved) layout.value = JSON.parse(saved)
+}
+onMounted(() => {
+  loadLayout()
+})
 const hostname_store = useRemoteHostName();
 const remote_hostname = computed({
   get: () => hostname_store.remoteName,

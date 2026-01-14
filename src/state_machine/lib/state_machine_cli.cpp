@@ -263,8 +263,8 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
 
 static void sm_opt(std::ostream &out, std::vector<std::string> _params)
 {
-    auto check_resp = common_cli::check_params(_params, 0, "请输入操作指令(e-急停，r-重置):");
-    if (check_resp.empty() && (_params[0] == "e" || _params[0] == "r"))
+    auto check_resp = common_cli::check_params(_params, 0, "请输入操作指令(e-急停, r-重置, m-手动):");
+    if (check_resp.empty() && (_params[0] == "e" || _params[0] == "r" || _params[0] == "m"))
     {
         std::string opt = _params[0];
         state_machine::call_sm_remote(
@@ -277,6 +277,10 @@ static void sm_opt(std::ostream &out, std::vector<std::string> _params)
                 else if (opt == "r")
                 {
                     client.reset_to_init();
+                }
+                else if (opt == "m")
+                {
+                    client.switch_to_manual_mode();
                 }
             });
     }

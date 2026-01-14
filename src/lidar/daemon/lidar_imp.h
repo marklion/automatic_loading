@@ -131,6 +131,7 @@ public:
     virtual bool set_lidar_params(const lidar_params &params);
     virtual bool turn_on_off_lidar(const bool is_on);
     virtual void get_lidar_params(lidar_params &_return);
+    virtual void cap_current_ply(ply_file_info &_return);
     void start_all_lidar_threads();
 };
 

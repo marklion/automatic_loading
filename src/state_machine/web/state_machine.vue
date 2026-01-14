@@ -1,12 +1,13 @@
 <template>
     <div v-if="should_show">
-        <el-descriptions title="运行状态" :column="3" :size="size" border>
+        <el-descriptions title="运行状态" :column="3" border>
             <template #extra>
+                <el-button type="warning" @click="enter_manual">手动</el-button>
                 <el-button type="danger" @click="emergencyStop">急停</el-button>
                 <el-button type="primary" @click="resetStateMachine">重置</el-button>
             </template>
             <el-descriptions-item label="当前状态">
-                {{ sm_status.status }}
+                <el-tag type="primary">{{ sm_status.status }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="车牌号">
                 {{ sm_status.vehicle_info.plate }}
@@ -17,26 +18,26 @@
         </el-descriptions>
         <el-row align="middle">
             <el-col :span="8">
-                <el-progress status="success"
+                <el-progress status="success" :text-inside="true" :stroke-width="20"
                     :percentage="calcu_percentage(sm_status.vehicle_front_x, sm_status.basic_config.front_min_x, sm_status.basic_config.front_max_x)">
                     <template #default="{ percentage }">
-                        <div>{{ percentage.toFixed(2) }}%</div>
-                        <div>{{ sm_status.basic_config.front_min_x }} - {{ sm_status.vehicle_front_x }} - {{
-                            sm_status.basic_config.front_max_x }}</div>
-                        <div>车厢前壁位置</div>
+                        <div class="label-text">{{ sm_status.basic_config.front_min_x }} - {{ sm_status.vehicle_front_x
+                        }} - {{
+                                sm_status.basic_config.front_max_x }}</div>
                     </template>
                 </el-progress>
+                <div class="label-text">车厢前壁位置</div>
             </el-col>
             <el-col :span="8">
-                <el-progress status="warning"
+                <el-progress status="warning" :text-inside="true" :stroke-width="20"
                     :percentage="calcu_percentage(sm_status.vehicle_tail_x, sm_status.basic_config.tail_min_x, sm_status.basic_config.tail_max_x)">
                     <template #default="{ percentage }">
-                        <div>{{ percentage.toFixed(2) }}%</div>
-                        <div>{{ sm_status.basic_config.tail_min_x }} - {{ sm_status.vehicle_tail_x }} - {{
-                            sm_status.basic_config.tail_max_x }}</div>
-                        <div>车厢后壁位置</div>
+                        <div class="label-text">{{ sm_status.basic_config.tail_min_x }} - {{ sm_status.vehicle_tail_x }}
+                            - {{
+                                sm_status.basic_config.tail_max_x }}</div>
                     </template>
                 </el-progress>
+                <div class="label-text">车厢后壁位置</div>
             </el-col>
             <el-col :span="8">
                 <el-progress type="dashboard"
@@ -63,6 +64,7 @@ import { onMounted, ref, getCurrentInstance } from "vue";
 const should_show = ref(false);
 const instance = getCurrentInstance();
 const sm_status = ref({});
+
 function make_range_by_max(max_value, min_value = 0) {
     let ret = {
         min: min_value,
@@ -113,6 +115,15 @@ async function refresh_status() {
     }
     console.log(sm_status.value);
 }
+async function enter_manual() {
+    try {
+        await instance.appContext.config.globalProperties.$call_remote_cli(
+            "state_machine sm_opt m"
+        );
+    } catch (error) {
+        console.log(error);
+    }
+}
 onMounted(async () => {
     setInterval(async () => {
         await refresh_status();
@@ -121,4 +132,10 @@ onMounted(async () => {
 
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.label-text {
+    text-align: center;
+    font-size: 12px;
+    color: red;
+}
+</style>

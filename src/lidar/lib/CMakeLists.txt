@@ -12,5 +12,6 @@ add_library(lidar_lib SHARED ${LIB_SRC} ${RPC_SRC})
 find_library(AL_UTILS_LIB libal_utils.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
 find_library(CONFIG_LIB libconfig_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
 find_library(LOG_LIB liblog_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
+find_library(STATE_MACHINE_LIB libstate_machine_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
 
-target_link_libraries(lidar_lib ${AL_UTILS_LIB} ${CONFIG_LIB} ${LOG_LIB})
+target_link_libraries(lidar_lib ${AL_UTILS_LIB} ${CONFIG_LIB} ${LOG_LIB} ${STATE_MACHINE_LIB})

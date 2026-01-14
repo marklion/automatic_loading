@@ -47,5 +47,7 @@ clean:
 	rm -rf $(OUT_CODE_PATH)
 	rm -rf $(DELIVER_PATH)
 	rm -rf $(CMAKE_TMP_DIR)
+	rm -f $(SRC_DIR)/web/cli_server/.build_timestamp
+	rm -f $(SRC_DIR)/web/pc-ui/.build_timestamp
 
 .PHONY:all $(DELIVER_PATH) $(OUT_CODE_PATH) clean lib daemon cli

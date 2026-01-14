@@ -10,13 +10,14 @@
 #include "../../modbus_io/lib/modbus_io_cli.h"
 #include "../../state_machine/lib/state_machine_cli.h"
 #include "../../public/lib/al_utils.h"
+#include "../../lidar/lib/lidar_cli.h"
 
 #define CLI_DEFAULT_CONFIG_FILE "/database/init.txt"
 
 int un_safe_main(int argc, char const *argv[])
 {
     common_cli *sub_c[] = {
-        new public_cli(), new log_cli(), new modbus_io_cli(), new state_machine_cli()
+        new public_cli(), new log_cli(), new modbus_io_cli(), new state_machine_cli(), new lidar_cli()
     };
     auto root_menu = std::unique_ptr<cli::Menu>(new cli::Menu("ad"));
     for (auto &itr : sub_c)

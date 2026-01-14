@@ -231,6 +231,12 @@ void state_machine_imp::trigger_sm(const vehicle_info &v_info)
 {
     sm_set_vehicle_info(v_info);
     apply_config_kit(v_info.stuff_name);
+    lidar_call_remote(
+        [this](lidar_serviceClient &client)
+        {
+            client.turn_on_off_lidar(true);
+        });
+    sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
 }
 
 void state_machine_imp::push_vehicle_front_position(const double front_x)
@@ -437,9 +443,7 @@ bool state_machine_imp::apply_config_kit(const std::string &kit_name)
         [this](lidar_serviceClient &client)
         {
             client.set_lidar_params(make_params_from_kit());
-            client.turn_on_off_lidar(true);
         });
-    sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
     return true;
 }
 
