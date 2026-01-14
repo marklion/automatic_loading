@@ -29,6 +29,7 @@ struct al_sm_state{
     virtual void after_enter() = 0;
     virtual void before_exit() = 0;
     virtual std::unique_ptr<al_sm_state> handle_event(al_sm_event event) = 0;
+    static std::string state_name(al_sm_event _event);
 };
 
 struct al_sm_state_working: public al_sm_state

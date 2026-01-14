@@ -1,6 +1,7 @@
 #include "log_cli.h"
 #include "log_lib.h"
 #include "../../config/lib/config_lib.h"
+#include "../../public/lib/CJsonObject.hpp"
 static void log_file(std::ostream &out, std::vector<std::string> _params)
 {
     auto check_resp = common_cli::check_params(_params, 0, "请输入日志文件路径:");
@@ -101,6 +102,77 @@ static void test_log(std::ostream &out, std::vector<std::string> _params)
     }
 }
 
+static void show_logs(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请输入日志级别(0-DEBUG,1-INFO,2-WARN,3-ERROR,4-NONE):");
+    check_resp += common_cli::check_params(_params, 1, "请输入日志模块(0-CONFIG,1-MODBUS_IO,2-STATE_MACHINE,3-LIDAR");
+    check_resp += common_cli::check_params(_params, 2, "请输入起始行号:");
+    if (check_resp.empty())
+    {
+        int level_id = -1;
+        int module_id = -1;
+        level_id = atoi(_params[0].c_str());
+        module_id = atoi(_params[1].c_str());
+        auto line_index = atoi(_params[2].c_str());
+        al_log::call_log_service(
+            [&](log_serviceClient &client)
+            {
+                log_level_info level_info;
+                level_info.level_id = level_id;
+                level_info.module_id = module_id;
+                auto last_line_index = line_index;
+                neb::CJsonObject log_json("[]");
+                while (true)
+                {
+                    std::vector<std::string> log_lines;
+                    client.get_lastest_logs(log_lines, level_info, last_line_index);
+                    if (log_lines.empty())
+                    {
+                        break;
+                    }
+                    for (const auto &line : log_lines)
+                    {
+                        log_json.Add(line);
+                        last_line_index++;
+                    }
+                }
+                out << log_json.ToString() << std::endl;
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
+static void show_log_line_num(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请输入日志级别(0-DEBUG,1-INFO,2-WARN,3-ERROR,4-NONE):");
+    check_resp += common_cli::check_params(_params, 1, "请输入日志模块(0-CONFIG,1-MODBUS_IO,2-STATE_MACHINE,3-LIDAR");
+    if (check_resp.empty())
+    {
+        int level_id = -1;
+        int module_id = -1;
+        level_id = atoi(_params[0].c_str());
+        module_id = atoi(_params[1].c_str());
+        al_log::call_log_service(
+            [level_id, module_id, &out](log_serviceClient &client)
+            {
+                log_level_info level_info;
+                level_info.level_id = level_id;
+                level_info.module_id = module_id;
+                int line_num = client.get_log_cur_line_num(level_info);
+                neb::CJsonObject log_json;
+                log_json.Add("log_line_num", line_num);
+                out << log_json.ToString() << std::endl;
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> sm_menu(new cli::Menu("log"));
@@ -109,6 +181,8 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(close_log), "关闭日志");
     sm_menu->Insert(CLI_MENU_ITEM(set_log_level), "设置日志级别", {"<level> <module>"});
     sm_menu->Insert(CLI_MENU_ITEM(test_log), "测试日志输出", {"<log_msg>", "<level>", "<module>"});
+    sm_menu->Insert(CLI_MENU_ITEM(show_logs), "显示日志", {"<level>", "<module>", "<from_line_index>"});
+    sm_menu->Insert(CLI_MENU_ITEM(show_log_line_num), "显示日志行数", {"<level>", "<module>"});
     return sm_menu;
 }
 log_cli::log_cli() : common_cli(make_menu(), "log")

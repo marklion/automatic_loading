@@ -20,6 +20,8 @@ public:
     virtual void set_log_level(const log_level_info &level_info);
     virtual void unset_log_level(const int32_t module_id);
     virtual void get_log_level(std::vector<log_level_info> &_return);
+    virtual void get_lastest_logs(std::vector<std::string> &_return, const log_level_info &level_info, const int32_t last_line_index);
+    virtual int32_t get_log_cur_line_num(const log_level_info &level_info);
     bool should_log(al_log::LOG_MODULE _module, al_log::LOG_LEVEL _level);
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
     {

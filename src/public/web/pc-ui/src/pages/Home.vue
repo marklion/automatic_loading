@@ -11,8 +11,8 @@
         <el-button @click="reset_layout">重置布局</el-button>
       </template>
     </el-input>
-    <el-dialog v-model="config_page_should_show" title="配置" fullscreen>
-      <iframe src="/wetty" style="width: 100%; height: 100%; border: none"></iframe>
+    <el-dialog v-model="config_page_should_show" :z-index="2000" title="配置" fullscreen>
+      <iframe src="/wetty" style="width: 100vw; height: 100vh; border: none"></iframe>
     </el-dialog>
     <grid-layout :layout="layout" :col-num="12" :row-height="30" :is-draggable="resize_switch"
       :is-resizable="resize_switch" @layout-updated="saveLayout">
@@ -29,17 +29,20 @@
 <script setup>
 import IoPanel from "../../../../../modbus_io/web/io_panel.vue";
 import StateMachine from "../../../../../state_machine/web/state_machine.vue";
+import LogExplore from "../../../../../log/web/log_explore.vue";
 import { ref, computed, onMounted } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
 import { GridLayout, GridItem } from 'vue3-grid-layout-next';
 const layout = ref([
   { x: 0, y: 0, w: 6, h: 10, i: '0' },
   { x: 6, y: 0, w: 6, h: 10, i: '1' },
+  { x: 0, y: 20, w: 4, h: 10, i: '2' },
 ])
 const resize_switch = ref(false);
 const my_components = {
   '0': IoPanel,
   '1': StateMachine,
+  '2': LogExplore,
 }
 // 保存布局到本地存储
 const saveLayout = (newLayout) => {
@@ -48,8 +51,9 @@ const saveLayout = (newLayout) => {
 
 function reset_layout() {
   layout.value = [
-    { x: 0, y: 0, w: 6, h: 10, i: '0' },
-    { x: 6, y: 0, w: 6, h: 10, i: '1' },
+    { x: 0, y: 0, w: 6, h: 6, i: '0' },
+    { x: 6, y: 0, w: 6, h: 6, i: '1' },
+    { x: 0, y: 6, w: 4, h: 10, i: '2' },
   ]
   saveLayout(layout.value);
 }

@@ -12,24 +12,17 @@
       <el-table-column label="操作/状态">
         <template #default="scope">
           <div v-if="scope.row.is_output">
-            <el-button
-              v-if="scope.row.is_opened"
-              @click="set_io(scope.row.device_name, false)"
-              type="danger"
-              >松开</el-button
-            >
-            <el-button
-              v-else
-              @click="set_io(scope.row.device_name, true)"
-              type="success"
-              >按下</el-button
-            >
+            <el-button v-if="scope.row.is_opened" @click="set_io(scope.row.device_name, false)"
+              type="danger">松开</el-button>
+            <el-button v-else @click="set_io(scope.row.device_name, true)" type="success">按下</el-button>
           </div>
           <div v-else>
-            <el-icon v-if="scope.row.is_opened" color="green"
-              ><CircleCheckFilled
-            /></el-icon>
-            <el-icon v-else color="red"><CircleCloseFilled /></el-icon>
+            <el-icon v-if="scope.row.is_opened" color="green">
+              <CircleCheckFilled />
+            </el-icon>
+            <el-icon v-else color="red">
+              <CircleCloseFilled />
+            </el-icon>
           </div>
         </template>
       </el-table-column>
@@ -61,6 +54,9 @@ async function set_io(device_name, is_opened) {
 }
 onMounted(async () => {
   await refresh_devices();
+  setInterval(async () => {
+    await refresh_devices();
+  }, 2000);
 });
 </script>
 

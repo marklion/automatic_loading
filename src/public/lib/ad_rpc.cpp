@@ -21,7 +21,10 @@ public:
         auto op = std::make_shared<apache::thrift::protocol::TBinaryProtocol>(ot_ad_trans);
         m_processor->process(ip, op, nullptr);
         auto reply = ot->getBufferAsString();
-        send(getFd(), reply.c_str(), reply.size(), SOCK_NONBLOCK);
+        if (!reply.empty())
+        {
+            send(getFd(), reply.c_str(), reply.size(), SOCK_NONBLOCK);
+        }
     }
     void add_processor(const std::string &service_name, std::shared_ptr<apache::thrift::TProcessor> processor)
     {

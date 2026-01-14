@@ -145,7 +145,7 @@ std::unique_ptr<al_sm_state> al_sm_state_manual::handle_event(al_sm_event event)
 
 void state_machine_imp::sm_handle_event(al_sm_state::al_sm_event event)
 {
-    m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Event %d pushed", event);
+    m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Event [%s] pushed", al_sm_state::state_name(event).c_str());
     AD_RPC_SC::get_instance()->add_co(
         [this, event]()
         {
@@ -159,7 +159,10 @@ void state_machine_imp::sm_handle_event(al_sm_state::al_sm_event event)
                 m_state->after_enter();
             }
             auto new_state_name = m_state->m_name;
-            m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Event %d handled, from %s to %s", event, orig_state_name.c_str(), new_state_name.c_str());
+            if (new_state_name != orig_state_name)
+            {
+                m_logger.log_print(al_log::LOG_LEVEL_INFO, "因为[%s],状态变化：从[%s]到[%s]", al_sm_state::state_name(event).c_str(), orig_state_name.c_str(), new_state_name.c_str());
+            }
         });
 }
 
@@ -351,13 +354,13 @@ void state_machine_imp::drop_stuff_control(bool _is_open)
         {
             modbus_io::set_one_io(another_io_name, false);
             modbus_io::set_one_io(io_name, true);
-            m_logger.log_print(al_log::LOG_LEVEL_INFO, "Push Button %s", io_name.c_str());
+            m_logger.log_print(al_log::LOG_LEVEL_INFO, "按下 [%s]", io_name.c_str());
             AD_RPC_SC::get_instance()->start_one_time_timer(
                 2,
                 [io_name, this]()
                 {
                     modbus_io::set_one_io(io_name, false);
-                    m_logger.log_print(al_log::LOG_LEVEL_INFO, "Release Button %s", io_name.c_str());
+                    m_logger.log_print(al_log::LOG_LEVEL_INFO, "松开 [%s]", io_name.c_str());
                 });
         }
     }
@@ -655,4 +658,50 @@ std::unique_ptr<al_sm_state> al_sm_state_pause::handle_event(al_sm_event event)
         break;
     }
     return new_state;
+}
+
+std::string al_sm_state::state_name(al_sm_event _event)
+{
+    std::string ret;
+    switch (_event)
+    {
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        ret = "急停";
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        ret = "切换到手动模式";
+        break;
+    case AL_SM_EVENT_RESET_TO_INIT:
+        ret = "重置到初始状态";
+        break;
+    case AL_SM_EVENT_GET_READY:
+        ret = "触发就绪";
+        break;
+    case AL_SM_EVENT_VEHICLE_COME:
+        ret = "车辆到达";
+        break;
+    case AL_SM_EVENT_VEHICLE_LEAVE:
+        ret = "车辆离开";
+        break;
+    case AL_SM_EVENT_VEHICLE_DISAPPEAR:
+        ret = "车辆消失";
+        break;
+    case AL_SM_EVENT_LOAD_ACHIEVED:
+        ret = "达到装载量";
+        break;
+    case AL_SM_EVENT_LOAD_CLEAR:
+        ret = "装载量清零";
+        break;
+    case AL_SM_EVENT_REACH_FULL:
+        ret = "达到满载偏移";
+        break;
+    case AL_SM_EVENT_BACK_TO_EMPTY:
+        ret = "回到空载偏移";
+        break;
+    default:
+        ret = "未知事件";
+        break;
+    }
+
+    return ret;
 }

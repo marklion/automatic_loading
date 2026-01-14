@@ -60,6 +60,37 @@ void log_service_imp::log_print(const std::string &log_msg, const int32_t module
         ofs << log_msg;
         ofs.close();
     }
+    // Check if log file exceeds 5000 lines
+    std::ifstream ifs_check(file_base + file_name);
+    if (ifs_check.is_open())
+    {
+        std::string line;
+        int line_count = 0;
+        while (std::getline(ifs_check, line))
+        {
+            line_count++;
+        }
+        ifs_check.close();
+
+        if (line_count > 5000)
+        {
+            std::ifstream ifs_read(file_base + file_name);
+            std::ofstream ofs_write(file_base + file_name + ".tmp");
+            int first_200_line = 0;
+            while (std::getline(ifs_read, line))
+            {
+                if (first_200_line++ < 200)
+                {
+                    continue;
+                }
+                ofs_write << line << "\n";
+            }
+            ifs_read.close();
+            ofs_write.close();
+            std::remove((file_base + file_name).c_str());
+            std::rename((file_base + file_name + ".tmp").c_str(), (file_base + file_name).c_str());
+        }
+    }
     if (should_log((al_log::LOG_MODULE)module_id, (al_log::LOG_LEVEL)level_id))
     {
         dispatch_log_message(log_msg);
@@ -130,6 +161,96 @@ void log_service_imp::get_log_level(std::vector<log_level_info> &_return)
             _return.push_back(level_info);
         }
     }
+}
+
+static bool log_match_req(const std::string &_line, const log_level_info &level_info)
+{
+    bool ret = false;
+    if (_line.find(al_log::LOG_MODULE_NAME[(al_log::LOG_MODULE)level_info.module_id]) != std::string::npos)
+    {
+        switch (level_info.level_id)
+        {
+        case 0:
+            if (_line.find("DEBUG") != std::string::npos)
+            {
+                ret = true;
+            }
+            break;
+        case 1:
+            if (_line.find("INFO") != std::string::npos)
+            {
+                ret = true;
+            }
+            break;
+        case 2:
+            if (_line.find("WARN") != std::string::npos)
+            {
+                ret = true;
+            }
+            break;
+        case 3:
+            if (_line.find("ERROR") != std::string::npos)
+            {
+                ret = true;
+            }
+            break;
+        default:
+            ret = true;
+            break;
+        }
+    }
+    return ret;
+}
+
+void log_service_imp::get_lastest_logs(std::vector<std::string> &_return, const log_level_info &level_info, const int32_t last_line_index)
+{
+    std::string file_name;
+    get_log_file(file_name);
+    auto full_path = "/database/" + file_name;
+    std::ifstream ifs(full_path);
+    if (ifs.is_open())
+    {
+        std::string line;
+        int32_t current_index = 0;
+        while (std::getline(ifs, line))
+        {
+            if (log_match_req(line, level_info) == false)
+            {
+                continue;
+            }
+            if (current_index >= last_line_index)
+            {
+                _return.push_back(line);
+            }
+            current_index++;
+        }
+        ifs.close();
+    }
+}
+
+int32_t log_service_imp::get_log_cur_line_num(const log_level_info &level_info)
+{
+    int32_t ret = 0;
+    std::string file_name;
+    get_log_file(file_name);
+    auto full_path = "/database/" + file_name;
+    std::ifstream ifs(full_path);
+    if (ifs.is_open())
+    {
+        std::string line;
+        int32_t current_index = 0;
+        while (std::getline(ifs, line))
+        {
+            if (log_match_req(line, level_info) == false)
+            {
+                continue;
+            }
+            current_index++;
+        }
+        ifs.close();
+        ret = current_index;
+    }
+    return ret;
 }
 
 bool log_service_imp::should_log(al_log::LOG_MODULE _module, al_log::LOG_LEVEL _level)

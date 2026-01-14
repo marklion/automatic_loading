@@ -46,10 +46,21 @@ bool lidar_imp::set_lidar_params(const lidar_params &params)
 bool lidar_imp::turn_on_off_lidar(const bool is_on)
 {
     m_is_lidar_on = is_on;
-    for (int i = 0; i < LIDAR_COUNT; ++i)
+    if (!is_on)
     {
-        m_lidar_result[i]->m_need_work = is_on;
+        for (int i = 0; i < LIDAR_COUNT; ++i)
+        {
+            m_lidar_result[i]->m_need_work = is_on;
+        }
     }
+    else
+    {
+        auto drop_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_DROP)];
+        auto tail_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_TAIL)];
+        drop_lidar->m_need_work = is_on;
+        tail_lidar->m_need_work = is_on;
+    }
+
     return true;
 }
 
