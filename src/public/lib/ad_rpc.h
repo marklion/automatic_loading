@@ -15,6 +15,7 @@ enum AD_RPC_SERVER_PORTS
     AD_RPC_PROCESS_SERVER_PORT = 46001,
     AD_RPC_MODBUS_IO_SERVER_PORT = 46002,
     AD_RPC_SM_SERVER_PORT = 46003,
+    AD_RPC_LIDAR_SERVER_PORT = 46004,
 };
 
 enum AD_BUSSINESS_SERVER_PORTS
@@ -60,6 +61,10 @@ public:
             {
                 m_bufferd_recv_data += m_recv_buf.substr(4, msg_len);
                 m_recv_buf = m_recv_buf.substr(4 + msg_len);
+            }
+            else
+            {
+                break; // 不完整，等待更多数据
             }
         }
     }
@@ -115,11 +120,23 @@ public:
     }
     virtual uint32_t read(uint8_t *buf, uint32_t len) override
     {
-        if (!this->hasPendingDataToRead())
+        bool read_finished = false;
+        uint32_t total_read_len = 0;
+        while (!read_finished)
         {
-            m_event_sc->yield_by_fd(getSocketFD());
+            if (!this->hasPendingDataToRead())
+            {
+                m_event_sc->yield_by_fd(getSocketFD());
+            }
+            auto read_len = apache::thrift::transport::TSocket::read(buf, len);
+            if (read_len > 0)
+            {
+                total_read_len = read_len;
+                read_finished = true;
+            }
         }
-        return apache::thrift::transport::TSocket::read(buf, len);
+
+        return total_read_len;
     }
 };
 class AD_RPC_SC : public AD_EVENT_SC
@@ -129,6 +146,7 @@ class AD_RPC_SC : public AD_EVENT_SC
     static std::shared_ptr<AD_RPC_SC> m_single;
     AD_RPC_SERVER_PORTS m_server_port = AD_RPC_INVALID_SERVER_PORT;
     static std::map<AD_RPC_SERVER_PORTS, std::string> AD_RPC_SERVER_PORTS_NAME;
+
 public:
     static std::shared_ptr<AD_RPC_SC> get_instance()
     {

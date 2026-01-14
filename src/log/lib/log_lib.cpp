@@ -41,6 +41,7 @@ namespace al_log
         {LOG_CONFIG, "CONFIG"},
         {LOG_MODBUS_IO, "MODBUS_IO"},
         {LOG_STATE_MACHINE, "STATE_MACHINE"},
+        {LOG_LIDAR, "LIDAR"},
         {LOG_TEST, "TEST"},
     };
     void log_tool::log_print(LOG_LEVEL _level, const char *_format, ...)

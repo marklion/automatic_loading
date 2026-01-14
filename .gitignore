@@ -6,3 +6,4 @@ build/
 **/.build_timestamp
 **/cmake_tmp_dir/
 **/gen_code/
+**/lidar_gen_code/

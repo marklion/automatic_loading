@@ -65,7 +65,7 @@ static void close_log(std::ostream &out, std::vector<std::string> _params)
 static void set_log_level(std::ostream &out, std::vector<std::string> _params)
 {
     auto check_resp = common_cli::check_params(_params, 0, "请输入日志级别(0-DEBUG,1-INFO,2-WARN,3-ERROR,4-NONE):");
-    check_resp += common_cli::check_params(_params, 1, "请输入日志模块(0-CONFIG,1-MODBUS_IO,2-STATE_MACHINE,3-TEST):");
+    check_resp += common_cli::check_params(_params, 1, "请输入日志模块(0-CONFIG,1-MODBUS_IO,2-STATE_MACHINE,3-LIDAR,4-TEST):");
     if (!check_resp.empty())
     {
         out << check_resp << std::endl;

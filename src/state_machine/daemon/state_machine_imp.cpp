@@ -1,6 +1,13 @@
 #include "state_machine_imp.h"
 #include "../../config/lib/config_lib.h"
 #include "../../modbus_io/lib/modbus_io_lib.h"
+#include "../lidar_gen_code/cpp/lidar_service.h"
+#include "../lidar_gen_code/cpp/lidar_idl_types.h"
+
+void lidar_call_remote(std::function<void(lidar_serviceClient &)> func)
+{
+    AD_RPC_SC::get_instance()->call_remote<lidar_serviceClient>(AD_RPC_LIDAR_SERVER_PORT, func);
+}
 
 // al_sm_state_init 实现
 al_sm_state_init::al_sm_state_init()
@@ -15,6 +22,11 @@ void al_sm_state_init::after_enter()
     m_sm->sm_set_vehicle_info(vehicle_info());
     m_sm->sm_set_vehicle_front_x(100);
     m_sm->sm_set_vehicle_tail_x(100);
+    lidar_call_remote(
+        [](lidar_serviceClient &client)
+        {
+            client.turn_on_off_lidar(false);
+        });
 }
 
 void al_sm_state_init::before_exit()
@@ -172,7 +184,7 @@ void state_machine_imp::push_cur_load(const double cur_load)
     {
         max_load = std::stod(max_load_str);
     }
-    catch(...)
+    catch (...)
     {
         max_load = 0.0;
         m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid max_load config: %s", max_load_str.c_str());
@@ -237,8 +249,8 @@ void state_machine_imp::push_vehicle_front_position(const double front_x)
         front_min_x = 0.0;
         front_max_x = 0.0;
         m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid front_x config: min=%s, max=%s",
-                            ci(CONFIG_ITEM_SM_CONFIG_FRONT_MIN_X).c_str(),
-                            ci(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X).c_str());
+                           ci(CONFIG_ITEM_SM_CONFIG_FRONT_MIN_X).c_str(),
+                           ci(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X).c_str());
     }
     if (front_min_x < front_max_x &&
         sm_get_vehicle_front_x() >= front_min_x &&
@@ -264,8 +276,8 @@ void state_machine_imp::push_vehicle_tail_position(const double tail_x)
         tail_min_x = 0.0;
         tail_max_x = 0.0;
         m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid tail_x config: min=%s, max=%s",
-                            ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X).c_str(),
-                            ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X).c_str());
+                           ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X).c_str(),
+                           ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X).c_str());
     }
     if (tail_min_x < tail_max_x)
     {
@@ -345,6 +357,58 @@ void state_machine_imp::drop_stuff_control(bool _is_open)
     }
 }
 
+lidar_params state_machine_imp::make_params_from_kit()
+{
+    lidar_params ret;
+    auto &ci = config::root_config::get_instance();
+    auto &cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+
+    ret.angle_threshold = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_ANGLE_THRESHOLD]().c_str());
+    ret.cluster_distance_threshold = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_CLUSTER_DISTANCE_THRESHOLD]().c_str());
+    ret.cluster_required_point_num = atoi(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_CLUSTER_REQUIRED_POINT_NUM]().c_str());
+    ret.first_range_x_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_X_MIN]().c_str());
+    ret.first_range_x_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_X_MAX]().c_str());
+    ret.first_range_y_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_Y_MIN]().c_str());
+    ret.first_range_y_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_Y_MAX]().c_str());
+    ret.first_range_z_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_Z_MIN]().c_str());
+    ret.first_range_z_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_Z_MAX]().c_str());
+    ret.first_range_i_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_I_MIN]().c_str());
+    ret.first_range_i_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_I_MAX]().c_str());
+    ret.plane_distance_threshold = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_PLANE_DISTANCE_THRESHOLD]().c_str());
+    ret.voxel_leaf_size = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_VOXEL_LEAF_SIZE]().c_str());
+    ret.head_trans0_0 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_0_0]().c_str());
+    ret.head_trans0_1 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_0_1]().c_str());
+    ret.head_trans0_2 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_0_2]().c_str());
+    ret.head_trans0_3 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_0_3]().c_str());
+    ret.head_trans1_0 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_1_0]().c_str());
+    ret.head_trans1_1 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_1_1]().c_str());
+    ret.head_trans1_2 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_1_2]().c_str());
+    ret.head_trans1_3 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_1_3]().c_str());
+    ret.head_trans2_0 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_2_0]().c_str());
+    ret.head_trans2_1 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_2_1]().c_str());
+    ret.head_trans2_2 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_2_2]().c_str());
+    ret.head_trans2_3 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_2_3]().c_str());
+    ret.tail_trans0_0 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_0_0]().c_str());
+    ret.tail_trans0_1 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_0_1]().c_str());
+    ret.tail_trans0_2 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_0_2]().c_str());
+    ret.tail_trans0_3 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_0_3]().c_str());
+    ret.tail_trans1_0 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_1_0]().c_str());
+    ret.tail_trans1_1 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_1_1]().c_str());
+    ret.tail_trans1_2 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_1_2]().c_str());
+    ret.tail_trans1_3 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_1_3]().c_str());
+    ret.tail_trans2_0 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_2_0]().c_str());
+    ret.tail_trans2_1 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_2_1]().c_str());
+    ret.tail_trans2_2 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_2_2]().c_str());
+    ret.tail_trans2_3 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_TRANS_2_3]().c_str());
+    ret.is_front_dropping = (cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_IS_FRONT_DROPPING]() == "1");
+    ret.second_range_x_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_X_MAX]().c_str());
+    ret.second_range_x_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_X_MIN]().c_str());
+    ret.second_range_y_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MAX]().c_str());
+    ret.second_range_y_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MIN]().c_str());
+
+    return ret;
+}
+
 state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_init>()), m_logger(al_log::LOG_STATE_MACHINE)
 {
 }
@@ -369,6 +433,12 @@ bool state_machine_imp::reset_to_init()
 bool state_machine_imp::apply_config_kit(const std::string &kit_name)
 {
     sm_set_current_kit(kit_name);
+    lidar_call_remote(
+        [this](lidar_serviceClient &client)
+        {
+            client.set_lidar_params(make_params_from_kit());
+            client.turn_on_off_lidar(true);
+        });
     sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
     return true;
 }

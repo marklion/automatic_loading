@@ -12,6 +12,7 @@ namespace al_log
         LOG_CONFIG = 0,
         LOG_MODBUS_IO,
         LOG_STATE_MACHINE,
+        LOG_LIDAR,
         LOG_TEST,
     };
 

@@ -3,6 +3,8 @@
 
 #include "../gen_code/cpp/state_machine_service.h"
 #include "../gen_code/cpp/state_machine_idl_types.h"
+#include "../lidar_gen_code/cpp/lidar_service.h"
+#include "../lidar_gen_code/cpp/lidar_idl_types.h"
 #include "../../public/lib/ad_rpc.h"
 #include "../../log/lib/log_lib.h"
 #include <memory>
@@ -102,6 +104,7 @@ class state_machine_imp : public state_machine_serviceIf
     double m_vehicle_tail_x = 0.0;
     std::string m_current_kit;
     vehicle_info m_vi;
+    lidar_params make_params_from_kit();
 public:
     state_machine_imp();
     void sm_set_current_load(double load){m_current_load = load;}

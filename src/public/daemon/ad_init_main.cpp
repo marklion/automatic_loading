@@ -147,8 +147,12 @@ static std::vector<DaemonService *> make_init_daemon_services()
 
     auto log_service = new DaemonService("/bin/log_daemon", {}, "log_daemon");
     services.push_back(log_service);
-    services.push_back(new DaemonService("/bin/modbus_io_daemon", {}, "modbus_io_daemon", log_service));
-    services.push_back(new DaemonService("/bin/sm_daemon", {}, "sm_daemon", log_service));
+    auto modbus_service =new DaemonService("/bin/modbus_io_daemon", {}, "modbus_io_daemon", log_service);
+    services.push_back(modbus_service);
+    auto sm_service = new DaemonService("/bin/sm_daemon", {}, "sm_daemon", modbus_service);
+    services.push_back(sm_service);
+    auto lidar_service = new DaemonService("/bin/lidar_daemon", {}, "lidar_daemon", sm_service);
+    services.push_back(lidar_service);
 
     return services;
 }
