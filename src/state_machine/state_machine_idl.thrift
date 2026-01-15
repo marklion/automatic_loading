@@ -28,6 +28,7 @@ struct state_machine_status{
     5: double vehicle_tail_x,
     6: vehicle_info v_info,
     7: sm_basic_config basic_config,
+    8: bool is_front_dropped,
 }
 
 service state_machine_service{

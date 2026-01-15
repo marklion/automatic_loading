@@ -175,6 +175,8 @@ void state_machine_imp::get_state_machine_status(state_machine_status &_return)
     _return.vehicle_front_x = sm_get_vehicle_front_x();
     _return.vehicle_tail_x = sm_get_vehicle_tail_x();
     get_basic_config(_return.basic_config);
+    auto tmp_param = make_params_from_kit();
+    _return.is_front_dropped = tmp_param.is_front_dropping;
 }
 
 void state_machine_imp::push_cur_load(const double cur_load)

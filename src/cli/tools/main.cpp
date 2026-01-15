@@ -11,14 +11,19 @@
 #include "../../state_machine/lib/state_machine_cli.h"
 #include "../../public/lib/al_utils.h"
 #include "../../lidar/lib/lidar_cli.h"
+#include "../../xlrd/lib/xlrd_cli.h"
 
 #define CLI_DEFAULT_CONFIG_FILE "/database/init.txt"
 
 int un_safe_main(int argc, char const *argv[])
 {
     common_cli *sub_c[] = {
-        new public_cli(), new log_cli(), new modbus_io_cli(), new state_machine_cli(), new lidar_cli()
-    };
+        new public_cli(),
+        new log_cli(),
+        new modbus_io_cli(),
+        new state_machine_cli(),
+        new lidar_cli(),
+        new xlrd_cli()};
     auto root_menu = std::unique_ptr<cli::Menu>(new cli::Menu("ad"));
     for (auto &itr : sub_c)
     {
@@ -54,7 +59,8 @@ int un_safe_main(int argc, char const *argv[])
         });
     root_menu->Insert(
         "save",
-        [&](std::ostream &_out) {
+        [&](std::ostream &_out)
+        {
             std::fstream config_file(CLI_DEFAULT_CONFIG_FILE, std::ios::out | std::ios::trunc);
             if (config_file.is_open())
             {

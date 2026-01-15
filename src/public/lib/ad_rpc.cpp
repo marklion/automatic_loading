@@ -51,6 +51,7 @@ std::map<AD_RPC_SERVER_PORTS, std::string> AD_RPC_SC::AD_RPC_SERVER_PORTS_NAME =
     {AD_RPC_MODBUS_IO_SERVER_PORT, "modbus_io_service"},
     {AD_RPC_SM_SERVER_PORT, "sm_service"},
     {AD_RPC_LIDAR_SERVER_PORT, "lidar_service"},
+    {AD_RPC_XLRD_SERVER_PORT, "xlrd_service"},
 };
 
 void AD_RPC_SC::start_co_record()

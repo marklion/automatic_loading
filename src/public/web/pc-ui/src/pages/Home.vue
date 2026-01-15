@@ -15,10 +15,10 @@
       <iframe src="/wetty" style="width: 100vw; height: 100vh; border: none"></iframe>
     </el-dialog>
     <grid-layout :layout="layout" :col-num="12" :row-height="30" :is-draggable="resize_switch"
-      :is-resizable="resize_switch" @layout-updated="saveLayout">
+      :is-resizable="resize_switch" :auto-size="false" @layout-updated="saveLayout">
       <grid-item v-for="item in layout" :key="item.i" :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i">
         <!-- 你的组件内容 -->
-        <div class="content">
+        <div>
           <component :is="my_components[item.i]"></component>
         </div>
       </grid-item>
@@ -30,19 +30,17 @@
 import IoPanel from "../../../../../modbus_io/web/io_panel.vue";
 import StateMachine from "../../../../../state_machine/web/state_machine.vue";
 import LogExplore from "../../../../../log/web/log_explore.vue";
+import XlrdShow from "../../../../../xlrd/web/xlrd_show.vue";
 import { ref, computed, onMounted } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
 import { GridLayout, GridItem } from 'vue3-grid-layout-next';
-const layout = ref([
-  { x: 0, y: 0, w: 6, h: 10, i: '0' },
-  { x: 6, y: 0, w: 6, h: 10, i: '1' },
-  { x: 0, y: 20, w: 4, h: 10, i: '2' },
-])
+const layout = ref([])
 const resize_switch = ref(false);
 const my_components = {
   '0': IoPanel,
   '1': StateMachine,
   '2': LogExplore,
+  '3': XlrdShow,
 }
 // 保存布局到本地存储
 const saveLayout = (newLayout) => {
@@ -51,9 +49,10 @@ const saveLayout = (newLayout) => {
 
 function reset_layout() {
   layout.value = [
-    { x: 0, y: 0, w: 6, h: 6, i: '0' },
-    { x: 6, y: 0, w: 6, h: 6, i: '1' },
-    { x: 0, y: 6, w: 4, h: 10, i: '2' },
+    { x: 0, y: 0, w: 4, h: 6, i: '0' },
+    { x: 4, y: 0, w: 6, h: 6, i: '1' },
+    { x: 0, y: 6, w: 3, h:15, i: '2' },
+    { x: 10, y: 0, w: 2, h: 6, i: '3' },
   ]
   saveLayout(layout.value);
 }
@@ -65,6 +64,9 @@ const loadLayout = () => {
 }
 onMounted(() => {
   loadLayout()
+  if (layout.value.length === 0) {
+    reset_layout();
+  }
 })
 const hostname_store = useRemoteHostName();
 const remote_hostname = computed({

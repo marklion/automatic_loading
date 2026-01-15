@@ -45,9 +45,10 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
     if (m_ctx)
     {
         m_is_working = true;
-        std::thread(
+        m_work_thread = new std::thread(
             [this]()
             {
+                m_logger->log("modbus_driver thread started");
                 while (m_is_working)
                 {
                     m_mutex.lock();
@@ -94,8 +95,8 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     m_mutex.unlock();
                     usleep(1000 * 200);
                 }
-            })
-            .detach();
+                m_logger->log("modbus_driver thread stopped");
+            });
     }
     else
     {
@@ -113,6 +114,12 @@ modbus_driver::~modbus_driver()
         m_ctx = nullptr;
     }
     m_is_working = false;
+    if (m_work_thread)
+    {
+        m_work_thread->join();
+        delete m_work_thread;
+        m_work_thread = nullptr;
+    }
 }
 
 void modbus_driver::add_float32_abcd_meta(const std::string &_name, int addr)

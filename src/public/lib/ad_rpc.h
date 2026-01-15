@@ -16,6 +16,7 @@ enum AD_RPC_SERVER_PORTS
     AD_RPC_MODBUS_IO_SERVER_PORT = 46002,
     AD_RPC_SM_SERVER_PORT = 46003,
     AD_RPC_LIDAR_SERVER_PORT = 46004,
+    AD_RPC_XLRD_SERVER_PORT = 46005,
 };
 
 enum AD_BUSSINESS_SERVER_PORTS
@@ -48,6 +49,10 @@ public:
     {
         unsigned char buffer[1024] = {0};
         auto recv_len = m_transport->read(buffer, sizeof(buffer));
+        if (recv_len <= 0)
+        {
+            throw apache::thrift::transport::TTransportException(apache::thrift::transport::TTransportException::END_OF_FILE, "No more data to read.");
+        }
         m_recv_buf.append((char *)buffer, recv_len);
         while (m_recv_buf.size() >= 4)
         {

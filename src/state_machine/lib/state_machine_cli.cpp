@@ -177,6 +177,7 @@ static void show_status(std::ostream &out, std::vector<std::string> _params)
                 status_json.Add("stuff_full_offset", status.stuff_full_offset);
                 status_json.Add("vehicle_front_x", status.vehicle_front_x);
                 status_json.Add("vehicle_tail_x", status.vehicle_tail_x);
+                status_json.Add("is_front_dropped", status.is_front_dropped, status.is_front_dropped);
                 neb::CJsonObject v_info_json;
                 v_info_json.Add("plate", status.v_info.plate);
                 v_info_json.Add("stuff_name", status.v_info.stuff_name);

@@ -1,7 +1,7 @@
 <template>
     <div>
         <el-button type="primary" @click="clear_log">清除日志</el-button>
-        <el-input v-model="cur_logs" :rows="30" type="textarea" readonly />
+        <el-input v-model="cur_logs" :autosize="{ minRows: 25, maxRows: 30 }" type="textarea" readonly />
     </div>
 </template>
 
@@ -32,8 +32,10 @@ async function fetch_logs() {
             `log show_logs 1 2 ${cur_log_index.value}`
         );
         for (let line of resp) {
-            line = line.split("|")[0] + "|" + line.split("|")[1] + "|" + line.split("|")[3].split("[INFO]:")[1];
-            cur_logs.value += line + "\n";
+            let date_line = line.split("|")[0] + "|" + line.split("|")[1];
+            let content_line = line.split("|")[3].split("[INFO]:")[1];
+            cur_logs.value += date_line + "\n";
+            cur_logs.value += content_line + "\n";
         }
         cur_log_index.value += resp.length;
         let new_index = await get_cur_log_index();

@@ -26,6 +26,7 @@ class modbus_driver {
     bool exception_occurred = false;
     std::mutex m_mutex;
     std::unique_ptr<modbus_logger> m_logger;
+    std::thread *m_work_thread = nullptr;
 public:
     modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger);
     ~modbus_driver();
