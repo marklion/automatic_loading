@@ -2,7 +2,7 @@ SHELL=/bin/bash
 SRC_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 SRC_DIR:=$(SRC_DIR)/src
 DELIVER_PATH=$(SRC_DIR)/../build
-SUB_DIR=public config log cli modbus_io state_machine lidar xlrd
+SUB_DIR=public config log cli modbus_io state_machine lidar xlrd live_camera
 BUILD_MODE=build
 OUTBOUND_DELIVER_PATH=$(DELIVER_PATH)
 export BUILD_MODE
@@ -24,7 +24,8 @@ $(SUB_DIR):$(DELIVER_PATH)
 
 config:public
 log:public config
-cli:log modbus_io state_machine lidar xlrd
+live_camera:log
+cli:log modbus_io state_machine lidar xlrd live_camera
 modbus_io:log
 state_machine:modbus_io
 lidar:state_machine

@@ -155,6 +155,8 @@ static std::vector<DaemonService *> make_init_daemon_services()
     services.push_back(lidar_service);
     auto xlrd_service = new DaemonService("/bin/xlrd_daemon", {}, "xlrd_daemon", sm_service);
     services.push_back(xlrd_service);
+    auto live_camera_service = new DaemonService("/bin/live_camera_daemon", {}, "live_camera_daemon", log_service);
+    services.push_back(live_camera_service);
 
     return services;
 }

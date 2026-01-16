@@ -6,6 +6,10 @@
 #include "../gen_code/cpp/public_idl_types.h"
 #include "../gen_code/cpp/public_service.h"
 #include "CJsonObject.hpp"
+#include <sstream>
+#include <iomanip>
+#include <cctype>
+#include <algorithm>
 
 namespace al_utils
 {
@@ -36,6 +40,105 @@ namespace al_utils
             m_datetime = m_datetime_ms.substr(0, 19);
             m_date = m_datetime.substr(0, 10);
             m_time = m_datetime.substr(11, 8);
+        }
+    };
+    class URLCodec
+    {
+    public:
+        // URL 编码
+        static std::string encode(const std::string &str, bool space_as_plus = true)
+        {
+            std::ostringstream encoded;
+            encoded << std::hex << std::uppercase;
+
+            for (unsigned char c : str)
+            {
+                if (should_encode(c))
+                {
+                    encoded << c;
+                }
+                else if (c == ' ' && space_as_plus)
+                {
+                    encoded << '+';
+                }
+                else
+                {
+                    encoded << '%' << std::setw(2) << std::setfill('0')
+                            << static_cast<int>(c);
+                }
+            }
+
+            return encoded.str();
+        }
+
+        // URL 解码
+        static std::string decode(const std::string &str)
+        {
+            std::ostringstream decoded;
+
+            for (size_t i = 0; i < str.length(); i++)
+            {
+                if (str[i] == '%' && i + 2 < str.length())
+                {
+                    // 处理百分号编码
+                    std::string hex = str.substr(i + 1, 2);
+                    char decoded_char = static_cast<char>(std::stoi(hex, nullptr, 16));
+                    decoded << decoded_char;
+                    i += 2;
+                }
+                else if (str[i] == '+')
+                {
+                    // 加号转换为空格
+                    decoded << ' ';
+                }
+                else
+                {
+                    decoded << str[i];
+                }
+            }
+
+            return decoded.str();
+        }
+
+        // 查询字符串编码（特殊处理 & 和 =）
+        static std::string encode_query_param(const std::string &str)
+        {
+            std::ostringstream encoded;
+            encoded << std::hex << std::uppercase;
+
+            for (unsigned char c : str)
+            {
+                if (std::isalnum(c) ||
+                    c == '-' || c == '_' || c == '.' || c == '~')
+                {
+                    encoded << c;
+                }
+                else
+                {
+                    encoded << '%' << std::setw(2) << std::setfill('0')
+                            << static_cast<int>(c);
+                }
+            }
+
+            return encoded.str();
+        }
+
+    private:
+        static bool should_encode(unsigned char c)
+        {
+            // RFC 3986 安全字符
+            static const std::string safe_chars =
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "0123456789"
+                "-_.~";
+
+            return std::isalnum(c) ||
+                   c == '-' || c == '_' || c == '.' || c == '~' ||
+                   c == '!' || c == '*' || c == '\'' || c == '(' || c == ')' ||
+                   c == ';' || c == '&' ||
+                   c == '=' || c == '+' || c == '$' || c == ',' ||
+                   c == '/' || c == '?' || c == '#' || c == '[' || c == ']';
         }
     };
 }

@@ -11,7 +11,7 @@ export default defineConfig({
     port: 5173,
     proxy:{
       '/api': {
-        target: 'https://ayx.d8sis.cn',
+        target: 'https://dev_al.d8sis.cn',
         changeOrigin: true,
       }
     },
