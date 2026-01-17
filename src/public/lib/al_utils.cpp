@@ -79,4 +79,15 @@ namespace al_utils
         return result;
     }
 
+    std::string get_current_timestamp_ms()
+    {
+        std::string ret;
+
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        long long milliseconds = static_cast<long long>(ts.tv_sec) * 1000 + (ts.tv_nsec / 1000000);
+        ret = std::to_string(milliseconds);
+
+        return ret;
+    }
 }

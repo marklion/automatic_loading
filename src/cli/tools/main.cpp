@@ -13,6 +13,7 @@
 #include "../../lidar/lib/lidar_cli.h"
 #include "../../xlrd/lib/xlrd_cli.h"
 #include "../../live_camera/lib/live_camera_cli.h"
+#include "../../hn_hht/lib/hn_hht_cli.h"
 
 #define CLI_DEFAULT_CONFIG_FILE "/database/init.txt"
 
@@ -25,7 +26,8 @@ int un_safe_main(int argc, char const *argv[])
         new state_machine_cli(),
         new lidar_cli(),
         new xlrd_cli(),
-        new live_camera_cli()
+        new live_camera_cli(),
+        new hn_hht_cli()
     };
     auto root_menu = std::unique_ptr<cli::Menu>(new cli::Menu("ad"));
     for (auto &itr : sub_c)

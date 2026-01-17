@@ -44,6 +44,8 @@ namespace al_log
         {LOG_LIDAR, "LIDAR"},
         {LOG_XLRD, "XLRD"},
         {LOG_TEST, "TEST"},
+        {LOG_LIVE_CAMERA, "LIVE_CAMERA"},
+        {LOG_HHT, "HHT"},
     };
     void log_tool::log_print(LOG_LEVEL _level, const char *_format, ...)
     {

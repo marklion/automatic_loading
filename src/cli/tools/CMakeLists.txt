@@ -13,6 +13,7 @@ find_library(STATE_MACHINE_LIB libstate_machine_lib.so ${PRJ_INTERNAL_BUILD}/lib
 find_library(LIDAR_LIB liblidar_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
 find_library(XLRD_LIB libxlrd_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
 find_library(LIVE_CAMERA_LIB liblive_camera_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
+find_library(HN_HHT_LIB libhn_hht_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
 
 add_executable(ad_cli ${MAIN_SRC})
-target_link_libraries(ad_cli ${AL_UTILS_LIB} ${LOG_LIB} ${XLRD_LIB} ${MODBUS_IO_LIB} ${STATE_MACHINE_LIB} ${LIDAR_LIB} ${LIVE_CAMERA_LIB} thrift pam pam_misc)
+target_link_libraries(ad_cli ${AL_UTILS_LIB} ${LOG_LIB} ${XLRD_LIB} ${MODBUS_IO_LIB} ${STATE_MACHINE_LIB} ${LIDAR_LIB} ${LIVE_CAMERA_LIB} ${HN_HHT_LIB} thrift pam pam_misc)

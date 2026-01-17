@@ -14,6 +14,8 @@ namespace al_log
         LOG_STATE_MACHINE,
         LOG_LIDAR,
         LOG_XLRD,
+        LOG_LIVE_CAMERA,
+        LOG_HHT,
         LOG_TEST,
     };
 
