@@ -79,7 +79,7 @@ std::unique_ptr<al_sm_state> al_sm_state_ready::handle_event(al_sm_event event)
         new_state = std::make_unique<al_sm_state_manual>();
         break;
     case AL_SM_EVENT_VEHICLE_COME:
-        new_state = std::make_unique<al_sm_state_working>();
+        new_state = std::make_unique<al_sm_state_begin>();
         break;
     default:
         break;
@@ -342,15 +342,18 @@ void state_machine_imp::drop_stuff_control(bool _is_open)
     {
         std::string io_name;
         std::string another_io_name;
+        int stay_second = 2;
         if (_is_open)
         {
             io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
             another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
+            stay_second = atoi(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO_STAY).c_str());
         }
         else
         {
             io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
             another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
+            stay_second = atoi(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO_STAY).c_str());
         }
         if (!io_name.empty())
         {
@@ -358,7 +361,7 @@ void state_machine_imp::drop_stuff_control(bool _is_open)
             modbus_io::set_one_io(io_name, true);
             m_logger.log_print(al_log::LOG_LEVEL_INFO, "按下 [%s]", io_name.c_str());
             AD_RPC_SC::get_instance()->start_one_time_timer(
-                2,
+                stay_second,
                 [io_name, this]()
                 {
                     modbus_io::set_one_io(io_name, false);
@@ -366,6 +369,46 @@ void state_machine_imp::drop_stuff_control(bool _is_open)
                 });
         }
     }
+}
+
+int state_machine_imp::lc_drop_revoke_control(bool _is_drop)
+{
+    auto &ci = config::root_config::get_instance();
+    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+    int ret = 0;
+    if (cur_kit.get_key() == sm_get_current_kit())
+    {
+        std::string io_name;
+        std::string another_io_name;
+        int stay_second = 2;
+        if (_is_drop)
+        {
+            io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DROP_LC);
+            another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_REVOKE_LC);
+            stay_second = atoi(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DROP_LC_STAY).c_str());
+        }
+        else
+        {
+            io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_REVOKE_LC);
+            another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DROP_LC);
+            stay_second = atoi(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_REVOKE_LC_STAY).c_str());
+        }
+        if (!io_name.empty())
+        {
+            modbus_io::set_one_io(another_io_name, false);
+            modbus_io::set_one_io(io_name, true);
+            m_logger.log_print(al_log::LOG_LEVEL_INFO, "按下 [%s]", io_name.c_str());
+            AD_RPC_SC::get_instance()->start_one_time_timer(
+                stay_second,
+                [io_name, this]()
+                {
+                    modbus_io::set_one_io(io_name, false);
+                    m_logger.log_print(al_log::LOG_LEVEL_INFO, "松开 [%s]", io_name.c_str());
+                });
+        }
+        ret = stay_second;
+    }
+    return ret;
 }
 
 lidar_params state_machine_imp::make_params_from_kit()
@@ -700,10 +743,64 @@ std::string al_sm_state::state_name(al_sm_event _event)
     case AL_SM_EVENT_BACK_TO_EMPTY:
         ret = "回到空载偏移";
         break;
+    case AL_SM_EVENT_LC_READY:
+        ret = "溜槽就绪";
+        break;
     default:
         ret = "未知事件";
         break;
     }
 
     return ret;
+}
+
+al_sm_state_begin::al_sm_state_begin()
+{
+    m_name = "即将开始";
+}
+
+void al_sm_state_begin::after_enter()
+{
+    auto stay_second = m_sm->lc_drop_revoke_control(true);
+    if (m_action_timer)
+    {
+        AD_RPC_SC::get_instance()->stopTimer(m_action_timer);
+        m_action_timer.reset();
+    }
+    m_action_timer = AD_RPC_SC::get_instance()->startTimer(
+        stay_second,
+        [this]()
+        {
+            m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_LC_READY);
+        });
+}
+
+void al_sm_state_begin::before_exit()
+{
+    if (m_action_timer)
+    {
+        AD_RPC_SC::get_instance()->stopTimer(m_action_timer);
+        m_action_timer.reset();
+    }
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_begin::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_VEHICLE_DISAPPEAR:
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_LC_READY:
+        new_state = std::make_unique<al_sm_state_working>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
 }

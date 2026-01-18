@@ -77,7 +77,7 @@ public:
     }
     virtual uint32_t read_virt(uint8_t *buf, uint32_t len) override
     {
-        if (m_bufferd_recv_data.empty())
+        while (m_bufferd_recv_data.empty())
         {
             read_more();
         }

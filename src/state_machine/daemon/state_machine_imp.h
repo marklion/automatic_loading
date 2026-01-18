@@ -23,6 +23,7 @@ struct al_sm_state{
         AL_SM_EVENT_LOAD_CLEAR,
         AL_SM_EVENT_REACH_FULL,
         AL_SM_EVENT_BACK_TO_EMPTY,
+        AL_SM_EVENT_LC_READY,
     };
     state_machine_imp *m_sm = nullptr;
     std::string m_name;
@@ -95,6 +96,16 @@ struct al_sm_state_manual : public al_sm_state
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
 };
+
+struct al_sm_state_begin : public al_sm_state
+{
+    AD_EVENT_SC_TIMER_NODE_PTR m_action_timer;
+    al_sm_state_begin();
+    void after_enter() override;
+    void before_exit() override;
+    std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
+};
+
 class state_machine_imp : public state_machine_serviceIf
 {
     std::unique_ptr<al_sm_state> m_state;
@@ -139,6 +150,7 @@ public:
     virtual bool set_basic_config(const sm_basic_config &config);
     virtual void get_basic_config(sm_basic_config &_return);
     void drop_stuff_control(bool _is_open);
+    int lc_drop_revoke_control(bool _is_drop);
 };
 
 #endif // _STATE_MACHINE_IMP_H_
