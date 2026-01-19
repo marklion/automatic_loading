@@ -84,6 +84,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MIN, "二次过滤Y最小值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MAX, "二次过滤Y最大值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_VOXEL_LEAF_SIZE, "体素滤波叶子大小");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_STUFF_NAME, "物料名称");
 
     return sm_kit_menu;
 }

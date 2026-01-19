@@ -151,6 +151,8 @@ public:
     virtual void get_basic_config(sm_basic_config &_return);
     void drop_stuff_control(bool _is_open);
     int lc_drop_revoke_control(bool _is_drop);
+    virtual bool set_default_kit(const std::string &kit_name);
+    virtual void get_default_kit(std::string &_return);
 };
 
 #endif // _STATE_MACHINE_IMP_H_

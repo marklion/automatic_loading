@@ -176,6 +176,7 @@ void state_machine_imp::get_state_machine_status(state_machine_status &_return)
     _return.vehicle_tail_x = sm_get_vehicle_tail_x();
     get_basic_config(_return.basic_config);
     auto tmp_param = make_params_from_kit();
+    _return.applied_kit = sm_get_current_kit();
     _return.is_front_dropped = tmp_param.is_front_dropping;
 }
 
@@ -235,13 +236,15 @@ void state_machine_imp::push_stuff_full_offset(const double offset)
 void state_machine_imp::trigger_sm(const vehicle_info &v_info)
 {
     sm_set_vehicle_info(v_info);
-    apply_config_kit(v_info.stuff_name);
-    lidar_call_remote(
-        [this](lidar_serviceClient &client)
-        {
-            client.turn_on_off_lidar(true);
-        });
-    sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
+    if (apply_config_kit(v_info.stuff_name))
+    {
+        lidar_call_remote(
+            [this](lidar_serviceClient &client)
+            {
+                client.turn_on_off_lidar(true);
+            });
+        sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
+    }
 }
 
 void state_machine_imp::push_vehicle_front_position(const double front_x)
@@ -411,6 +414,20 @@ int state_machine_imp::lc_drop_revoke_control(bool _is_drop)
     return ret;
 }
 
+bool state_machine_imp::set_default_kit(const std::string &kit_name)
+{
+    auto &ci = config::root_config::get_instance();
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_DEFAULT_KIT, kit_name);
+
+    return true;
+}
+
+void state_machine_imp::get_default_kit(std::string &_return)
+{
+    auto &ci = config::root_config::get_instance();
+    _return = ci(CONFIG_ITEM_SM_CONFIG_DEFAULT_KIT);
+}
+
 lidar_params state_machine_imp::make_params_from_kit()
 {
     lidar_params ret;
@@ -484,15 +501,45 @@ bool state_machine_imp::reset_to_init()
     return true;
 }
 
-bool state_machine_imp::apply_config_kit(const std::string &kit_name)
+bool state_machine_imp::apply_config_kit(const std::string &_stuff_name)
 {
-    sm_set_current_kit(kit_name);
-    lidar_call_remote(
-        [this](lidar_serviceClient &client)
+    std::string default_kit;
+    get_default_kit(default_kit);
+    if (default_kit.empty())
+    {
+        std::vector<config_kit> all_kits;
+        get_all_config_kits(all_kits);
+        for (auto &kit : all_kits)
         {
-            client.set_lidar_params(make_params_from_kit());
-        });
-    return true;
+            auto stuff_name = kit.config_items[CONFIG_ITEM_SM_CONFIG_KIT_STUFF_NAME];
+            if (stuff_name == _stuff_name)
+            {
+                sm_set_current_kit(kit.kit_name);
+                break;
+            }
+        }
+    }
+    else
+    {
+        sm_set_current_kit(default_kit);
+    }
+    bool ret = false;
+    if (!sm_get_current_kit().empty())
+    {
+        ret = true;
+        lidar_call_remote(
+            [this](lidar_serviceClient &client)
+            {
+                client.set_lidar_params(make_params_from_kit());
+            });
+    }
+    else
+    {
+        ret = false;
+        m_logger.log_print(al_log::LOG_LEVEL_WARN, "No config kit matched for stuff name [%s]", _stuff_name.c_str());
+    }
+
+    return ret;
 }
 
 bool state_machine_imp::add_config_kit(const std::string &kit_name)

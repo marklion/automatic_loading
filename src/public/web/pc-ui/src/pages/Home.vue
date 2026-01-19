@@ -12,7 +12,7 @@
       </template>
     </el-input>
     <el-dialog v-model="config_page_should_show" :z-index="2000" title="配置" fullscreen>
-      <iframe src="/wetty" style="width: 100vw; height: 100vh; border: none"></iframe>
+      <iframe src="/wetty" style="width: 100vw; height: 80vh; border: none"></iframe>
     </el-dialog>
     <grid-layout :layout="layout" :col-num="12" :row-height="30" :is-draggable="resize_switch"
       :is-resizable="resize_switch" :auto-size="false" @layout-updated="saveLayout">

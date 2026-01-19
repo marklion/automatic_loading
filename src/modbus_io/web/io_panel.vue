@@ -1,14 +1,7 @@
 <template>
   <div>
-    <el-button type="success" @click="refresh_devices">刷新设备列表</el-button>
     <el-table :data="all_devices" style="width: 100%">
       <el-table-column prop="device_name" label="名称" />
-      <el-table-column label="类型">
-        <template #default="scope">
-          <span v-if="scope.row.is_output">按钮</span>
-          <span v-else>灯</span>
-        </template>
-      </el-table-column>
       <el-table-column label="操作/状态">
         <template #default="scope">
           <div v-if="scope.row.is_output">

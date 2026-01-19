@@ -24,6 +24,6 @@ public:
     virtual void clear() = 0;
     static std::string check_params(const std::vector<std::string> &_params, uint32_t _index, const std::string &_prompt);
 };
-#define CLI_MENU_ITEM(x) #x, [](std::ostream &out, std::vector<std::string> _params) { x(out, _params); }
+#define CLI_MENU_ITEM(x) #x, [](std::ostream &out, std::vector<std::string> _params) { try{ x(out, _params);}catch(const std::exception &e){out << e.what() <<std::endl;}}
 
 #endif // _COMMON_CLI_H_

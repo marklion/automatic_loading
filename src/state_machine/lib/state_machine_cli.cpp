@@ -4,7 +4,7 @@
 #include "state_machine_kit_cli.h"
 #include "../../public/lib/al_utils.h"
 
-    state_machine_kit_cli *g_sm_kit_cli = nullptr;
+state_machine_kit_cli *g_sm_kit_cli = nullptr;
 static void kit_config_item(std::ostream &out, std::vector<std::string> _params)
 {
     auto check_resp = common_cli::check_params(_params, 0, "请输入配置套件名称:");
@@ -190,6 +190,7 @@ static void show_status(std::ostream &out, std::vector<std::string> _params)
                 basic_config_json.Add("tail_min_x", status.basic_config.tail_min_x);
                 basic_config_json.Add("tail_max_x", status.basic_config.tail_max_x);
                 status_json.Add("basic_config", basic_config_json);
+                status_json.Add("applied_kit", status.applied_kit);
                 out << status_json.ToString() << std::endl;
             }
             else
@@ -201,6 +202,8 @@ static void show_status(std::ostream &out, std::vector<std::string> _params)
                 out << "车尾位置(最小" << status.basic_config.tail_min_x << ", 最大" << status.basic_config.tail_max_x << "): " << status.vehicle_tail_x << std::endl;
                 out << "车牌号: " << status.v_info.plate << std::endl;
                 out << "货物名称: " << status.v_info.stuff_name << std::endl;
+                out << "工作溜槽:" << (status.is_front_dropped ? "前溜槽" : "后溜槽") << std::endl;
+                out << "应用的配置套件: " << status.applied_kit << std::endl;
             }
         });
 }
@@ -291,6 +294,24 @@ static void sm_opt(std::ostream &out, std::vector<std::string> _params)
     }
 }
 
+static void default_kit(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请输入默认配置套件名称:");
+    if (check_resp.empty())
+    {
+        std::string kit_name = _params[0];
+        state_machine::call_sm_remote(
+            [&](state_machine_serviceClient &client)
+            {
+                client.set_default_kit(kit_name);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     g_sm_kit_cli = new state_machine_kit_cli();
@@ -307,6 +328,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(show_status), "显示状态机状态", {});
     sm_menu->Insert(CLI_MENU_ITEM(mock_vehicle_info), "模拟车辆信息", {"<plate>", "<stuff_name>"});
     sm_menu->Insert(CLI_MENU_ITEM(sm_opt), "状态机操作", {"<e|r>"});
+    sm_menu->Insert(CLI_MENU_ITEM(default_kit), "设置默认配置套件", {"<kit_name>"});
     sm_menu->Insert(std::move(g_sm_kit_cli->menu));
 
     return sm_menu;
@@ -347,6 +369,12 @@ std::string state_machine_cli::make_bdr()
                     std::to_string(bc.tail_min_x) + " " +
                     std::to_string(bc.tail_max_x) + "\n";
             }
+            std::string default_kit;
+            client.get_default_kit(default_kit);
+            if (!default_kit.empty())
+            {
+                ret += "default_kit \"" + default_kit + "\"\n";
+            }
         });
     return ret;
 }
@@ -364,5 +392,6 @@ void state_machine_cli::clear()
             }
             sm_basic_config empty_config;
             client.set_basic_config(empty_config);
+            client.set_default_kit("");
         });
 }

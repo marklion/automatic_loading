@@ -9,11 +9,17 @@
             <el-descriptions-item label="当前状态">
                 <el-tag type="primary">{{ sm_status.status }}</el-tag>
             </el-descriptions-item>
+            <el-descriptions-item label="工作溜槽">
+                <el-tag type="success">{{ sm_status.is_front_dropped ? '前' : '后' }}</el-tag>
+            </el-descriptions-item>
             <el-descriptions-item label="车牌号">
                 {{ sm_status.vehicle_info.plate }}
             </el-descriptions-item>
             <el-descriptions-item label="物料">
                 {{ sm_status.vehicle_info.stuff_name }}
+            </el-descriptions-item>
+            <el-descriptions-item label="应用配置套件">
+                {{ sm_status.applied_kit }}
             </el-descriptions-item>
         </el-descriptions>
         <el-row align="middle">
