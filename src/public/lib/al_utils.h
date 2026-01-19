@@ -19,6 +19,7 @@ namespace al_utils
     std::vector<std::shared_ptr<daemon_meta>> get_all_daemon_meta();
     std::string insert_spaces(const std::string &_str);
     std::string get_current_timestamp_ms();
+    std::string util_gbk2utf(const std::string &_utf);
     struct ad_utils_date_time
     {
         std::string m_date;

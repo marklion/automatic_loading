@@ -16,6 +16,7 @@ namespace al_log
         LOG_XLRD,
         LOG_LIVE_CAMERA,
         LOG_HHT,
+        LOG_PLATE_GATE,
         LOG_TEST,
     };
 

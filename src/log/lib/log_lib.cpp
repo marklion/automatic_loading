@@ -46,6 +46,7 @@ namespace al_log
         {LOG_TEST, "TEST"},
         {LOG_LIVE_CAMERA, "LIVE_CAMERA"},
         {LOG_HHT, "HHT"},
+        {LOG_PLATE_GATE, "PLATE_GATE"},
     };
     void log_tool::log_print(LOG_LEVEL _level, const char *_format, ...)
     {
