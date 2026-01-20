@@ -3,6 +3,8 @@
 #include "../../modbus_io/lib/modbus_io_lib.h"
 #include "../lidar_gen_code/cpp/lidar_service.h"
 #include "../lidar_gen_code/cpp/lidar_idl_types.h"
+#include "../../live_camera/lib/live_camera_lib.h"
+#include "../../public/lib/CJsonObject.hpp"
 
 void lidar_call_remote(std::function<void(lidar_serviceClient &)> func)
 {
@@ -17,6 +19,8 @@ al_sm_state_init::al_sm_state_init()
 
 void al_sm_state_init::after_enter()
 {
+    m_sm->sm_set_current_prompt("");
+    m_sm->sm_set_current_video_url("");
     m_sm->sm_set_current_kit("");
     m_sm->sm_set_stuff_full_offset(100);
     m_sm->sm_set_vehicle_info(vehicle_info());
@@ -61,6 +65,7 @@ al_sm_state_ready::al_sm_state_ready()
 
 void al_sm_state_ready::after_enter()
 {
+    m_sm->sm_set_current_prompt("请缓慢往前开");
 }
 
 void al_sm_state_ready::before_exit()
@@ -95,6 +100,7 @@ al_sm_state_emergency::al_sm_state_emergency()
 
 void al_sm_state_emergency::after_enter()
 {
+    m_sm->sm_set_current_prompt("请停车");
 }
 
 void al_sm_state_emergency::before_exit()
@@ -123,6 +129,7 @@ al_sm_state_manual::al_sm_state_manual()
 
 void al_sm_state_manual::after_enter()
 {
+    m_sm->sm_set_current_prompt("人工装车");
 }
 
 void al_sm_state_manual::before_exit()
@@ -479,9 +486,60 @@ lidar_params state_machine_imp::make_params_from_kit()
 
     return ret;
 }
+class log_dispatch_data_node : public AD_EVENT_SC_TCP_DATA_NODE
+{
+    state_machine_imp *m_service_imp;
+
+public:
+    using AD_EVENT_SC_TCP_DATA_NODE::AD_EVENT_SC_TCP_DATA_NODE;
+    virtual void handleRead(const unsigned char *_data, unsigned long _size)
+    {
+    }
+    virtual void handleError()
+    {
+        if (m_service_imp)
+        {
+            m_service_imp->remove_data_node(std::static_pointer_cast<AD_EVENT_SC_TCP_DATA_NODE>(shared_from_this()));
+        }
+    };
+    void set_service_imp(state_machine_imp *_imp)
+    {
+        m_service_imp = _imp;
+    }
+};
 
 state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_init>()), m_logger(al_log::LOG_STATE_MACHINE)
 {
+    m_listen_node.reset(
+        std::make_unique<AD_EVENT_SC_TCP_LISTEN_NODE>(
+            AD_BUSINESS_PROMPT_SERVER_PORT,
+            [this](int _fd, AD_EVENT_SC_TCP_LISTEN_NODE_PTR _listen_node)
+            {
+                auto data_node = std::make_shared<log_dispatch_data_node>(_fd, _listen_node);
+                m_data_nodes.push_back(data_node);
+                data_node->set_service_imp(this);
+                return data_node;
+            },
+            AD_RPC_SC::get_instance())
+            .release());
+    AD_RPC_SC::get_instance()->registerNode(m_listen_node);
+}
+
+state_machine_imp::~state_machine_imp()
+{
+    AD_RPC_SC::get_instance()->unregisterNode(m_listen_node);
+}
+
+void state_machine_imp::deliver_msg()
+{
+    neb::CJsonObject output;
+    output.Add("url", sm_get_current_video_url());
+    output.Add("prompt", sm_get_current_prompt());
+    auto content = output.ToString();
+    for (auto &node : m_data_nodes)
+    {
+        send(node->getFd(), content.c_str(), content.size(), SOCK_NONBLOCK);
+    }
 }
 
 void state_machine_imp::emergency_shutdown()
@@ -532,6 +590,13 @@ bool state_machine_imp::apply_config_kit(const std::string &_stuff_name)
             {
                 client.set_lidar_params(make_params_from_kit());
             });
+        auto &ci = config::root_config::get_instance();
+        auto &cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+        auto video_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_VIDEO_NAME);
+        if (video_name.length() > 0)
+        {
+            sm_set_current_video_url("/live/" + video_name);
+        }
     }
     else
     {
@@ -611,6 +676,7 @@ al_sm_state_working::al_sm_state_working()
 void al_sm_state_working::after_enter()
 {
     m_sm->drop_stuff_control(true);
+    m_sm->sm_set_current_prompt("请观察料堆高度，快装满时即可缓慢前进");
 }
 
 void al_sm_state_working::before_exit()
@@ -652,6 +718,8 @@ al_sm_state_cleanup::al_sm_state_cleanup()
 
 void al_sm_state_cleanup::after_enter()
 {
+    m_sm->sm_set_current_prompt("请驶离");
+    m_sm->lc_drop_revoke_control(false);
 }
 
 void al_sm_state_cleanup::before_exit()
@@ -686,6 +754,7 @@ al_sm_state_ending::al_sm_state_ending()
 void al_sm_state_ending::after_enter()
 {
     m_sm->drop_stuff_control(true);
+    m_sm->sm_set_current_prompt("请缓慢前进");
 }
 
 void al_sm_state_ending::before_exit()
@@ -722,6 +791,7 @@ al_sm_state_pause::al_sm_state_pause()
 
 void al_sm_state_pause::after_enter()
 {
+    m_sm->sm_set_current_prompt("请缓慢前进");
 }
 
 void al_sm_state_pause::before_exit()
@@ -808,6 +878,7 @@ al_sm_state_begin::al_sm_state_begin()
 
 void al_sm_state_begin::after_enter()
 {
+    m_sm->sm_set_current_prompt("请停车等待");
     auto stay_second = m_sm->lc_drop_revoke_control(true);
     if (m_action_timer)
     {

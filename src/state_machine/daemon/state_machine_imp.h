@@ -10,8 +10,10 @@
 #include <memory>
 #include <string>
 class state_machine_imp;
-struct al_sm_state{
-    enum al_sm_event{
+struct al_sm_state
+{
+    enum al_sm_event
+    {
         AL_SM_EVENT_EMERGENCY_SHUTDOWN,
         AL_SM_EVENT_SWITCH_TO_MANUAL_MODE,
         AL_SM_EVENT_RESET_TO_INIT,
@@ -33,7 +35,7 @@ struct al_sm_state{
     static std::string state_name(al_sm_event _event);
 };
 
-struct al_sm_state_working: public al_sm_state
+struct al_sm_state_working : public al_sm_state
 {
     al_sm_state_working();
     void after_enter() override;
@@ -41,7 +43,7 @@ struct al_sm_state_working: public al_sm_state
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
 };
 
-struct al_sm_state_cleanup: public al_sm_state
+struct al_sm_state_cleanup : public al_sm_state
 {
     al_sm_state_cleanup();
     void after_enter() override;
@@ -49,7 +51,7 @@ struct al_sm_state_cleanup: public al_sm_state
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
 };
 
-struct al_sm_state_ending: public al_sm_state
+struct al_sm_state_ending : public al_sm_state
 {
     al_sm_state_ending();
     void after_enter() override;
@@ -57,7 +59,7 @@ struct al_sm_state_ending: public al_sm_state
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
 };
 
-struct al_sm_state_pause: public al_sm_state
+struct al_sm_state_pause : public al_sm_state
 {
     al_sm_state_pause();
     void after_enter() override;
@@ -117,20 +119,47 @@ class state_machine_imp : public state_machine_serviceIf
     std::string m_current_kit;
     vehicle_info m_vi;
     lidar_params make_params_from_kit();
+    std::string m_current_prompt;
+    std::string m_current_video_url;
+    AD_EVENT_SC_TCP_LISTEN_NODE_PTR m_listen_node;
+    std::vector<AD_EVENT_SC_TCP_DATA_NODE_PTR> m_data_nodes;
+
 public:
     state_machine_imp();
-    void sm_set_current_load(double load){m_current_load = load;}
-    double sm_get_current_load(){return m_current_load;}
-    void sm_set_stuff_full_offset(double offset){m_stuff_full_offset = offset;}
-    double sm_get_stuff_full_offset(){return m_stuff_full_offset;}
-    void sm_set_current_kit(const std::string &kit_name){m_current_kit = kit_name;}
-    std::string sm_get_current_kit(){return m_current_kit;}
-    void sm_set_vehicle_info(const vehicle_info &v_info){m_vi = v_info;}
-    vehicle_info sm_get_vehicle_info(){return m_vi;}
-    void sm_set_vehicle_front_x(double front_x){m_vehicle_front_x = front_x;}
-    double sm_get_vehicle_front_x(){return m_vehicle_front_x;}
-    void sm_set_vehicle_tail_x(double tail_x){m_vehicle_tail_x = tail_x;}
-    double sm_get_vehicle_tail_x(){return m_vehicle_tail_x;}
+    void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
+    {
+        auto itr = std::find(m_data_nodes.begin(), m_data_nodes.end(), _node);
+        if (itr != m_data_nodes.end())
+        {
+            m_data_nodes.erase(itr);
+        }
+    }
+    ~state_machine_imp();
+    void deliver_msg();
+    void sm_set_current_load(double load) { m_current_load = load; }
+    double sm_get_current_load() { return m_current_load; }
+    void sm_set_stuff_full_offset(double offset) { m_stuff_full_offset = offset; }
+    double sm_get_stuff_full_offset() { return m_stuff_full_offset; }
+    void sm_set_current_kit(const std::string &kit_name) { m_current_kit = kit_name; }
+    std::string sm_get_current_kit() { return m_current_kit; }
+    void sm_set_vehicle_info(const vehicle_info &v_info) { m_vi = v_info; }
+    vehicle_info sm_get_vehicle_info() { return m_vi; }
+    void sm_set_vehicle_front_x(double front_x) { m_vehicle_front_x = front_x; }
+    double sm_get_vehicle_front_x() { return m_vehicle_front_x; }
+    void sm_set_vehicle_tail_x(double tail_x) { m_vehicle_tail_x = tail_x; }
+    double sm_get_vehicle_tail_x() { return m_vehicle_tail_x; }
+    void sm_set_current_prompt(const std::string &prompt)
+    {
+        m_current_prompt = prompt;
+        deliver_msg();
+    }
+    std::string sm_get_current_prompt() { return m_current_prompt; }
+    void sm_set_current_video_url(const std::string &video_url)
+    {
+        m_current_video_url = video_url;
+        deliver_msg();
+    }
+    std::string sm_get_current_video_url() { return m_current_video_url; }
     virtual void emergency_shutdown();
     virtual bool switch_to_manual_mode();
     virtual bool reset_to_init();
