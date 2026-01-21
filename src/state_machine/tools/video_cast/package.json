@@ -1,0 +1,48 @@
+{
+  "name": "video_cast",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --debug --no-sandbox",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": [],
+  "author": "Mark",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "net": "^1.0.2"
+  },
+  "build": {
+    "appId": "com.example.tcpmonitor",
+    "productName": "video_cast",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icons/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icons/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "icons/icon.png"
+    }
+  }
+}

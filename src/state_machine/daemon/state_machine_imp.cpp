@@ -536,6 +536,7 @@ void state_machine_imp::deliver_msg()
     output.Add("url", sm_get_current_video_url());
     output.Add("prompt", sm_get_current_prompt());
     auto content = output.ToString();
+    content += "\n";
     for (auto &node : m_data_nodes)
     {
         send(node->getFd(), content.c_str(), content.size(), SOCK_NONBLOCK);

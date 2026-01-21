@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP监控器</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- 标题栏 -->
+        <div class="title-bar" id="title-bar">
+            <div class="title-bar-drag"></div>
+            <div class="title-text">
+                <i class="fas fa-satellite-dish"></i>
+                <span>TCP数据监控</span>
+                <div class="connection-status" id="connection-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">连接中...</span>
+                </div>
+            </div>
+            <div class="window-controls">
+                <button class="window-btn minimize" onclick="window.electronAPI.minimizeWindow?.()">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button class="window-btn maximize" onclick="window.electronAPI.maximizeWindow?.()">
+                    <i class="far fa-square"></i>
+                </button>
+                <button class="window-btn close" onclick="window.electronAPI.closeWindow?.()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 控制栏 -->
+        <div class="control-bar">
+            <div class="url-display">
+                <i class="fas fa-link"></i>
+                <input type="text" id="url-input" placeholder="等待TCP数据..." readonly>
+                <button id="copy-url" title="复制URL">
+                    <i class="far fa-copy"></i>
+                </button>
+                <button id="refresh-frame" title="刷新页面">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+            <div class="tcp-controls">
+                <button id="reconnect-btn" class="btn btn-primary">
+                    <i class="fas fa-plug"></i> 重新连接
+                </button>
+                <button id="settings-btn" class="btn btn-secondary">
+                    <i class="fas fa-cog"></i> 设置
+                </button>
+            </div>
+        </div>
+
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <!-- iframe区域 (上4/5) -->
+            <div class="iframe-container">
+                <div class="iframe-header">
+                    <span>网页内容</span>
+                    <div class="iframe-controls">
+                        <button id="back-btn" class="iframe-btn" disabled>
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <button id="forward-btn" class="iframe-btn" disabled>
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <button id="home-btn" class="iframe-btn">
+                            <i class="fas fa-home"></i>
+                        </button>
+                    </div>
+                </div>
+                <iframe id="content-frame"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
+                    allow="camera; microphone; geolocation"></iframe>
+                <div class="iframe-loading" id="frame-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    加载中...
+                </div>
+            </div>
+
+            <!-- 提示信息区域 (下1/5) -->
+            <div class="prompt-container">
+                <div class="prompt-header">
+                    <i class="fas fa-comment-dots"></i>
+                    <span>提示信息</span>
+                    <div class="prompt-info">
+                        <span id="last-update">最后更新: --</span>
+                        <button id="copy-prompt" class="btn-small">
+                            <i class="far fa-copy"></i> 复制
+                        </button>
+                    </div>
+                </div>
+                <div class="prompt-content" id="prompt-text">
+                    <div class="placeholder-text">
+                        <i class="fas fa-comment-slash"></i>
+                        <p>等待TCP服务器发送提示信息...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部状态栏 -->
+        <div class="status-bar">
+            <div class="status-item">
+                <i class="fas fa-server"></i>
+                <span id="server-info">未连接</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-clock"></i>
+                <span id="current-time">--:--:--</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-database"></i>
+                <span id="data-count">数据包: 0</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-memory"></i>
+                <span id="memory-usage">内存: -- MB</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置模态框 -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> TCP设置</h3>
+                <button class="modal-close" id="close-settings">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="tcp-host">
+                        <i class="fas fa-desktop"></i> 服务器地址
+                    </label>
+                    <input type="text" id="tcp-host" placeholder="例如: 192.168.1.100">
+                </div>
+                <div class="form-group">
+                    <label for="tcp-port">
+                        <i class="fas fa-plug"></i> 端口号
+                    </label>
+                    <input type="number" id="tcp-port" placeholder="例如: 8080" min="1" max="65535">
+                </div>
+                <div class="form-group">
+                    <label for="auto-reconnect">
+                        <i class="fas fa-sync"></i> 自动重连
+                    </label>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="auto-reconnect" checked>
+                        <label for="auto-reconnect">断开时自动重新连接</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="reconnect-delay">
+                        <i class="fas fa-hourglass-half"></i> 重连延迟(秒)
+                    </label>
+                    <input type="number" id="reconnect-delay" value="5" min="1" max="60">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-settings">取消</button>
+                <button class="btn btn-primary" id="save-settings">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示 -->
+    <div id="toast"></div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>

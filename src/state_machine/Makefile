@@ -7,7 +7,7 @@ IDL_FILE=$(SRC_DIR)/state_machine_idl.thrift
 LIDAR_IDL_FILE=$(SRC_DIR)/../lidar/lidar_idl.thrift
 CMAKE_TMP_DIR=$(SRC_DIR)/cmake_tmp_dir
 
-all:$(OUT_CODE_PATH) $(LIDAR_OUT_CODE_PATH) daemon lib
+all:$(OUT_CODE_PATH) $(LIDAR_OUT_CODE_PATH) daemon lib tools
 	cp -a $(DELIVER_PATH)/* $(OUTBOUND_DELIVER_PATH)/
 
 $(OUT_CODE_PATH):$(OUT_CODE_PATH)/cpp
@@ -35,6 +35,8 @@ lib:$(DELIVER_PATH)
 daemon:$(DELIVER_PATH) lib
 	[ -d $(CMAKE_TMP_DIR)/$@ ] || mkdir -p $(CMAKE_TMP_DIR)/$@
 	pushd $(CMAKE_TMP_DIR)/$@;[ -f Makefile ] || cmake -D PRJ_INTERNAL_BUILD=$(OUTBOUND_DELIVER_PATH) -D CUR_BUILD_PATH=$(DELIVER_PATH) $(SRC_DIR)/$@; $(MAKE)
+tools:
+	$(MAKE) -C $(SRC_DIR)/$@
 
 clean:
 	rm -rf $(OUT_CODE_PATH)
@@ -42,4 +44,4 @@ clean:
 	rm -rf $(DELIVER_PATH)
 	rm -rf $(CMAKE_TMP_DIR)
 
-.PHONY: all clean $(OUT_CODE_PATH) $(LIDAR_OUT_CODE_PATH) $(DELIVER_PATH) lib daemon
+.PHONY: all clean $(OUT_CODE_PATH) $(LIDAR_OUT_CODE_PATH) $(DELIVER_PATH) lib daemon tools
