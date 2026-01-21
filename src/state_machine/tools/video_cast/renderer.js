@@ -144,17 +144,18 @@ class TCPMonitorApp {
 
     updateFrame(url) {
         if (!url) return
-        url = "https://dev_al.d8sis.cn" + url + "/";
-        try {
-            // 验证URL格式
-            new URL(url)
 
-            this.frameLoadStartTime = Date.now()
-            this.frameLoading.style.display = 'flex'
-            this.contentFrame.src = url
+        try {
+            // 如果是HLS流或视频URL，使用本地播放器
+            // 构造本地播放器URL
+            const baseUrl = "http://localhost" + url + "/";
+            const playerUrl = `video_player.html?src=${encodeURIComponent(baseUrl)}`;
+            this.frameLoadStartTime = Date.now();
+            this.frameLoading.style.display = 'flex';
+            this.contentFrame.src = baseUrl;
         } catch (error) {
-            console.error('无效的URL:', url, error)
-            this.showError(`无效的URL: ${url}`)
+            console.error('无效的URL:', url, error);
+            this.showError(`无效的URL: ${url}`);
         }
     }
 

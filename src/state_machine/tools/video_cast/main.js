@@ -4,7 +4,7 @@ const { initializeTCPClient } = require('./tcp-client')
 const {exec} = require('child_process')
 
 const TCP_CONFIG = {
-    HOST: process.env.TCP_HOST || '192.168.0.4',  // 默认IP
+    HOST: process.env.TCP_HOST || 'localhost',  // 默认IP
     PORT: parseInt(process.env.TCP_PORT || '47001')  // 默认端口
 }
 
@@ -66,7 +66,38 @@ function createWindow() {
     // 创建应用菜单
     createApplicationMenu()
 }
+let g_urlWindow = null;
+function openUrlWindow(url) {
+    if (g_urlWindow)
+    {
+        g_urlWindow.close();
+    }
+    const urlWindow = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        minWidth: 800,
+        minHeight: 600,
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            webSecurity: false,
+            allowRunningInsecureContent: true,
+        },
+        show: false,
+        backgroundColor: '#1e1e1e'
+    })
 
+    urlWindow.loadURL(url)
+    urlWindow.show()
+
+    urlWindow.webContents.openDevTools()
+
+    urlWindow.on('closed', () => {
+        g_urlWindow = null;
+    })
+    g_urlWindow = urlWindow;
+}
 // 初始化TCP连接
 function initializeTCPConnection() {
     tcpClient = initializeTCPClient(TCP_CONFIG.HOST, TCP_CONFIG.PORT)
@@ -76,6 +107,7 @@ function initializeTCPConnection() {
         if (mainWindow) {
             mainWindow.webContents.send('tcp-data', data)
         }
+        openUrlWindow(`http://localhost${data.url}/`);
         exec(`bash -c "/home/zczh/play.sh ${data.prompt}"`, {
             cwd: '/home/zczh/'
         }, function(error, stdout, stderr) {

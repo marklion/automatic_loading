@@ -45,6 +45,11 @@ class modbus_io_service_imp : public modbus_io_serviceIf
         {
             m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Modbus driver is not configured properly");
         }
+        if (m_driver && m_driver->exception_happened())
+        {
+            m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Modbus exception happened, recreating driver");
+            m_driver.reset();
+        }
         return m_driver;
     }
 

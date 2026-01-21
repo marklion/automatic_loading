@@ -38,6 +38,10 @@ public:
     float read_float32_abcd(const std::string &_name);
     void write_coil(const std::string &_name, bool _value);
     bool read_coil(const std::string &_name);
+    bool exception_happened()
+    {
+        return exception_occurred;
+    }
 };
 
 #endif // _MODBUS_DRIVER_H_

@@ -55,6 +55,34 @@ public:
                     });
             });
     }
+
+    void apply_driver_config()
+    {
+        xlrd_config_params front_params;
+        xlrd_config_params tail_params;
+        this->get_config_params(front_params, true);
+        this->get_config_params(tail_params, false);
+        if (front_params.ip.length() > 0)
+        {
+            m_front_driver = std::make_unique<modbus_driver>(
+                front_params.ip,
+                static_cast<unsigned short>(front_params.port),
+                front_params.slave_id,
+                new my_logger(&m_logger));
+            m_front_driver->add_float32_abcd_meta("distance", 4096);
+        }
+
+        if (tail_params.ip.length() > 0)
+        {
+            m_tail_driver = std::make_unique<modbus_driver>(
+                tail_params.ip,
+                static_cast<unsigned short>(tail_params.port),
+                tail_params.slave_id,
+                new my_logger(&m_logger));
+            m_tail_driver->add_float32_abcd_meta("distance", 4096);
+        }
+    }
+
     virtual bool set_config_params(const bool _is_front, const xlrd_config_params &_params)
     {
         auto &ci = config::root_config::get_instance();
@@ -66,30 +94,8 @@ public:
         ci[section].set_child(CONFIG_ITEM_XLRD_PARAMS_SLAVE_ID, std::to_string(_params.slave_id));
         ci[section].set_child(CONFIG_ITEM_XLRD_PARAMS_DISTANCE_OFFSET, std::to_string(_params.distance_offset));
         ci[section].set_child(CONFIG_ITEM_XLRD_PARAMS_BOTTOM_Z, std::to_string(_params.bottom_z));
-        modbus_driver *driver_ptr = nullptr;
 
-        if (_is_front)
-        {
-            m_front_driver = std::make_unique<modbus_driver>(
-                _params.ip,
-                static_cast<unsigned short>(_params.port),
-                _params.slave_id,
-                new my_logger(&m_logger));
-            driver_ptr = m_front_driver.get();
-        }
-        else
-        {
-            m_tail_driver = std::make_unique<modbus_driver>(
-                _params.ip,
-                static_cast<unsigned short>(_params.port),
-                _params.slave_id,
-                new my_logger(&m_logger));
-            driver_ptr = m_tail_driver.get();
-        }
-        if (driver_ptr)
-        {
-            driver_ptr->add_float32_abcd_meta("distance", 4096);
-        }
+        apply_driver_config();
 
         return true;
     }
@@ -102,7 +108,7 @@ public:
         _return.slave_id = atoi(ci[section][CONFIG_ITEM_XLRD_PARAMS_SLAVE_ID]().c_str());
         _return.distance_offset = atof(ci[section][CONFIG_ITEM_XLRD_PARAMS_DISTANCE_OFFSET]().c_str());
         _return.bottom_z = atof(ci[section][CONFIG_ITEM_XLRD_PARAMS_BOTTOM_Z]().c_str());
-        m_logger.log_print(al_log::LOG_LEVEL_INFO,"xlrd config is:%s", ci.expend_to_string().c_str());
+        m_logger.log_print(al_log::LOG_LEVEL_INFO, "xlrd config is:%s", ci.expend_to_string().c_str());
     }
     virtual double read_distance(const bool _is_front)
     {
@@ -119,6 +125,11 @@ public:
         if (driver_ptr)
         {
             ret = static_cast<double>(driver_ptr->read_float32_abcd("distance"));
+            if (driver_ptr->exception_happened())
+            {
+                m_logger.log_print(al_log::LOG_LEVEL_ERROR, "modbus exception happened when reading distance");
+                apply_driver_config();
+            }
         }
 
         return ret;

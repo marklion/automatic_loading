@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #video-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            z-index: 10;
+        }
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff6b6b;
+            font-size: 14px;
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.9);
+            border-radius: 8px;
+            max-width: 80%;
+            z-index: 20;
+            border: 1px solid #ff6b6b;
+        }
+        .error-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .error-detail {
+            font-size: 12px;
+            color: #ccc;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+        .video-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 5;
+        }
+        #video-container:hover .video-info {
+            opacity: 1;
+        }
+        .debug-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+            max-width: 300px;
+            word-break: break-all;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div id="video-container">
+        <video id="video" controls autoplay muted playsinline></video>
+        <div class="loading" id="loading">正在加载视频</div>
+        <div class="error" id="error" style="display: none;">
+            <div class="error-title">视频加载失败</div>
+            <div id="error-message"></div>
+            <div class="error-detail" id="error-detail"></div>
+        </div>
+        <div class="video-info" id="video-info">
+            <div>分辨率: <span id="resolution">--</span></div>
+            <div>编码: <span id="codec">--</span></div>
+            <div>状态: <span id="status">等待中</span></div>
+        </div>
+        <div class="debug-info" id="debug-info" style="display: none;">
+            URL: <span id="debug-url">--</span>
+        </div>
+    </div>
+
+    <script src="vendor/hls.min.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const errorMessage = document.getElementById('error-message');
+        const errorDetail = document.getElementById('error-detail');
+        const resolutionSpan = document.getElementById('resolution');
+        const codecSpan = document.getElementById('codec');
+        const statusSpan = document.getElementById('status');
+        const debugInfo = document.getElementById('debug-info');
+        const debugUrl = document.getElementById('debug-url');
+
+        // 从URL参数获取视频源
+        const urlParams = new URLSearchParams(window.location.search);
+        let videoSrc = urlParams.get('src');
+
+        // 显示调试信息
+        debugInfo.style.display = 'block';
+        debugUrl.textContent = videoSrc || '无';
+
+        console.log('原始URL:', videoSrc);
+
+        if (!videoSrc) {
+            showError('未提供视频URL', '请检查URL参数');
+        } else {
+            debugUrl.textContent = videoSrc;
+            loadVideo(videoSrc);
+        }
+
+        function loadVideo(url) {
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            statusSpan.textContent = '加载中';
+
+            console.log('开始加载视频:', url);
+
+            // 检查是否为HLS流
+            if (url.includes('.m3u8') || url.includes('/stream.m3u8')) {
+                console.log('检测到HLS流');
+                loadHLS(url);
+            } else {
+                console.log('作为普通视频加载');
+                // 普通视频直接加载
+                video.src = url;
+                statusSpan.textContent = '直接播放';
+            }
+
+            // 视频事件监听
+            video.addEventListener('loadedmetadata', () => {
+                console.log('视频元数据已加载');
+                loading.style.display = 'none';
+                resolutionSpan.textContent = `${video.videoWidth}x${video.videoHeight}`;
+                statusSpan.textContent = '已加载';
+            });
+
+            video.addEventListener('error', (e) => {
+                const err = video.error;
+                console.error('视频加载错误:', err);
+
+                let errorMsg = '未知错误';
+                let detail = '';
+
+                if (err) {
+                    switch(err.code) {
+                        case err.MEDIA_ERR_ABORTED:
+                            errorMsg = '视频加载被中止';
+                            detail = '用户中止了视频加载';
+                            break;
+                        case err.MEDIA_ERR_NETWORK:
+                            errorMsg = '网络错误';
+                            detail = '下载视频时发生网络错误';
+                            break;
+                        case err.MEDIA_ERR_DECODE:
+                            errorMsg = '解码错误';
+                            detail = '视频格式不支持或文件损坏';
+                            break;
+                        case err.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                            errorMsg = '格式不支持';
+                            detail = '视频格式或MIME类型不支持';
+                            break;
+                    }
+                    if (err.message) {
+                        detail += '\n' + err.message;
+                    }
+                }
+
+                showError(errorMsg, detail);
+                statusSpan.textContent = '错误';
+            });
+
+            video.addEventListener('playing', () => {
+                console.log('视频开始播放');
+                loading.style.display = 'none';
+                statusSpan.textContent = '播放中';
+            });
+
+            video.addEventListener('waiting', () => {
+                console.log('视频缓冲中');
+                loading.style.display = 'block';
+                statusSpan.textContent = '缓冲中';
+            });
+
+            video.addEventListener('canplay', () => {
+                console.log('视频可以播放');
+                statusSpan.textContent = '就绪';
+            });
+        }
+
+        function loadHLS(url) {
+            if (typeof Hls === 'undefined') {
+                showError('HLS.js未加载', '请检查hls.js库是否正确加载');
+                return;
+            }
+
+            if (Hls.isSupported()) {
+                console.log('使用HLS.js加载');
+                statusSpan.textContent = 'HLS加载中';
+
+                const hls = new Hls({
+                    debug: true,  // 开启调试
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90,
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 600,
+                    maxBufferSize: 60 * 1000 * 1000,
+                    manifestLoadingTimeOut: 10000,
+                    manifestLoadingMaxRetry: 4,
+                    manifestLoadingRetryDelay: 1000,
+                });
+
+                hls.loadSource(url);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                    console.log('HLS manifest已解析', data);
+                    loading.style.display = 'none';
+                    statusSpan.textContent = 'HLS就绪';
+                    codecSpan.textContent = `${data.levels.length} 质量`;
+
+                    video.play().catch(e => {
+                        console.log('自动播放失败，等待用户交互', e);
+                        showError('需要用户交互', '请点击播放按钮开始播放');
+                    });
+                });
+
+                hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+                    const level = data.details;
+                    console.log('HLS level已加载', level);
+                });
+
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    console.error('HLS错误:', data);
+
+                    if (data.fatal) {
+                        let errorMsg = 'HLS错误';
+                        let detail = data.details || '';
+
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                errorMsg = '网络错误';
+                                detail += '\n尝试重新连接...';
+                                console.log('网络错误，尝试恢复...');
+                                setTimeout(() => hls.startLoad(), 1000);
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                errorMsg = '媒体错误';
+                                detail += '\n尝试恢复...';
+                                console.log('媒体错误，尝试恢复...');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                errorMsg = '无法恢复的HLS错误';
+                                detail += `\n错误类型: ${data.type}`;
+                                showError(errorMsg, detail);
+                                hls.destroy();
+                                break;
+                        }
+
+                        statusSpan.textContent = 'HLS错误';
+                    }
+                });
+
+                hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+                    console.log('片段加载完成:', data.frag.url);
+                });
+
+                // 清理
+                window.addEventListener('unload', () => {
+                    hls.destroy();
+                });
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // 原生HLS支持 (Safari)
+                console.log('使用原生HLS支持');
+                video.src = url;
+                statusSpan.textContent = '原生HLS';
+            } else {
+                showError('不支持HLS', '浏览器不支持HLS播放');
+            }
+        }
+
+        function showError(message, detail = '') {
+            loading.style.display = 'none';
+            error.style.display = 'block';
+            errorMessage.textContent = message;
+            errorDetail.textContent = detail;
+            console.error('显示错误:', message, detail);
+        }
+
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case ' ':
+                    e.preventDefault();
+                    video.paused ? video.play() : video.pause();
+                    break;
+                case 'f':
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                    } else {
+                        document.documentElement.requestFullscreen();
+                    }
+                    break;
+                case 'm':
+                    video.muted = !video.muted;
+                    break;
+                case 'd':
+                    // 切换调试信息
+                    debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
