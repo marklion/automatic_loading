@@ -45,7 +45,7 @@ start_all_server() {
 }
 
 start_docker_con() {
-    local CON_ID=`docker create --privileged --restart=always -e BASE_URL=${BASE_URL_INPUT} -v ${DATA_DIR_INPUT}:/database -p 47001:47001 -p ${PORT_INPUT}:80 ${DOCKER_IMG_NAME} /root/install.sh`
+    local CON_ID=`docker create --privileged --restart=always -e BASE_URL=${BASE_URL_INPUT} -v ${DATA_DIR_INPUT}:/database -p 47001:47001 -p 6690:6690/udp -p 7780:7780/udp -p 6691:6691/udp -p 7781:7781/udp -p 6692:6692/udp -p 7782:7782/udp -p ${PORT_INPUT}:80 ${DOCKER_IMG_NAME} /root/install.sh`
     docker cp $0 ${CON_ID}:/root/ > /dev/null 2>&1
     docker start ${CON_ID} > /dev/null 2>&1
     echo ${CON_ID}

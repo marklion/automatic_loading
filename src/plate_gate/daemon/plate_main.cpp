@@ -15,7 +15,7 @@ extern "C"
 static void fini_plate_camera();
 class plate_gate_imp;
 static al_log::log_tool g_logger(al_log::LOG_PLATE_GATE);
-static int g_plate_camera_handle = -1;
+static int g_plate_camera_handle = 0;
 class plate_gate_imp : public plate_gate_serviceIf
 {
 public:
@@ -33,7 +33,7 @@ public:
     virtual void control_gate(const bool _is_open)
     {
         int sz_ret = -1;
-        if (g_plate_camera_handle > 0)
+        if (g_plate_camera_handle != 0)
         {
             if (_is_open)
             {
@@ -117,7 +117,7 @@ static int init_plate_camera(const std::string &_ip, plate_gate_imp &_pmi)
     if (0 == (zs_ret = VZLPRClient_SetCommonNotifyCallBack(common_callback, nullptr)))
     {
         auto handler = VzLPRClient_Open(_ip.c_str(), 80, "admin", "admin");
-        if (handler > 0)
+        if (handler != 0)
         {
             if (0 == (zs_ret = VzLPRClient_SetPlateInfoCallBack(handler, plate_callback, &_pmi, false)))
             {
@@ -143,10 +143,10 @@ static int init_plate_camera(const std::string &_ip, plate_gate_imp &_pmi)
 }
 void fini_plate_camera()
 {
-    if (g_plate_camera_handle > 0)
+    if (g_plate_camera_handle != 0)
     {
         VzLPRClient_Close(g_plate_camera_handle);
-        g_plate_camera_handle = -1;
+        g_plate_camera_handle = 0;
     }
 }
 
@@ -162,7 +162,7 @@ int main(int argc, char const *argv[])
         {
             auto &ci = config::root_config::get_instance();
             std::string ip = ci(CONFIG_ITEM_PLATE_GATE_CAMERA_IP);
-            if (ip.size() > 0 && g_plate_camera_handle < 0)
+            if (ip.size() > 0 && g_plate_camera_handle == 0)
             {
                 g_plate_camera_handle = init_plate_camera(ip, *pmi);
             } });

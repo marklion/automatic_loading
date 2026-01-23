@@ -82,13 +82,13 @@ std::string xlrd_cli::make_bdr()
             client.get_config_params(back_params, false);
             if (front_params.ip.length() > 0)
             {
-                ret += "set params 0 \"" + front_params.ip + "\" " + std::to_string(front_params.port) + " " +
+                ret += "set_params 0 \"" + front_params.ip + "\" " + std::to_string(front_params.port) + " " +
                        std::to_string(front_params.slave_id) + " " + std::to_string(front_params.distance_offset) + " " +
                        std::to_string(front_params.bottom_z) + "\n";
             }
             if (back_params.ip.length() > 0)
             {
-                ret += "set params 1 \"" + back_params.ip + "\" " + std::to_string(back_params.port) + " " +
+                ret += "set_params 1 \"" + back_params.ip + "\" " + std::to_string(back_params.port) + " " +
                        std::to_string(back_params.slave_id) + " " + std::to_string(back_params.distance_offset) + " " +
                        std::to_string(back_params.bottom_z) + "\n";
             }

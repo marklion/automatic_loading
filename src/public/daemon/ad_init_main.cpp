@@ -202,7 +202,10 @@ int main(int argc, char const *argv[])
         delete service;
     }
     auto sc = AD_RPC_SC::get_instance();
-    sc->add_co(rerun_config);
+    sc->add_co([&](){
+        AD_RPC_SC::get_instance()->yield_by_timer(5);
+        rerun_config();
+    });
     sc->enable_rpc_server(AD_RPC_PROCESS_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<public_serviceProcessor>(std::make_shared<public_service_imp>()));
     sc->start_server();

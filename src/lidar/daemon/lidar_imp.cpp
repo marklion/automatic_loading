@@ -72,8 +72,8 @@ void lidar_imp::cap_current_ply(ply_file_info &_return)
 {
     auto drop_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_DROP)];
     auto tail_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_TAIL)];
-    auto drop_resp = drop_lidar->save_ply2file("manual_save");
-    auto tail_resp = tail_lidar->save_ply2file("manual_save");
+    auto drop_resp = drop_lidar->save_ply2file("manual_save_drop");
+    auto tail_resp = tail_lidar->save_ply2file("manual_save_tail");
     _return.drop_file_path = drop_resp.focus_ply_file;
     _return.drop_full_file_path = drop_resp.full_ply_file;
     _return.tail_file_path = tail_resp.focus_ply_file;
@@ -430,6 +430,22 @@ void lidar_driver_info::update_cur_cloud()
 
 void lidar_driver_info::head_get_distance(myPointCloud::Ptr _cloud)
 {
+    auto pc_after_split_ret = split_cloud_to_side_and_content(_cloud);
+    lidar_params params;
+    m_parent->get_lidar_params(params);
+    auto line_DistanceThreshold = params.plane_distance_threshold;
+
+    auto key_seg = get_key_seg(_cloud, line_DistanceThreshold, 0);
+    insert_several_points(_cloud, key_seg.first, key_seg.second);
+
+    if (key_seg.second.x - key_seg.first.x > 2.3)
+    {
+        update_distance(static_cast<double>((key_seg.first.x)));
+    }
+    put_cloud(pc_after_split_ret.content);
+    put_cloud(pc_after_split_ret.legal_side);
+    put_cloud(pc_after_split_ret.illegal_side);
+    update_cur_cloud();
 }
 
 myPointCloud::Ptr lidar_driver_info::get_output_cloud()
@@ -442,6 +458,149 @@ myPointCloud::Ptr lidar_driver_info::get_output_cloud()
     }
 
     return ret;
+}
+
+void lidar_driver_info::log_cloud_size(myPointCloud::Ptr _cloud, const std::string &_tag)
+{
+    m_logger.log_print(al_log::LOG_LEVEL_INFO, "%s cloud size: %lu points", _tag.c_str(), _cloud->points.size());
+}
+
+std::unique_ptr<myPoint> lidar_driver_info::find_max_or_min_z_point(myPointCloud::Ptr _cloud, float _line_distance_threshold)
+{
+    auto ret = std::make_unique<myPoint>();
+    ret->z = std::numeric_limits<float>::lowest();
+
+    float x_min = std::numeric_limits<float>::max();
+    float x_max = std::numeric_limits<float>::lowest();
+    float y_bar = 0;
+    // 遍历点云找到 最小x,最大x, 平均y
+    for (const auto &point : _cloud->points)
+    {
+        if (point.x < x_min)
+        {
+            x_min = point.x;
+        }
+        if (point.x > x_max)
+        {
+            x_max = point.x;
+        }
+        y_bar += point.y;
+    }
+    ret->y = y_bar / _cloud->points.size();
+
+    float all_z[30];
+    for (int i = 0; i < sizeof(all_z) / sizeof(float); i++)
+    {
+        all_z[i] = std::numeric_limits<float>::lowest();
+    }
+
+    // 在x轴方向分30份，找出每一份紧凑点集中的最大z值
+    for (int i = 0; i < sizeof(all_z) / sizeof(float); i++)
+    {
+        for (const auto &point : _cloud->points)
+        {
+            if (std::abs(point.x - (x_min + (x_max - x_min) * i / (sizeof(all_z) / sizeof(float)))) < _line_distance_threshold)
+            {
+                if (point.z > all_z[i])
+                {
+                    all_z[i] = point.z;
+                }
+            }
+        }
+    }
+
+    // 计算得到一个平均最大z值的点
+    float total_z = 0;
+    for (int i = 0; i < sizeof(all_z) / sizeof(float); i++)
+    {
+        total_z += all_z[i];
+    }
+    ret->z = total_z / (sizeof(all_z) / sizeof(float));
+    return ret;
+}
+
+float lidar_driver_info::pointToLineDistance(const Eigen::Vector3f &point, const Eigen::Vector3f &line_point, const Eigen::Vector3f &line_dir)
+{
+    Eigen::Vector3f diff = point - line_point;
+    Eigen::Vector3f cross_product = diff.cross(line_dir);
+    return cross_product.norm() / line_dir.norm();
+}
+
+void lidar_driver_info::insert_several_points(myPointCloud::Ptr _cloud, const myPoint &p1, const myPoint &p2, bool _is_red)
+{
+    _cloud->points.push_back(p1);
+    for (int i = 1; i <= 100; ++i)
+    {
+        float t = static_cast<float>(i) / (100 + 1);
+        myPoint p;
+        p.x = p1.x + t * (p2.x - p1.x);
+        p.y = p1.y + t * (p2.y - p1.y);
+        p.z = p1.z + t * (p2.z - p1.z);
+        p.r = 127;
+        p.b = 255;
+        p.g = 100;
+        if (_is_red)
+        {
+            p.r = 255;
+            p.b = 0;
+            p.g = 0;
+        }
+        _cloud->points.push_back(p);
+    }
+    _cloud->points.push_back(p2);
+}
+
+std::pair<myPoint, myPoint> lidar_driver_info::get_key_seg(myPointCloud::Ptr _cloud, float line_distance_threshold, float _full_y_offset)
+{
+    auto max_z_point = find_max_or_min_z_point(_cloud, line_distance_threshold);
+
+    max_z_point->x = 0;
+
+    // 找出距离过上点平行于y轴的直线比较紧凑的若干点
+    std::vector<myPoint> line_points;
+    Eigen::Vector3f key_line_dir(1, 0, 0);
+    for (auto &itr : _cloud->points)
+    {
+        auto tmp_point = itr;
+        tmp_point.y = max_z_point->y;
+        if (pointToLineDistance(tmp_point.getVector3fMap(), max_z_point->getVector3fMap(), key_line_dir) < line_distance_threshold)
+        {
+            line_points.push_back(itr);
+        }
+    }
+    std::sort(
+        line_points.begin(), line_points.end(),
+        [](const myPoint &a, const myPoint &b)
+        {
+            return a.x < b.x;
+        });
+    if (line_points.empty())
+    {
+        return std::make_pair(*max_z_point, *max_z_point);
+    }
+    auto begin = line_points.front();
+    auto end = line_points.front();
+    float tmp_x = begin.x;
+
+    // 找出刚才找到的点集中距离较大的两个点作为直线的两点并返回
+    for (auto &itr : line_points)
+    {
+        if (itr.x - tmp_x < line_distance_threshold)
+        {
+            tmp_x = itr.x;
+            end = itr;
+        }
+        else
+        {
+            break;
+        }
+    }
+    begin.y = max_z_point->y + _full_y_offset;
+    end.y = max_z_point->y + _full_y_offset;
+    begin.z = max_z_point->z;
+    end.z = max_z_point->z;
+
+    return std::make_pair(begin, end);
 }
 
 void lidar_driver_info::update_distance(double _dist)
@@ -597,8 +756,10 @@ void lidar_driver_info::process_msg(std::shared_ptr<pcMsg> msg)
         auto frame_after_trans = pc_transform(one_frame);
         // 有效范围过滤
         auto frame_after_filter = pc_range_filter(frame_after_trans);
+        log_cloud_size(frame_after_filter, "first filter");
         // 体素滤波
         frame_after_filter = pc_vox_filter(frame_after_filter);
+        log_cloud_size(frame_after_filter, "voxel filter");
         if (m_for_tail)
         {
             tail_get_distance(frame_after_filter);

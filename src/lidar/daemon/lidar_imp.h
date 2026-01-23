@@ -98,6 +98,11 @@ class lidar_driver_info
     void update_cur_cloud();
     void head_get_distance(myPointCloud::Ptr _cloud);
     myPointCloud::Ptr get_output_cloud();
+    void log_cloud_size(myPointCloud::Ptr _cloud, const std::string &_tag);
+    std::pair<myPoint, myPoint> get_key_seg(myPointCloud::Ptr _cloud, float line_distance_threshold, float _full_y_offset);
+    std::unique_ptr<myPoint> find_max_or_min_z_point(myPointCloud::Ptr _cloud, float _line_distance_threshold);
+    float pointToLineDistance(const Eigen::Vector3f &point, const Eigen::Vector3f &line_point, const Eigen::Vector3f &line_dir);
+    void insert_several_points(myPointCloud::Ptr _cloud, const myPoint &p1, const myPoint &p2, bool _is_red = false);
 public:
     lidar_driver_info(int _msop_port, int _difop_port) : m_msop_port(_msop_port), m_difop_port(_difop_port) {};
     void update_distance(double _dist);
