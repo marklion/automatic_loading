@@ -17,10 +17,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref, getCurrentInstance } from "vue";
-const instance = getCurrentInstance();
-const head_offset = ref(0);
-const tail_offset = ref(0);
+import { computed } from "vue";
+import { useStatusInfo } from "@/stores/status_info";
 function calcu_percentage(cur_value, min_value, max_value) {
     let range = max_value - min_value;
     let offset = cur_value - min_value;
@@ -33,25 +31,14 @@ function calcu_percentage(cur_value, min_value, max_value) {
     }
     return percentage;
 }
-async function fetch_offsets() {
-    try {
-        let resp = await instance.appContext.config.globalProperties.$call_remote_cli(
-            "xlrd read_offset 0"
-        );
-        head_offset.value = resp.offset;
-        resp = await instance.appContext.config.globalProperties.$call_remote_cli(
-            "xlrd read_offset 1"
-        );
-        tail_offset.value = resp.offset;
-    } catch (error) {
-
-    }
-}
-onMounted(() => {
-    setInterval(async () => {
-        await fetch_offsets();
-    }, 2000);
+const statusInfoStore = useStatusInfo();
+const head_offset = computed(() => {
+    return statusInfoStore.xlrd_head_offset || 0;
 });
+const tail_offset = computed(() => {
+    return statusInfoStore.xlrd_tail_offset || 0;
+});
+
 </script>
 
 <style lang="scss" scoped></style>

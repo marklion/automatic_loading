@@ -24,33 +24,20 @@
 </template>
 
 <script setup>
-import { onMounted, ref, getCurrentInstance } from "vue";
+import { computed, getCurrentInstance } from "vue";
+import { useStatusInfo } from "@/stores/status_info";
 const instance = getCurrentInstance();
-let all_devices = ref([]);
-async function refresh_devices() {
-  try {
-    const res =
-      await instance.appContext.config.globalProperties.$call_remote_cli(
-        "modbus_io list_devices json"
-      );
-    all_devices.value = res;
-  } catch (error) {
-    console.log(error);
-  }
-  console.log(all_devices.value);
-}
+const status_info_store = useStatusInfo();
+let all_devices = computed(() => {
+  const devices = status_info_store.modbus_io || [];
+  return devices;
+});
 async function set_io(device_name, is_opened) {
   await instance.appContext.config.globalProperties.$call_remote_cli(
     `modbus_io device_operate "${device_name}" 1 ${is_opened ? 1 : 0}`
   );
-  await refresh_devices();
 }
-onMounted(async () => {
-  await refresh_devices();
-  setInterval(async () => {
-    await refresh_devices();
-  }, 2000);
-});
+
 </script>
 
 <style></style>

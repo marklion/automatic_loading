@@ -7,7 +7,7 @@ IDL_FILE=$(SRC_DIR)/state_machine_idl.thrift
 LIDAR_IDL_FILE=$(SRC_DIR)/../lidar/lidar_idl.thrift
 CMAKE_TMP_DIR=$(SRC_DIR)/cmake_tmp_dir
 
-all:$(OUT_CODE_PATH) $(LIDAR_OUT_CODE_PATH) daemon lib tools
+all:$(OUT_CODE_PATH) $(LIDAR_OUT_CODE_PATH) daemon lib
 	cp -a $(DELIVER_PATH)/* $(OUTBOUND_DELIVER_PATH)/
 
 $(OUT_CODE_PATH):$(OUT_CODE_PATH)/cpp

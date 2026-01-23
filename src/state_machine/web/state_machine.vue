@@ -66,10 +66,9 @@
 </template>
 
 <script setup>
-import { onMounted, ref, getCurrentInstance } from "vue";
-const should_show = ref(false);
+import { computed, getCurrentInstance } from "vue";
+import { useStatusInfo } from "@/stores/status_info";
 const instance = getCurrentInstance();
-const sm_status = ref({});
 
 function make_range_by_max(max_value, min_value = 0) {
     let ret = {
@@ -108,19 +107,14 @@ async function resetStateMachine() {
         console.log(error);
     }
 }
-async function refresh_status() {
-    try {
-        const res =
-            await instance.appContext.config.globalProperties.$call_remote_cli(
-                "state_machine show_status json"
-            );
-        sm_status.value = res;
-        should_show.value = true;
-    } catch (error) {
-        console.log(error);
-    }
-    console.log(sm_status.value);
-}
+const statusInfoStore = useStatusInfo();
+const sm_status = computed(() => {
+    return statusInfoStore.sm || {};
+});
+const should_show = computed(() => {
+    return Object.keys(sm_status.value).length > 0;
+});
+
 async function enter_manual() {
     try {
         await instance.appContext.config.globalProperties.$call_remote_cli(
@@ -130,11 +124,6 @@ async function enter_manual() {
         console.log(error);
     }
 }
-onMounted(async () => {
-    setInterval(async () => {
-        await refresh_status();
-    }, 1000);
-});
 
 </script>
 
