@@ -33,10 +33,10 @@ function calcu_percentage(cur_value, min_value, max_value) {
 }
 const statusInfoStore = useStatusInfo();
 const head_offset = computed(() => {
-    return statusInfoStore.xlrd_head_offset || 0;
+    return statusInfoStore.xlrd0.offset || 0;
 });
 const tail_offset = computed(() => {
-    return statusInfoStore.xlrd_tail_offset || 0;
+    return statusInfoStore.xlrd1.offset || 0;
 });
 
 </script>

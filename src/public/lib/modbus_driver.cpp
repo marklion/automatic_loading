@@ -52,7 +52,11 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                 while (m_is_working)
                 {
                     m_mutex.lock();
-                    for (auto &itr : m_float32_abcd_meta)
+                    auto tmp_float32_meta = m_float32_abcd_meta;
+                    auto tmp_coil_write_meta = m_coil_write_meta;
+                    auto tmp_coil_read_meta = m_coil_read_meta;
+                    m_mutex.unlock();
+                    for (auto &itr : tmp_float32_meta)
                     {
                         auto addr = itr.second.addr;
                         unsigned short reg_buf[2] = {0};
@@ -67,7 +71,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                             exception_occurred = true;
                         }
                     }
-                    for (auto &itr : m_coil_write_meta)
+                    for (auto &itr : tmp_coil_write_meta)
                     {
                         auto addr = itr.second.addr;
                         auto modbus_ret = modbus_write_bit(m_ctx, addr, itr.second.value);
@@ -77,7 +81,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                             exception_occurred = true;
                         }
                     }
-                    for (auto &itr : m_coil_read_meta)
+                    for (auto &itr : tmp_coil_read_meta)
                     {
                         auto addr = itr.second.addr;
                         unsigned char coil_value = 0;
@@ -92,6 +96,9 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                             exception_occurred = true;
                         }
                     }
+                    m_mutex.lock();
+                    m_float32_abcd_meta = tmp_float32_meta;
+                    m_coil_read_meta = tmp_coil_read_meta;
                     m_mutex.unlock();
                     usleep(1000 * 200);
                 }

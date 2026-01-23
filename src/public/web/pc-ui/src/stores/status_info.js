@@ -3,8 +3,8 @@ export const useStatusInfo = defineStore("statusInfo", {
     state: () => ({
         'modbus_io': [],
         'sm': {},
-        'xlrd0': 0,
-        'xlrd1': 0,
+        'xlrd0': {},
+        'xlrd1': {},
     }),
     actions: {
         setModbusIO(data) {
