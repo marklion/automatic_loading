@@ -23,6 +23,14 @@ client.watchData((key, data) => {
         statusInfoStore.$patch(data);
     }
 }, 'status_info');
+client.watchData((key, data) => {
+    if (key == 'sm_event') {
+        const smEventStore = useSmEvent();
+        smEventStore.setTo(data.to);
+        smEventStore.setFrom(data.from);
+        smEventStore.setEvent(data.event);
+    }
+}, 'sm_event');
 </script>
 
 <template>

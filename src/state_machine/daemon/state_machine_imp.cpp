@@ -182,6 +182,12 @@ void state_machine_imp::sm_handle_event(al_sm_state::al_sm_event event)
             if (new_state_name != orig_state_name)
             {
                 m_logger.log_print(al_log::LOG_LEVEL_INFO, "因为[%s],状态变化：从[%s]到[%s]", al_sm_state::state_name(event).c_str(), orig_state_name.c_str(), new_state_name.c_str());
+                std::string push_sm_url = "http://localhost/api/push_sm";
+                neb::CJsonObject json;
+                json.Add("to", new_state_name);
+                json.Add("from", orig_state_name);
+                json.Add("event", al_sm_state::state_name(event));
+                AD_RPC_SC::get_instance()->req_http_post(push_sm_url, json.ToString());
             }
         });
 }

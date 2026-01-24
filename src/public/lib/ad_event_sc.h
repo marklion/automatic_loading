@@ -7,6 +7,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <mutex>
 
 class AD_EVENT_SC_NODE : public std::enable_shared_from_this<AD_EVENT_SC_NODE>
 {
@@ -110,9 +111,14 @@ public:
 typedef std::shared_ptr<AD_CO_ROUTINE> AD_CO_ROUTINE_PTR;
 
 
+struct http_req_resp{
+    std::string resp;
+    std::string err_msg;
+};
 
 class AD_EVENT_SC:public std::enable_shared_from_this<AD_EVENT_SC>
 {
+    std::mutex m_mutex;
 public:
     AD_EVENT_SC();
 
@@ -163,6 +169,7 @@ public:
         return co;
     }
     void non_block_system(const std::string &_cmd);
+    http_req_resp req_http_post(const std::string &_url, const std::string &_body);
 
 private:
     int m_epollFd = -1;                                       // epoll 文件描述符

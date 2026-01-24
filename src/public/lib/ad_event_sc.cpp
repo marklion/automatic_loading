@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <chrono>
 #include "ad_event_sc.h"
+#include <fstream>
 
 AD_EVENT_SC::AD_EVENT_SC()
 {
@@ -264,6 +265,39 @@ void AD_EVENT_SC::non_block_system(const std::string &_cmd)
             close(fd);
         }
     }
+}
+
+ http_req_resp AD_EVENT_SC::req_http_post(const std::string &_url, const std::string &_body)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    std::string resp_file_name = "/tmp/req_http_post_response_" + std::to_string(syscall(SYS_gettid)) + ".json";
+    std::string log_file_name = "/tmp/req_http_post_log_" + std::to_string(syscall(SYS_gettid)) + ".txt";
+    std::string req_cmd = "wget --no-check-certificate --method POST --timeout=15 --header 'Content-Type: application/json'";
+    req_cmd += " --body-data '" + _body + "' " + "'" + _url + "' -O " + resp_file_name + " 2>" + log_file_name;
+    non_block_system(req_cmd);
+    http_req_resp resp;
+    std::ifstream resp_ifs(resp_file_name);
+    if (resp_ifs.is_open())
+    {
+        std::string line;
+        while (std::getline(resp_ifs, line))
+        {
+            resp.resp += line + "\n";
+        }
+    }
+    else
+    {
+        std::ifstream err_ifs(log_file_name);
+        if (err_ifs.is_open())
+        {
+            std::string line;
+            while (std::getline(err_ifs, line))
+            {
+                resp.err_msg += line + "\n";
+            }
+        }
+    }
+    return resp;
 }
 
 AD_EVENT_SC_TIMER_NODE::AD_EVENT_SC_TIMER_NODE(int _timeout, std::function<void()> _callback, int _micro_sec) : m_callback(_callback), m_timeout(_timeout), m_micro_timeout(_micro_sec)

@@ -6,51 +6,22 @@
 </template>
 
 <script setup>
-import { onMounted, ref, getCurrentInstance } from "vue";
-const instance = getCurrentInstance();
+import { ref, computed, watch } from "vue";
+import { useSmEvent } from "@/stores/sm_event";
+const smEventStore = useSmEvent();
 const cur_logs = ref("");
-const cur_log_index = ref(0);
-async function get_cur_log_index() {
-    let ret = 0;
-    try {
-        let resp = await instance.appContext.config.globalProperties.$call_remote_cli(
-            "log show_log_line_num 1 2"
-        );
-        ret = resp.log_line_num;
-    } catch (error) {
-
-    }
+const additional_logs = computed(() => {
+    let time = moment().format("MM-DD HH:mm:ss");
+    let ret = `${time}-> ${smEventStore.event} : 从[${smEventStore.from}]到[${smEventStore.to}]\n`;
     return ret;
-}
+});
+watch(additional_logs, (new_val) => {
+    cur_logs.value += new_val;
+});
+
 async function clear_log() {
-    cur_log_index.value = await get_cur_log_index();
     cur_logs.value = "";
 }
-async function fetch_logs() {
-    try {
-        let resp = await instance.appContext.config.globalProperties.$call_remote_cli(
-            `log show_logs 1 2 ${cur_log_index.value}`
-        );
-        for (let line of resp) {
-            let date_line = line.split("|")[0] + "|" + line.split("|")[1];
-            let content_line = line.split("|")[3].split("[INFO]:")[1];
-            cur_logs.value += date_line + "\n";
-            cur_logs.value += content_line + "\n";
-        }
-        cur_log_index.value += resp.length;
-        let new_index = await get_cur_log_index();
-        if (cur_log_index.value > new_index) {
-            cur_log_index.value = new_index;
-        }
-    } catch (error) {
-    }
-}
-onMounted(async () => {
-    await clear_log();
-    setInterval(async () => {
-        await fetch_logs();
-    }, 2000);
-});
 </script>
 
 <style lang="scss" scoped></style>

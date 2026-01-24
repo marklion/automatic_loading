@@ -7,6 +7,7 @@ const cors = require('cors');
 const { DataSyncServer } = require('./websocket-data-sync.js');
 
 const app = express();
+app.use(express.json());
 const PORT = 35511;
 
 app.use(cors());
@@ -50,6 +51,10 @@ app.get('/api/cli', async (req, res) => {
     res.send(output);
     console.log(`req cmd:${cli_cmd},resp:${output}`);
 })
+app.post('/api/push_sm', async(req, res) => {
+    ws_server.setData('sm_event', req.body);
+    res.send({ status: 'ok' });
+});
 
 async function update_status_info() {
     let status_info = {};
