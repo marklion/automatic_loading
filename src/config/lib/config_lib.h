@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include "../../public/lib/CJsonObject.hpp"
 namespace config
 {
     class config_item
@@ -12,13 +13,20 @@ namespace config
         std::string m_key;
         std::map<std::string, std::shared_ptr<config_item>> m_children;
         std::string m_value;
+        config_item *m_parent = nullptr;
         static config_item m_empty_item;
+
     public:
         config_item(const std::string &k) : m_key(k) {}
         config_item(const std::string &_key, const std::string &_value) : m_key(_key), m_value(_value) {}
+        neb::CJsonObject to_json_object();
         std::string get_value() const { return m_value; }
         std::string get_key() const { return m_key; }
-        void set_value(const std::string &v) { m_value = v; }
+        void set_value(const std::string &v)
+        {
+            m_value = v;
+            save_to_file();
+        }
         config_item &get_child(const std::string &_index_key) const;
         void set_child(const std::string &_index_key, const config_item &_item);
         void set_child(const std::string &_index_key, const std::string &_value);
@@ -27,6 +35,7 @@ namespace config
         void remove_child(const std::string &_index_key)
         {
             m_children.erase(_index_key);
+            save_to_file();
         }
         std::vector<std::unique_ptr<config_item>> get_children() const;
         void operator=(const std::string &_value) { this->set_value(_value); }
@@ -43,11 +52,13 @@ namespace config
         {
             return m_key.empty();
         }
+        void save_to_file();
     };
-    class root_config: public config_item
+    class root_config : public config_item
     {
         root_config() : config_item("root") {}
-        static root_config* m_instance;
+        static root_config *m_instance;
+
     public:
         static root_config &get_instance();
     };

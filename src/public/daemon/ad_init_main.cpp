@@ -103,7 +103,6 @@ public:
                 m_pid = new_pid;
                 set_start_time(al_utils::ad_utils_date_time().m_datetime_ms);
                 AD_RPC_SC::get_instance()->registerNode(shared_from_this());
-                rerun_config();
             }
         }
     }

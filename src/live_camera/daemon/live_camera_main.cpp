@@ -110,5 +110,9 @@ int main(int argc, char const *argv[])
     sc->enable_rpc_server(AD_RPC_LIVE_STREAM_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<live_camera_serviceProcessor>(std::make_shared<live_camera_imp>()));
     sc->start_server();
+    if (g_server_pid > 0)
+    {
+        kill(g_server_pid, SIGKILL);
+    }
     return 0;
 }
