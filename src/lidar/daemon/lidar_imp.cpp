@@ -68,12 +68,21 @@ void lidar_imp::get_lidar_params(lidar_params &_return)
 {
     _return = m_params;
 }
-void lidar_imp::cap_current_ply(ply_file_info &_return)
+void lidar_imp::cap_current_ply(ply_file_info &_return, const std::string &ply_tag)
 {
+    bool only_focus = true;
+    std::string tag = ply_tag;
+    if (ply_tag.empty())
+    {
+        tag = "manual_save";
+        only_focus = false;
+    }
+    auto front_tag = tag + "_drop";
+    auto tail_tag = tag + "_tail";
     auto drop_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_DROP)];
     auto tail_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_TAIL)];
-    auto drop_resp = drop_lidar->save_ply2file("manual_save_drop");
-    auto tail_resp = tail_lidar->save_ply2file("manual_save_tail");
+    auto drop_resp = drop_lidar->save_ply2file(front_tag, only_focus);
+    auto tail_resp = tail_lidar->save_ply2file(tail_tag, only_focus);
     _return.drop_file_path = drop_resp.focus_ply_file;
     _return.drop_full_file_path = drop_resp.full_ply_file;
     _return.tail_file_path = tail_resp.focus_ply_file;
@@ -656,7 +665,7 @@ static std::string make_file_name(const std::string &_filename = "")
     }
     return file_name;
 }
-lidar_ply_info lidar_driver_info::save_ply2file(const std::string &_file_tag)
+lidar_ply_info lidar_driver_info::save_ply2file(const std::string &_file_tag, bool _only_focus)
 {
     lidar_ply_info ret;
 
@@ -668,8 +677,11 @@ lidar_ply_info lidar_driver_info::save_ply2file(const std::string &_file_tag)
 
     auto file_name = make_file_name(focus_file);
     pcl::io::savePLYFileASCII(file_name, *get_output_cloud());
-    file_name = make_file_name(full_file);
-    pcl::io::savePLYFileASCII(file_name, *get_full_cloud());
+    if (!_only_focus)
+    {
+        file_name = make_file_name(full_file);
+        pcl::io::savePLYFileASCII(file_name, *get_full_cloud());
+    }
 
     ret.focus_ply_file = focus_file;
     ret.full_ply_file = full_file;

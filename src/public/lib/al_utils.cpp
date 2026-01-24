@@ -37,6 +37,12 @@ namespace al_utils
         g2u(in_buff, strlen(in_buff), out_buff, sizeof(out_buff));
         return std::string(out_buff);
     }
+    std::string double2string(const double _value, const int _precision)
+    {
+        std::ostringstream out;
+        out << std::fixed << std::setprecision(_precision) << _value;
+        return out.str();
+    }
     std::string util_utf2gbk(const std::string &_gbk)
     {
         char in_buff[9600] = {0};

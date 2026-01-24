@@ -5,6 +5,7 @@
 #include "../lidar_gen_code/cpp/lidar_idl_types.h"
 #include "../../live_camera/lib/live_camera_lib.h"
 #include "../../public/lib/CJsonObject.hpp"
+#include "../../public/lib/al_utils.h"
 
 void lidar_call_remote(std::function<void(lidar_serviceClient &)> func)
 {
@@ -164,6 +165,18 @@ void state_machine_imp::sm_handle_event(al_sm_state::al_sm_event event)
                 m_state = std::move(new_state);
                 m_state->m_sm = this;
                 m_state->after_enter();
+                auto vehicle_info = sm_get_vehicle_info();
+                auto cur_offset = sm_get_stuff_full_offset();
+                auto cos = al_utils::double2string(cur_offset);
+                auto f_dis = sm_get_vehicle_front_x();
+                auto t_dis = sm_get_vehicle_tail_x();
+                auto fds = al_utils::double2string(f_dis);
+                auto tds = al_utils::double2string(t_dis);
+                save_cur_ply(
+                    vehicle_info.plate + "-" +
+                    vehicle_info.stuff_name + "-" +
+                    m_state->m_name + "-" +
+                    cos + "-f" + fds + "-t" + tds);
             }
             auto new_state_name = m_state->m_name;
             if (new_state_name != orig_state_name)
@@ -541,6 +554,20 @@ void state_machine_imp::deliver_msg()
     {
         send(node->getFd(), content.c_str(), content.size(), SOCK_NONBLOCK);
     }
+}
+
+void state_machine_imp::save_cur_ply(const std::string &_ply_tag)
+{
+    AD_RPC_SC::get_instance()->add_co(
+        [_ply_tag]()
+        {
+            lidar_call_remote(
+                [_ply_tag](lidar_serviceClient &_client)
+                {
+                    ply_file_info ply_info;
+                    _client.cap_current_ply(ply_info, _ply_tag);
+                });
+        });
 }
 
 void state_machine_imp::emergency_shutdown()

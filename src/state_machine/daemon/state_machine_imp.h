@@ -160,6 +160,7 @@ public:
         deliver_msg();
     }
     std::string sm_get_current_video_url() { return m_current_video_url; }
+    void save_cur_ply(const std::string &_ply_tag);
     virtual void emergency_shutdown();
     virtual bool switch_to_manual_mode();
     virtual bool reset_to_init();

@@ -108,7 +108,7 @@ public:
     void update_distance(double _dist);
     void start_driver(int _index);
     double get_distance();
-    lidar_ply_info save_ply2file(const std::string &_file_tag);
+    lidar_ply_info save_ply2file(const std::string &_file_tag, bool only_focus = false);
     lidar_imp *m_parent = nullptr;
     bool m_need_work = true;
     static LIDAR_POS_TYPE get_type_by_index(int _index);
@@ -136,7 +136,7 @@ public:
     virtual bool set_lidar_params(const lidar_params &params);
     virtual bool turn_on_off_lidar(const bool is_on);
     virtual void get_lidar_params(lidar_params &_return);
-    virtual void cap_current_ply(ply_file_info &_return);
+    virtual void cap_current_ply(ply_file_info &_return, const std::string &ply_tag);
     void start_all_lidar_threads();
 };
 

@@ -58,5 +58,5 @@ service lidar_service{
     bool set_lidar_params(1: lidar_params params) throws (1: ad_lidar_gen_exp lidar_exp),
     lidar_params get_lidar_params() throws (1: ad_lidar_gen_exp lidar_exp),
     bool turn_on_off_lidar(1: bool is_on) throws (1: ad_lidar_gen_exp lidar_exp),
-    ply_file_info cap_current_ply() throws (1: ad_lidar_gen_exp lidar_exp),
+    ply_file_info cap_current_ply(1:string ply_tag) throws (1: ad_lidar_gen_exp lidar_exp),
 }

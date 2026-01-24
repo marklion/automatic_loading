@@ -20,6 +20,7 @@ namespace al_utils
     std::string insert_spaces(const std::string &_str);
     std::string get_current_timestamp_ms();
     std::string util_gbk2utf(const std::string &_utf);
+    std::string double2string(const double _value, const int _precision = 2);
     struct ad_utils_date_time
     {
         std::string m_date;

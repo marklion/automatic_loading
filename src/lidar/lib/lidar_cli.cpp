@@ -9,7 +9,7 @@ static void cap_ply(std::ostream &out, std::vector<std::string> _params)
         [&](lidar_serviceClient &client)
         {
             ply_file_info ply_info;
-            client.cap_current_ply(ply_info);
+            client.cap_current_ply(ply_info, "");
             neb::CJsonObject output;
             output.Add(ply_info.drop_file_path);
             output.Add(ply_info.drop_full_file_path);

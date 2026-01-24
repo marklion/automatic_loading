@@ -90,27 +90,24 @@ private:
 
         return bytesToHex(ciphertext.data(), ciphertext_len);
     }
-
-    // 生成SM4密钥
-    static bool generateSM4Key(unsigned char *key)
-    {
-        return RAND_bytes(key, KEY_SIZE) == 1;
-    }
-
     // 签名
-    static std::string signature(const std::string &data)
+    static std::string signature(const std::string &data, const std::string &key)
     {
-        unsigned char key[KEY_SIZE];
-
-        // 生成随机密钥
-        if (!generateSM4Key(key))
+        auto hex_key = key;
+        if (hex_key.length() != KEY_SIZE * 2)
         {
-            g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Failed to generate SM4 key");
+            g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Key length is invalid. Expected %d hex characters.", KEY_SIZE * 2);
             return "";
         }
-
+        // 将十六进制字符串转换为字节数组
+        unsigned char key_bytes[KEY_SIZE];
+        for (size_t i = 0; i < KEY_SIZE; ++i)
+        {
+            std::string byteString = hex_key.substr(i * 2, 2);
+            key_bytes[i] = static_cast<unsigned char>(std::stoul(byteString, nullptr, 16));
+        }
         // 使用SM4加密
-        return sm4Encrypt(data, key);
+        return sm4Encrypt(data, key_bytes);
     }
 
 public:
@@ -123,13 +120,15 @@ public:
      */
     static std::string sign(const std::string &appKey,
                             const std::string &appSecret,
-                            const std::string &timestamp)
+                            const std::string &timestamp,
+                            const std::string &queryContent)
     {
         // 参数映射
         std::map<std::string, std::string> params = {
             {"appKey", appKey},
+            {"timestamp", timestamp},
             {"appSecret", appSecret},
-            {"timestamp", timestamp}};
+        };
 
         // 1. 参数名称按首字母排序
         std::vector<std::string> sortedKeys;
@@ -147,7 +146,7 @@ public:
         }
 
         // 3. 使用 SM4 算法生成签名
-        return signature(dataToEncrypt);
+        return signature(dataToEncrypt, appSecret);
     }
 };
 
@@ -174,19 +173,26 @@ public:
         std::string app_key = ci(CONFIG_ITEM_HHT_KEY);
         std::string app_secret = ci(CONFIG_ITEM_HHT_SECRET);
         std::string timestamp = al_utils::get_current_timestamp_ms();
-        std::string signature = SM4SignatureGenerator::sign(app_key, app_secret, timestamp);
         auto content = al_utils::URLCodec::encode_query_param(_query_content);
+        std::string signature = SM4SignatureGenerator::sign(app_key, app_secret, timestamp, content);
         std::string get_req = "https://api-uat.hnjt.top/api/openapi/v1/transport/billInfo?no=" + content;
-        std::string wget_cmd = "wget --no-check-certificate --quiet --method GET --timeout=15 ";
+        std::string wget_cmd = "wget --no-check-certificate --method GET --timeout=15 ";
         wget_cmd += "--header 'appKey: " + app_key + "' ";
         wget_cmd += "--header 'signature: " + signature + "' ";
         wget_cmd += "--header 'timestamp: " + timestamp + "' ";
-        wget_cmd += "'" + get_req + "' -O /tmp/hht_order_response.json";
+        wget_cmd += "'" + get_req + "' -O /tmp/hht_order_response.json 2> /tmp/hht_log.txt";
         g_logger.log_print(al_log::LOG_LEVEL_INFO, "cmd length:%d", wget_cmd.length());
         g_logger.log_print(al_log::LOG_LEVEL_INFO, "Generated signature: %s", signature.c_str());
         g_logger.log_print(al_log::LOG_LEVEL_INFO, "Executing wget command: %s", wget_cmd.c_str());
         AD_RPC_SC::get_instance()->non_block_system(wget_cmd);
         AD_RPC_SC::get_instance()->yield_by_timer(0, 100);
+        std::ifstream log_ifs("/tmp/hht_log.txt");
+        if (log_ifs.is_open())
+        {
+            std::stringstream log_buffer;
+            log_buffer << log_ifs.rdbuf();
+            g_logger.log_print(al_log::LOG_LEVEL_INFO, "Wget log: %s", log_buffer.str().c_str());
+        }
         std::ifstream ifs("/tmp/hht_order_response.json");
         if (ifs.is_open())
         {
