@@ -23,4 +23,6 @@ service modbus_io_service{
     bool device_io_get(1:string device_name) throws (1: ad_modbus_io_gen_exp msg),
     bool set_modbus_tcp(1:modbus_tcp_config config) throws (1: ad_modbus_io_gen_exp msg),
     modbus_tcp_config get_modbus_tcp() throws (1: ad_modbus_io_gen_exp msg),
+    bool active_switch(1:bool turn_on) throws (1: ad_modbus_io_gen_exp msg),
+    bool is_active() throws (1: ad_modbus_io_gen_exp msg),
 }

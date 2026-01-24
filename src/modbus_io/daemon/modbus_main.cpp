@@ -157,10 +157,13 @@ public:
             if (device_ptr->is_output)
             {
                 device_ptr->is_opened = value;
-                auto driver = get_driver();
-                if (driver)
+                if (is_active())
                 {
-                    driver->write_coil(device_name, value);
+                    auto driver = get_driver();
+                    if (driver)
+                    {
+                        driver->write_coil(device_name, value);
+                    }
                 }
                 ret = true;
             }
@@ -232,6 +235,18 @@ public:
         _return.host_name = ci(CONFIG_ITEM_MODBUS_IO_HOST_NAME);
         _return.port = atoi(ci(CONFIG_ITEM_MODBUS_IO_PORT).c_str());
         _return.device_id = atoi(ci(CONFIG_ITEM_MODBUS_IO_DEVICE_ID).c_str());
+    }
+
+    virtual bool active_switch(const bool turn_on)
+    {
+        auto &ci = config::root_config::get_instance();
+        ci.set_child(CONFIG_ITEM_MODBUS_IO_ACTIVE, turn_on ? "1" : "0");
+        return true;
+    }
+    virtual bool is_active()
+    {
+        auto &ci = config::root_config::get_instance();
+        return ci(CONFIG_ITEM_MODBUS_IO_ACTIVE) == "1";
     }
 };
 

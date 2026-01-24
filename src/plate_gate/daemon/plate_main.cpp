@@ -75,21 +75,32 @@ static void exit_driver(const std::string &msg)
     fini_plate_camera();
 }
 
+static VZ_LPRC_COMMON_NOTIFY g_notify_info;
+
 static void common_callback(VzLPRClientHandle handle, void *pUserData, VZ_LPRC_COMMON_NOTIFY eNotify, const char *pStrDetail)
 {
-    switch (eNotify)
-    {
-    case VZ_LPRC_ACCESS_DENIED:
-    case VZ_LPRC_NETWORK_ERR:
-    case VZ_LPRC_OFFLINE:
-        exit_driver("device offline");
-        break;
-    case VZ_LPRC_ONLINE:
-        break;
-    default:
-        break;
-    }
+    g_notify_info = eNotify;
+    AD_RPC_SC::get_instance()->add_co(
+        []()
+        {
+            switch (g_notify_info)
+            {
+            case VZ_LPRC_ACCESS_DENIED:
+            case VZ_LPRC_NETWORK_ERR:
+            case VZ_LPRC_OFFLINE:
+                exit_driver("device offline");
+                break;
+            case VZ_LPRC_ONLINE:
+                break;
+            default:
+                break;
+            }
+        });
 }
+
+static plate_gate_imp *g_plate_gate_imp;
+static std::string g_plate;
+
 int plate_callback(VzLPRClientHandle handle, void *pUserData,
                    const TH_PlateResult *pResult, unsigned uNumPlates,
                    VZ_LPRC_RESULT_TYPE eResultType,
@@ -100,11 +111,17 @@ int plate_callback(VzLPRClientHandle handle, void *pUserData,
     auto p_com_driver = (plate_gate_imp *)pUserData;
     if (plate.length() > 0)
     {
+        g_plate_gate_imp = p_com_driver;
         auto utf_plate = al_utils::util_gbk2utf(plate);
-        if (utf_plate.find("无") == std::string::npos)
-        {
-            p_com_driver->plate_capture_notify(utf_plate);
-        }
+        g_plate = utf_plate;
+        AD_RPC_SC::get_instance()->add_co(
+            []()
+            {
+                if (g_plate.find("无") == std::string::npos)
+                {
+                    g_plate_gate_imp->plate_capture_notify(g_plate);
+                }
+            });
     }
 
     return 0;

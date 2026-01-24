@@ -138,6 +138,25 @@ static void device_operate(std::ostream &out, std::vector<std::string> _params)
     }
 }
 
+static void active_io(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "0-关闭IO, 1-激活IO");
+    if (check_resp.empty())
+    {
+        int to_shutdown = atoi(_params[0].c_str());
+        modbus_io::call_remote_modbus_service(
+            [&](modbus_io_serviceClient &client)
+            {
+                client.active_switch(to_shutdown == 1);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+        return;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> sm_menu(new cli::Menu("modbus_io"));
@@ -146,6 +165,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(list_devices), "列出所有设备", {"[json]"});
     sm_menu->Insert(CLI_MENU_ITEM(set_modbus_tcp), "设置Modbus TCP参数", {"<host_name>", "<port>", "<device_id>"});
     sm_menu->Insert(CLI_MENU_ITEM(device_operate), "操作设备IO状态", {"<name>", "<0-查询/1-设置>", "[<0-断开/1-吸合>]"});
+    sm_menu->Insert(CLI_MENU_ITEM(active_io), "激活/关闭IO操作", {"<1-激活/0-关闭>"});
     return sm_menu;
 }
 modbus_io_cli::modbus_io_cli() : common_cli(make_menu(), "modbus_io")
@@ -170,6 +190,11 @@ std::string modbus_io_cli::make_bdr()
             if (tmp_config.host_name.length() > 0)
             {
                 ret += "set_modbus_tcp \"" + tmp_config.host_name + "\" " + std::to_string(tmp_config.port) + " " + std::to_string(tmp_config.device_id) + "\n";
+            }
+            bool active = client.is_active();
+            if (!active)
+            {
+                ret += "active_io 0\n";
             }
         });
     return ret;
