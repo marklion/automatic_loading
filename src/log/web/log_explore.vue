@@ -8,6 +8,7 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useSmEvent } from "@/stores/sm_event";
+import moment from "@/my_moment.js";
 const smEventStore = useSmEvent();
 const cur_logs = ref("");
 const additional_logs = computed(() => {

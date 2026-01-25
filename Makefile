@@ -24,14 +24,14 @@ $(SUB_DIR):$(DELIVER_PATH)
 
 config:public
 log:public config
-live_camera:log
-hn_hht:log
-cli:log modbus_io state_machine lidar xlrd live_camera hn_hht plate_gate
 modbus_io:log
-state_machine:modbus_io live_camera
+state_machine:modbus_io log
 lidar:state_machine
 xlrd:state_machine
+live_camera:log
+hn_hht:log
 plate_gate:state_machine hn_hht
+cli:log modbus_io state_machine lidar xlrd live_camera hn_hht plate_gate
 
 clean:
 	rm -rf $(DELIVER_PATH)

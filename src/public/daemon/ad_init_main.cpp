@@ -5,9 +5,43 @@
 #include "../gen_code/cpp/public_idl_types.h"
 #include "../gen_code/cpp/public_service.h"
 #include "../lib/al_utils.h"
-static void rerun_config()
+#include <fstream>
+
+static void rerun_config(const std::string &_module_name = "")
 {
-    AD_RPC_SC::get_instance()->non_block_system("/bin/ad_cli /database/init.txt");
+    if (_module_name.empty())
+    {
+        AD_RPC_SC::get_instance()->non_block_system("/bin/ad_cli /database/init.txt");
+    }
+    else
+    {
+        std::ifstream all_config_file("/database/init.txt");
+        std::ofstream module_config_file("/tmp/" + _module_name + "_init.txt", std::ios::trunc);
+        std::string line;
+        bool copy_begin = false;
+        bool copy_end = false;
+        while (std::getline(all_config_file, line))
+        {
+            if (line == _module_name)
+            {
+                copy_begin = true;
+            }
+            if (line == "ad" && copy_begin)
+            {
+                copy_end = true;
+            }
+            if (copy_begin)
+            {
+                module_config_file << line << std::endl;
+            }
+            if (copy_end)
+            {
+                break;
+            }
+        }
+        module_config_file.close();
+        AD_RPC_SC::get_instance()->non_block_system("/bin/ad_cli /tmp/" + _module_name + "_init.txt");
+    }
 }
 
 static int create_sub_process(const std::string &_path, const std::vector<std::string> &_argv)
@@ -36,10 +70,10 @@ class SUBPROCESS_EVENT_SC_NODE : public AD_EVENT_SC_NODE
     int m_pid;
     int m_fd;
     std::string m_start_time;
-
+    std::string m_module_name;
 public:
-    SUBPROCESS_EVENT_SC_NODE(const std::string &_path, const std::vector<std::string> &_argv, const std::string &_name, int _pid)
-        : m_path(_path), m_argv(_argv), m_name(_name), m_pid(_pid)
+    SUBPROCESS_EVENT_SC_NODE(const std::string &_path, const std::vector<std::string> &_argv, const std::string &_name, int _pid, const std::string &_module_name)
+        : m_path(_path), m_argv(_argv), m_name(_name), m_pid(_pid), m_module_name(_module_name)
     {
         m_fd = syscall(SYS_pidfd_open, _pid, 0);
     }
@@ -103,6 +137,7 @@ public:
                 m_pid = new_pid;
                 set_start_time(al_utils::ad_utils_date_time().m_datetime_ms);
                 AD_RPC_SC::get_instance()->registerNode(shared_from_this());
+                rerun_config(m_module_name);
             }
         }
     }
@@ -111,7 +146,7 @@ public:
 typedef std::shared_ptr<SUBPROCESS_EVENT_SC_NODE> SUBPROCESS_EVENT_SC_NODE_PTR;
 static std::vector<SUBPROCESS_EVENT_SC_NODE_PTR> g_subprocess_list;
 
-static void start_daemon(const std::string &_path, const std::vector<std::string> &_argv, const std::string &_name)
+static void start_daemon(const std::string &_path, const std::vector<std::string> &_argv, const std::string &_name, const std::string &_module_name)
 {
     auto exec_args = _argv;
     exec_args.insert(exec_args.begin(), _name);
@@ -120,7 +155,7 @@ static void start_daemon(const std::string &_path, const std::vector<std::string
     auto pid = create_sub_process(_path, exec_args);
     if (pid > 0)
     {
-        auto node = std::make_shared<SUBPROCESS_EVENT_SC_NODE>(_path, exec_args, _name, pid);
+        auto node = std::make_shared<SUBPROCESS_EVENT_SC_NODE>(_path, exec_args, _name, pid, _module_name);
         node->set_start_time(al_utils::ad_utils_date_time().m_datetime_ms);
         AD_RPC_SC::get_instance()->registerNode(node);
         g_subprocess_list.push_back(node);
@@ -134,8 +169,9 @@ struct DaemonService
     std::string name;
     bool was_started = false;
     DaemonService *depends_on = nullptr;
-    DaemonService(const std::string &_path, const std::vector<std::string> &_args, const std::string &_name, DaemonService *_depends_on = nullptr)
-        : path(_path), args(_args), name(_name), depends_on(_depends_on)
+    std::string m_module_name;
+    DaemonService(const std::string &_path, const std::vector<std::string> &_args, const std::string &_name, const std::string &_module_name, DaemonService *_depends_on = nullptr)
+        : path(_path), args(_args), name(_name), depends_on(_depends_on), m_module_name(_module_name)
     {
     }
 };
@@ -144,21 +180,21 @@ static std::vector<DaemonService *> make_init_daemon_services()
 {
     std::vector<DaemonService *> services;
 
-    auto log_service = new DaemonService("/bin/log_daemon", {}, "log_daemon");
+    auto log_service = new DaemonService("/bin/log_daemon", {}, "log_daemon", "log");
     services.push_back(log_service);
-    auto modbus_service =new DaemonService("/bin/modbus_io_daemon", {}, "modbus_io_daemon", log_service);
+    auto modbus_service = new DaemonService("/bin/modbus_io_daemon", {}, "modbus_io_daemon", "modbus_io", log_service);
     services.push_back(modbus_service);
-    auto sm_service = new DaemonService("/bin/sm_daemon", {}, "sm_daemon", modbus_service);
+    auto sm_service = new DaemonService("/bin/sm_daemon", {}, "sm_daemon", "state_machine", modbus_service);
     services.push_back(sm_service);
-    auto lidar_service = new DaemonService("/bin/lidar_daemon", {}, "lidar_daemon", sm_service);
+    auto lidar_service = new DaemonService("/bin/lidar_daemon", {}, "lidar_daemon", "lidar", sm_service);
     services.push_back(lidar_service);
-    auto xlrd_service = new DaemonService("/bin/xlrd_daemon", {}, "xlrd_daemon", sm_service);
+    auto xlrd_service = new DaemonService("/bin/xlrd_daemon", {}, "xlrd_daemon", "xlrd", sm_service);
     services.push_back(xlrd_service);
-    auto live_camera_service = new DaemonService("/bin/live_camera_daemon", {}, "live_camera_daemon", log_service);
+    auto live_camera_service = new DaemonService("/bin/live_camera_daemon", {}, "live_camera_daemon", "live_camera", log_service);
     services.push_back(live_camera_service);
-    auto hn_hht_service = new DaemonService("/bin/hht_daemon", {}, "hht_daemon", log_service);
+    auto hn_hht_service = new DaemonService("/bin/hht_daemon", {}, "hht_daemon", "hht", log_service);
     services.push_back(hn_hht_service);
-    auto plate_gate_service = new DaemonService("/bin/plate_gate_daemon", {}, "plate_gate_daemon", sm_service);
+    auto plate_gate_service = new DaemonService("/bin/plate_gate_daemon", {}, "plate_gate_daemon", "plate_gate", sm_service);
     services.push_back(plate_gate_service);
 
     return services;
@@ -174,7 +210,7 @@ static void start_all_daemons(DaemonService *_service)
     {
         start_all_daemons(_service->depends_on);
     }
-    start_daemon(_service->path, _service->args, _service->name);
+    start_daemon(_service->path, _service->args, _service->name, _service->m_module_name);
     _service->was_started = true;
 }
 class public_service_imp : public public_serviceIf
@@ -201,10 +237,10 @@ int main(int argc, char const *argv[])
         delete service;
     }
     auto sc = AD_RPC_SC::get_instance();
-    sc->add_co([&](){
+    sc->add_co([&]()
+               {
         AD_RPC_SC::get_instance()->yield_by_timer(5);
-        rerun_config();
-    });
+        rerun_config(); });
     sc->enable_rpc_server(AD_RPC_PROCESS_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<public_serviceProcessor>(std::make_shared<public_service_imp>()));
     sc->start_server();

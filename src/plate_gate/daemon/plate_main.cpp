@@ -19,6 +19,18 @@ static int g_plate_camera_handle = 0;
 class plate_gate_imp : public plate_gate_serviceIf
 {
 public:
+    virtual bool set_bypass_hht(const bool _is_bypass)
+    {
+        auto &ci = config::root_config::get_instance();
+        ci.set_child(CONFIG_ITEM_PLATE_GATE_BYPASS_HHT, _is_bypass ? "1" : "0");
+        return true;
+    }
+    virtual bool get_bypass_hht()
+    {
+        auto &ci = config::root_config::get_instance();
+        auto val = ci(CONFIG_ITEM_PLATE_GATE_BYPASS_HHT);
+        return val == "1";
+    }
     virtual bool set_params(const plate_gate_config_params &_params)
     {
         auto &ci = config::root_config::get_instance();
@@ -51,19 +63,25 @@ public:
     }
     virtual void plate_capture_notify(const std::string &_plate_number)
     {
-        auto hht_resp = hn_hht::req_get_order(_plate_number);
-        neb::CJsonObject resp_hht_json(hht_resp);
+        vehicle_info v_info;
+        v_info.plate = _plate_number;
         bool hht_success = false;
-        resp_hht_json.Get("success", hht_success);
+        if (get_bypass_hht())
+        {
+            hht_success = true;
+        }
+        else
+        {
+            auto hht_resp = hn_hht::req_get_order(_plate_number);
+            neb::CJsonObject resp_hht_json(hht_resp);
+            resp_hht_json.Get("success", hht_success);
+            v_info.stuff_name = resp_hht_json["result"]("productName");
+        }
         if (hht_success)
         {
-            auto stuff_name = resp_hht_json["result"]("productName");
             state_machine::call_sm_remote(
                 [&](state_machine_serviceClient &client)
                 {
-                    vehicle_info v_info;
-                    v_info.plate = _plate_number;
-                    v_info.stuff_name = stuff_name;
                     client.trigger_sm(v_info);
                 });
         }

@@ -62,6 +62,23 @@ static void gate_control(std::ostream &out, std::vector<std::string> _params)
         out << check_resp << std::endl;
     }
 }
+static void bypass_hht(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请指定是否绕过HHT验证(1-绕过/0-不绕过)");
+    if (check_resp.empty())
+    {
+        bool is_bypass = (_params[0] == "1");
+        call_pg_remote(
+            [&](plate_gate_serviceClient &client)
+            {
+                client.set_bypass_hht(is_bypass);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
 
 static std::unique_ptr<cli::Menu> make_menu()
 {
@@ -69,6 +86,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     plate_gate_menu->Insert(CLI_MENU_ITEM(set_params), "设置设备IP", {"ip"});
     plate_gate_menu->Insert(CLI_MENU_ITEM(mock_plate), "模拟车牌号", {"plate_number"});
     plate_gate_menu->Insert(CLI_MENU_ITEM(gate_control), "闸门控制", {"o-open", "c-close"});
+    plate_gate_menu->Insert(CLI_MENU_ITEM(bypass_hht), "绕过HHT验证", {"1-绕过", "0-不绕过"});
     return plate_gate_menu;
 }
 plate_gate_cli::plate_gate_cli() : common_cli(make_menu(), "plate_gate")
@@ -87,6 +105,11 @@ std::string plate_gate_cli::make_bdr()
             if (params.ip.size() > 0)
             {
                 ret += "set_params \"" + params.ip + "\"\n";
+            }
+            bool is_bypass = client.get_bypass_hht();
+            if (is_bypass)
+            {
+                ret += "bypass_hht 1\n";
             }
         });
 

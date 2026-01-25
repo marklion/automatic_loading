@@ -1,5 +1,6 @@
 <script setup>
 import { useStatusInfo } from "@/stores/status_info";
+import { useSmEvent } from "@/stores/sm_event";
 import { DataSyncClient } from "./ws_sync_client";
 const client = new DataSyncClient('/ws/');
 client.watchData((key, data) => {

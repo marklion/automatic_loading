@@ -79,11 +79,21 @@ public:
     }
     virtual uint32_t read_virt(uint8_t *buf, uint32_t len) override
     {
-        while (m_bufferd_recv_data.empty())
+        uint32_t copy_len = 0;
+        bool should_read_more = true;
+        while (m_bufferd_recv_data.empty() && should_read_more)
         {
-            read_more();
+            try
+            {
+                read_more();
+            }
+            catch (...)
+            {
+                m_bufferd_recv_data.clear();
+                should_read_more = false;
+            }
         }
-        auto copy_len = std::min(len, (uint32_t)m_bufferd_recv_data.size());
+        copy_len = std::min(len, (uint32_t)m_bufferd_recv_data.size());
         m_bufferd_recv_data.copy((char *)buf, copy_len);
         m_bufferd_recv_data = m_bufferd_recv_data.substr(copy_len);
 
@@ -129,20 +139,15 @@ public:
     }
     virtual uint32_t read(uint8_t *buf, uint32_t len) override
     {
-        bool read_finished = false;
         uint32_t total_read_len = 0;
-        while (!read_finished)
+        if (!this->hasPendingDataToRead())
         {
-            if (!this->hasPendingDataToRead())
-            {
-                m_event_sc->yield_by_fd(getSocketFD());
-            }
-            auto read_len = apache::thrift::transport::TSocket::read(buf, len);
-            if (read_len > 0)
-            {
-                total_read_len = read_len;
-                read_finished = true;
-            }
+            m_event_sc->yield_by_fd(getSocketFD());
+        }
+        auto read_len = apache::thrift::transport::TSocket::read(buf, len);
+        if (read_len > 0)
+        {
+            total_read_len = read_len;
         }
 
         return total_read_len;

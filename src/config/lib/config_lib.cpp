@@ -120,40 +120,43 @@ namespace config
         if (m_instance == nullptr)
         {
             m_instance = new root_config();
-            std::ifstream self_name("/proc/self/comm");
-            std::string exe_path;
-            std::getline(self_name, exe_path);
-            std::string json_file = "/tmp/" + exe_path + "_config.json";
-            std::ifstream ifs(json_file);
-            if (ifs.is_open())
+            if (false)
             {
-                std::string json_content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-                neb::CJsonObject json_obj(json_content);
-                std::function<void(neb::CJsonObject &, config_item &)> parse_json;
-                parse_json = [&parse_json](neb::CJsonObject &jobj, config_item &citem)
+                std::ifstream self_name("/proc/self/comm");
+                std::string exe_path;
+                std::getline(self_name, exe_path);
+                std::string json_file = "/tmp/" + exe_path + "_config.json";
+                std::ifstream ifs(json_file);
+                if (ifs.is_open())
                 {
-                    std::vector<std::string> keys;
-                    std::string tmp_key;
-                    while (jobj.GetKey(tmp_key))
+                    std::string json_content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                    neb::CJsonObject json_obj(json_content);
+                    std::function<void(neb::CJsonObject &, config_item &)> parse_json;
+                    parse_json = [&parse_json](neb::CJsonObject &jobj, config_item &citem)
                     {
-                        keys.push_back(tmp_key);
-                    }
-                    for (const auto &key : keys)
-                    {
-                        std::string value;
-                        if (!jobj.Get(key, value))
+                        std::vector<std::string> keys;
+                        std::string tmp_key;
+                        while (jobj.GetKey(tmp_key))
                         {
-                            config_item child_item(key);
-                            parse_json(jobj[key], child_item);
-                            citem.set_child(key, child_item);
+                            keys.push_back(tmp_key);
                         }
-                        else
+                        for (const auto &key : keys)
                         {
-                            citem.set_child(key, value);
+                            std::string value;
+                            if (!jobj.Get(key, value))
+                            {
+                                config_item child_item(key);
+                                parse_json(jobj[key], child_item);
+                                citem.set_child(key, child_item);
+                            }
+                            else
+                            {
+                                citem.set_child(key, value);
+                            }
                         }
-                    }
-                };
-                parse_json(json_obj, *m_instance);
+                    };
+                    parse_json(json_obj, *m_instance);
+                }
             }
         }
         return *m_instance;
