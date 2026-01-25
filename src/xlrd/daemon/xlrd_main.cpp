@@ -114,6 +114,8 @@ public:
     {
         double ret = 0;
         modbus_driver *driver_ptr = nullptr;
+        xlrd_config_params params;
+        get_config_params(params, _is_front);
         if (_is_front)
         {
             driver_ptr = m_front_driver.get();
@@ -130,6 +132,7 @@ public:
                 m_logger.log_print(al_log::LOG_LEVEL_ERROR, "modbus exception happened when reading distance");
                 apply_driver_config();
             }
+            ret -= params.distance_offset;
         }
 
         return ret;

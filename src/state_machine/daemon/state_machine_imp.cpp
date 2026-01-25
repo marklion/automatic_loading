@@ -204,6 +204,7 @@ void state_machine_imp::get_state_machine_status(state_machine_status &_return)
     auto tmp_param = make_params_from_kit();
     _return.applied_kit = sm_get_current_kit();
     _return.is_front_dropped = tmp_param.is_front_dropping;
+    _return.side_z = sm_get_side_z();
 }
 
 void state_machine_imp::push_cur_load(const double cur_load)
@@ -248,7 +249,8 @@ void state_machine_imp::push_stuff_full_offset(const double offset)
     }
     if (max_offset > -10)
     {
-        if (sm_get_stuff_full_offset() >= max_offset)
+        double stuff_top_z_offset = (0-sm_get_stuff_full_offset() - sm_get_side_z());
+        if (stuff_top_z_offset >= max_offset)
         {
             sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
         }
@@ -452,6 +454,11 @@ void state_machine_imp::get_default_kit(std::string &_return)
 {
     auto &ci = config::root_config::get_instance();
     _return = ci(CONFIG_ITEM_SM_CONFIG_DEFAULT_KIT);
+}
+
+void state_machine_imp::push_side_z(const double side_z)
+{
+    m_detect_side_z = side_z;
 }
 
 lidar_params state_machine_imp::make_params_from_kit()
@@ -925,6 +932,7 @@ void al_sm_state_begin::after_enter()
         {
             m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_LC_READY);
         });
+    m_sm->sm_fix_side_z();
 }
 
 void al_sm_state_begin::before_exit()

@@ -356,7 +356,7 @@ AD_EVENT_SC_TCP_DATA_NODE::~AD_EVENT_SC_TCP_DATA_NODE()
 
 void AD_EVENT_SC_TCP_DATA_NODE::handleEvent()
 {
-    unsigned char buf[4096] = {0};
+    unsigned char buf[6*1024] = {0};
     auto recv_len = recv(m_fd, buf, sizeof(buf), SOCK_NONBLOCK);
     if (recv_len > 0)
     {

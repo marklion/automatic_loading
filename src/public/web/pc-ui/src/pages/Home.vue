@@ -32,6 +32,7 @@ import StateMachine from "../../../../../state_machine/web/state_machine.vue";
 import LogExplore from "../../../../../log/web/log_explore.vue";
 import XlrdShow from "../../../../../xlrd/web/xlrd_show.vue";
 import LiveCamera from "../../../../../live_camera/web/live_camera.vue";
+import PcdShow from "@/components/PcdShow.vue";
 import { ref, computed, onMounted } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
 import { GridLayout, GridItem } from 'vue3-grid-layout-next';
@@ -43,6 +44,7 @@ const my_components = {
   '2': LogExplore,
   '3': XlrdShow,
   '4': LiveCamera,
+  '5': PcdShow,
 }
 // 保存布局到本地存储
 const saveLayout = (newLayout) => {
@@ -51,11 +53,12 @@ const saveLayout = (newLayout) => {
 
 function reset_layout() {
   layout.value = [
-    { x: 0, y: 0, w: 4, h: 6, i: '0' },
-    { x: 4, y: 0, w: 6, h: 6, i: '1' },
-    { x: 0, y: 6, w: 3, h:15, i: '2' },
-    { x: 10, y: 0, w: 2, h: 6, i: '3' },
-    { x: 3, y: 6, w: 9, h:15, i: '4' },
+    { x: 0, y: 0, w: 2, h: 24, i: "0" },
+    { x: 2, y: 0, w: 6, h: 6, i: "1" },
+    { x: 10, y: 0, w: 2, h: 8, i: "2" },
+    { x: 8, y: 0, w: 2, h: 6, i: "3" },
+    { x: 2, y: 6, w: 6, h: 15, i: "4" },
+    { x: 8, y: 8, w: 4, h: 14, i: "5" },
   ]
   saveLayout(layout.value);
 }

@@ -5,6 +5,51 @@
 #include <yaml-cpp/yaml.h>
 #include <fstream>
 
+class HALF_BUFFER_HALF_SOCKET : public apache::thrift::transport::TTransport
+{
+    std::string m_orig_data;
+    AD_EVENT_SC_TCP_DATA_NODE_PTR m_data_node;
+public:
+    HALF_BUFFER_HALF_SOCKET(const std::string &_orig_data, AD_EVENT_SC_TCP_DATA_NODE_PTR _data_node) : m_orig_data(_orig_data), m_data_node(_data_node)
+    {
+    }
+    virtual bool isOpen() const override
+    {
+        return m_data_node->getFd() >= 0;
+    }
+    virtual void open() override
+    {
+    }
+    virtual void close() override
+    {
+    }
+    virtual void flush() override
+    {
+    }
+    virtual uint32_t read_virt(uint8_t *buf, uint32_t len) override
+    {
+        if (m_orig_data.size() > 0)
+        {
+            uint32_t copy_len = std::min(len, (uint32_t)m_orig_data.size());
+            m_orig_data.copy((char *)buf, copy_len);
+            m_orig_data = m_orig_data.substr(copy_len);
+            return copy_len;
+        }
+        else
+        {
+            AD_RPC_SC::get_instance()->unregisterNode(m_data_node);
+            AD_RPC_SC::get_instance()->yield_by_fd(m_data_node->getFd());
+            int ret = recv(m_data_node->getFd(), buf, len, 0);
+            AD_RPC_SC::get_instance()->registerNode(m_data_node);
+            if (ret <= 0)
+            {
+                throw apache::thrift::transport::TTransportException(apache::thrift::transport::TTransportException::END_OF_FILE, "No more data to read.");
+            }
+            return ret;
+        }
+    }
+};
+
 class my_rpc_trans : public AD_EVENT_SC_TCP_DATA_NODE
 {
     std::shared_ptr<apache::thrift::TMultiplexedProcessor> m_processor = std::make_shared<apache::thrift::TMultiplexedProcessor>();
@@ -13,7 +58,7 @@ public:
     using AD_EVENT_SC_TCP_DATA_NODE::AD_EVENT_SC_TCP_DATA_NODE;
     void handleRead(const unsigned char *buf, size_t len) override
     {
-        auto it = std::make_shared<apache::thrift::transport::TMemoryBuffer>((uint8_t *)buf, len);
+        auto it = std::make_shared<HALF_BUFFER_HALF_SOCKET>(std::string((char *)buf, len), std::static_pointer_cast<AD_EVENT_SC_TCP_DATA_NODE>(shared_from_this()));
         auto it_ad_trans = std::make_shared<AD_RPC_TRANSPORT>(it);
         auto ip = std::make_shared<apache::thrift::protocol::TBinaryProtocol>(it_ad_trans);
         auto ot = std::make_shared<apache::thrift::transport::TMemoryBuffer>();

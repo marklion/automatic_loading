@@ -1,7 +1,7 @@
 <template>
     <div>
         <el-button type="primary" @click="clear_log">清除日志</el-button>
-        <el-input v-model="cur_logs" :autosize="{ minRows: 25, maxRows: 30 }" type="textarea" readonly />
+        <el-input v-model="cur_logs" :autosize="{ minRows: 10, maxRows: 10 }" type="textarea" readonly />
     </div>
 </template>
 

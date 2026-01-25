@@ -51,7 +51,7 @@ public:
     }
     void read_more()
     {
-        unsigned char buffer[1024] = {0};
+        unsigned char buffer[1024 * 6] = {0};
         auto recv_len = m_transport->read(buffer, sizeof(buffer));
         if (recv_len <= 0)
         {

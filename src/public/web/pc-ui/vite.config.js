@@ -17,6 +17,7 @@ export default defineConfig({
       '/ws':{
         target: 'https://ayx.d8sis.cn',
         changeOrigin: true,
+        ws:true,
       }
     },
   },

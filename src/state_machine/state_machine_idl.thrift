@@ -30,6 +30,7 @@ struct state_machine_status{
     7: sm_basic_config basic_config,
     8: bool is_front_dropped,
     9: string applied_kit,
+    10: double side_z
 }
 
 service state_machine_service{
@@ -48,6 +49,7 @@ service state_machine_service{
     oneway void push_vehicle_front_position(1: double front_x),
     oneway void push_vehicle_tail_position(1: double tail_x),
     oneway void trigger_sm(1: vehicle_info v_info),
+    oneway void push_side_z(1: double side_z),
     bool set_basic_config(1: sm_basic_config config) throws (1: ad_sm_gen_exp msg),
     sm_basic_config get_basic_config() throws (1: ad_sm_gen_exp msg),
     bool set_default_kit(1: string kit_name) throws (1: ad_sm_gen_exp msg),

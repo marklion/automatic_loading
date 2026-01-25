@@ -123,7 +123,8 @@ class state_machine_imp : public state_machine_serviceIf
     std::string m_current_video_url;
     AD_EVENT_SC_TCP_LISTEN_NODE_PTR m_listen_node;
     std::vector<AD_EVENT_SC_TCP_DATA_NODE_PTR> m_data_nodes;
-
+    double m_side_z = 0.0;
+    double m_detect_side_z = 0.0;
 public:
     state_machine_imp();
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
@@ -148,6 +149,8 @@ public:
     double sm_get_vehicle_front_x() { return m_vehicle_front_x; }
     void sm_set_vehicle_tail_x(double tail_x) { m_vehicle_tail_x = tail_x; }
     double sm_get_vehicle_tail_x() { return m_vehicle_tail_x; }
+    void sm_fix_side_z() { m_side_z = m_detect_side_z; }
+    double sm_get_side_z() { return m_side_z; }
     void sm_set_current_prompt(const std::string &prompt)
     {
         m_current_prompt = prompt;
@@ -183,6 +186,7 @@ public:
     int lc_drop_revoke_control(bool _is_drop);
     virtual bool set_default_kit(const std::string &kit_name);
     virtual void get_default_kit(std::string &_return);
+    virtual void push_side_z(const double side_y);
 };
 
 #endif // _STATE_MACHINE_IMP_H_

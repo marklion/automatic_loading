@@ -12,6 +12,47 @@
 #include <pcl/io/ply_io.h>
 #include "../../public/lib/al_utils.h"
 #include "../../state_machine/lib/state_machine_lib.h"
+#include <sys/fcntl.h>
+#include <sys/file.h>
+
+static void serializePointCloud(myPointCloud::Ptr cloud)
+{
+    int fd = open("/tmp/cloud.lock", O_CREAT | O_RDWR, 0666); // 打开或创建锁文件
+    if (fd == -1)
+    {
+        perror("Failed to open lock file");
+        return;
+    }
+
+    if (flock(fd, LOCK_EX) == -1) // 加独占锁
+    {
+        perror("Failed to acquire file lock");
+        close(fd);
+        return;
+    }
+
+    // 写入点云数据
+    std::ofstream ofs("/tmp/cloud.bin", std::ios::binary);
+    if (!ofs.is_open())
+    {
+        perror("Failed to open /tmp/cloud.bin");
+        flock(fd, LOCK_UN); // 释放锁
+        close(fd);
+        return;
+    }
+
+    for (const auto &point : *cloud)
+    {
+        float data[7] = {
+            point.x, point.y, point.z, point.r * 1.0f, point.g * 1.0f, point.b * 1.0f, 0.0f};
+        ofs.write(reinterpret_cast<char *>(data), sizeof(data));
+    }
+
+    ofs.close();
+
+    flock(fd, LOCK_UN); // 释放锁
+    close(fd);          // 关闭文件描述符
+}
 
 lidar_imp::LIDAR_INDEX lidar_imp::get_lidar_index_by_type(LIDAR_POS_TYPE _type)
 {
@@ -117,7 +158,7 @@ void lidar_imp::start_all_lidar_threads()
     }
     AD_RPC_SC::get_instance()->startTimer(
         0,
-        350,
+        120,
         [this]()
         {
             if (m_is_lidar_on)
@@ -126,12 +167,15 @@ void lidar_imp::start_all_lidar_threads()
                 auto tail_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_TAIL)];
                 double drop_distance = drop_lidar->get_distance();
                 double tail_distance = tail_lidar->get_distance();
+                double side_z = drop_lidar->get_side_z();
                 state_machine::call_sm_remote(
-                    [drop_distance, tail_distance](state_machine_serviceClient &sm_client)
+                    [drop_distance, tail_distance, side_z](state_machine_serviceClient &sm_client)
                     {
                         sm_client.push_vehicle_front_position(drop_distance);
                         sm_client.push_vehicle_tail_position(tail_distance);
+                        sm_client.push_side_z(side_z);
                     });
+                drop_lidar->serial_pc();
             }
         });
 }
@@ -445,6 +489,7 @@ void lidar_driver_info::head_get_distance(myPointCloud::Ptr _cloud)
     auto line_DistanceThreshold = params.plane_distance_threshold;
 
     auto key_seg = get_key_seg(_cloud, line_DistanceThreshold, 0);
+    m_side_z = key_seg.first.z;
     insert_several_points(_cloud, key_seg.first, key_seg.second);
 
     if (key_seg.second.x - key_seg.first.x > 2.3)
@@ -559,6 +604,16 @@ void lidar_driver_info::insert_several_points(myPointCloud::Ptr _cloud, const my
     _cloud->points.push_back(p2);
 }
 
+void lidar_driver_info::serial_pc()
+{
+    m_update_counter++;
+    if (m_update_counter >= 5)
+    {
+        m_update_counter = 0;
+        serializePointCloud(get_output_cloud());
+    }
+}
+
 std::pair<myPoint, myPoint> lidar_driver_info::get_key_seg(myPointCloud::Ptr _cloud, float line_distance_threshold, float _full_y_offset)
 {
     auto max_z_point = find_max_or_min_z_point(_cloud, line_distance_threshold);
@@ -648,6 +703,11 @@ double lidar_driver_info::get_distance()
 {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     return m_distance;
+}
+double lidar_driver_info::get_side_z()
+{
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    return m_side_z;
 }
 static std::string make_file_name(const std::string &_filename = "")
 {

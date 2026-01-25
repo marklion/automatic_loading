@@ -46,6 +46,7 @@ class lidar_imp;
 class lidar_driver_info
 {
     double m_distance = 0;
+    double m_side_z = 0;
     std::recursive_mutex m_mutex;
     int m_msop_port = 0;
     int m_difop_port = 0;
@@ -58,6 +59,7 @@ class lidar_driver_info
     robosense::lidar::SyncQueue<std::shared_ptr<pcMsg>> m_stuffed_cloud_queue;
     myPointCloud::Ptr m_cur_cloud;
     myPointCloud::Ptr m_output_cloud;
+    int m_update_counter = 0;
     std::shared_ptr<pcMsg> driverGetPointCloudFromCallerCallback();
     void driverReturnPointCloudToCallerCallback(std::shared_ptr<pcMsg> msg);
     void processCloud();
@@ -108,10 +110,12 @@ public:
     void update_distance(double _dist);
     void start_driver(int _index);
     double get_distance();
+    double get_side_z();
     lidar_ply_info save_ply2file(const std::string &_file_tag, bool only_focus = false);
     lidar_imp *m_parent = nullptr;
     bool m_need_work = true;
     static LIDAR_POS_TYPE get_type_by_index(int _index);
+    void serial_pc();
 };
 
 class lidar_imp : public lidar_serviceIf

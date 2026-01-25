@@ -18,6 +18,9 @@
             <el-descriptions-item label="物料">
                 {{ sm_status.vehicle_info.stuff_name }}
             </el-descriptions-item>
+            <el-descriptions-item label="货厢边沿z坐标">
+                {{ sm_status.side_z }}
+            </el-descriptions-item>
             <el-descriptions-item label="应用配置套件">
                 {{ sm_status.applied_kit }}
             </el-descriptions-item>
@@ -28,7 +31,7 @@
                     :percentage="calcu_percentage(sm_status.vehicle_front_x, sm_status.basic_config.front_min_x, sm_status.basic_config.front_max_x)">
                     <template #default="{ percentage }">
                         <div class="label-text">{{ sm_status.basic_config.front_min_x }} - {{ sm_status.vehicle_front_x
-                        }} - {{
+                            }} - {{
                                 sm_status.basic_config.front_max_x }}</div>
                     </template>
                 </el-progress>
