@@ -196,6 +196,8 @@ static std::vector<DaemonService *> make_init_daemon_services()
     services.push_back(hn_hht_service);
     auto plate_gate_service = new DaemonService("/bin/plate_gate_daemon", {}, "plate_gate_daemon", "plate_gate", sm_service);
     services.push_back(plate_gate_service);
+    auto scale_service = new DaemonService("/bin/scale_daemon", {}, "scale_daemon", "scale", sm_service);
+    services.push_back(scale_service);
 
     return services;
 }

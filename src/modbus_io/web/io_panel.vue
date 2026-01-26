@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div style="height: 100%;">
     <el-table :data="all_devices" style="width: 100%">
       <el-table-column prop="device_name" label="名称" />
       <el-table-column label="操作/状态">

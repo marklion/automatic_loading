@@ -18,7 +18,7 @@
       :is-resizable="resize_switch" :auto-size="false" @layout-updated="saveLayout">
       <grid-item v-for="item in layout" :key="item.i" :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i">
         <!-- 你的组件内容 -->
-        <div>
+        <div style="width: 100%; height: 100%; padding:5px;">
           <component :is="my_components[item.i]"></component>
         </div>
       </grid-item>
@@ -33,6 +33,7 @@ import LogExplore from "../../../../../log/web/log_explore.vue";
 import XlrdShow from "../../../../../xlrd/web/xlrd_show.vue";
 import LiveCamera from "../../../../../live_camera/web/live_camera.vue";
 import PcdShow from "@/components/PcdShow.vue";
+import Scale from "../../../../../scale/web/scale.vue";
 import { ref, computed, onMounted } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
 import { GridLayout, GridItem } from 'vue3-grid-layout-next';
@@ -45,6 +46,7 @@ const my_components = {
   '3': XlrdShow,
   '4': LiveCamera,
   '5': PcdShow,
+  '6': Scale,
 }
 // 保存布局到本地存储
 const saveLayout = (newLayout) => {
@@ -52,14 +54,59 @@ const saveLayout = (newLayout) => {
 }
 
 function reset_layout() {
-  layout.value = [
-    { x: 0, y: 0, w: 2, h: 24, i: "0" },
-    { x: 2, y: 0, w: 6, h: 6, i: "1" },
-    { x: 10, y: 0, w: 2, h: 8, i: "2" },
-    { x: 8, y: 0, w: 2, h: 6, i: "3" },
-    { x: 2, y: 6, w: 6, h: 15, i: "4" },
-    { x: 8, y: 8, w: 4, h: 14, i: "5" },
-  ]
+  layout.value =
+    [
+      {
+        "x": 4,
+        "y": 6,
+        "w": 3,
+        "h": 3,
+        "i": "6",
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 20,
+        "i": "0",
+      },
+      {
+        "x": 2,
+        "y": 0,
+        "w": 6,
+        "h": 6,
+        "i": "1",
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 6,
+        "i": "2",
+      },
+      {
+        "x": 2,
+        "y": 6,
+        "w": 2,
+        "h": 3,
+        "i": "3",
+      },
+      {
+        "x": 7,
+        "y": 6,
+        "w": 5,
+        "h": 17,
+        "i": "4",
+      },
+      {
+        "x": 2,
+        "y": 9,
+        "w": 5,
+        "h": 14,
+        "i": "5",
+      }
+    ]
+
   saveLayout(layout.value);
 }
 

@@ -69,6 +69,7 @@ async function update_status_info() {
         'sm':'state_machine show_status json',
         'xlrd0':'xlrd read_offset 0',
         'xlrd1':'xlrd read_offset 1',
+        'scale':'scale read_weight',
     };
     for (let [module, cmd] of Object.entries(module_data_map)) {
         let output = await run_cli(cmd);

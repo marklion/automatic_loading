@@ -100,6 +100,7 @@ std::map<AD_RPC_SERVER_PORTS, std::string> AD_RPC_SC::AD_RPC_SERVER_PORTS_NAME =
     {AD_RPC_LIVE_STREAM_SERVER_PORT, "live_camera_service"},
     {AD_RPC_HHT_SERVER_PORT, "hn_hht_service"},
     {AD_RPC_PLATE_GATE_SERVER_PORT, "plate_gate_service"},
+    {AD_RPC_SCALE_SERVER_PORT, "scale_service"},
 };
 
 void AD_RPC_SC::start_co_record()

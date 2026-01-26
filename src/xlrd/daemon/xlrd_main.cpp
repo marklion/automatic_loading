@@ -108,7 +108,6 @@ public:
         _return.slave_id = atoi(ci[section][CONFIG_ITEM_XLRD_PARAMS_SLAVE_ID]().c_str());
         _return.distance_offset = atof(ci[section][CONFIG_ITEM_XLRD_PARAMS_DISTANCE_OFFSET]().c_str());
         _return.bottom_z = atof(ci[section][CONFIG_ITEM_XLRD_PARAMS_BOTTOM_Z]().c_str());
-        m_logger.log_print(al_log::LOG_LEVEL_INFO, "xlrd config is:%s", ci.expend_to_string().c_str());
     }
     virtual double read_distance(const bool _is_front)
     {

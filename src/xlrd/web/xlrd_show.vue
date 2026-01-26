@@ -1,6 +1,5 @@
 <template>
     <div>
-        <h2>料堆高度</h2>
         <el-progress type="dashboard" status="exception" :percentage="calcu_percentage(head_offset, -1, 0.3)">
             <template #default="{ percentage }">
                 <div>{{ head_offset }}</div>

@@ -1,7 +1,7 @@
 <template>
-    <div>
+    <div class="log-container">
         <el-button type="primary" @click="clear_log">清除日志</el-button>
-        <el-input v-model="cur_logs" :autosize="{ minRows: 10, maxRows: 10 }" type="textarea" readonly />
+        <el-input v-model="cur_logs" type="textarea" readonly class="log-input" />
     </div>
 </template>
 
@@ -25,4 +25,20 @@ async function clear_log() {
 }
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.log-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.log-input {
+    flex: 1;
+    min-height: 0; // allow textarea to shrink within flex column
+}
+
+.log-input :deep(.el-textarea__inner) {
+    height: 100%;
+    resize: none;
+}
+</style>

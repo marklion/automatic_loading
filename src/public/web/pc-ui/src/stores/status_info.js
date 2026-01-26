@@ -5,6 +5,7 @@ export const useStatusInfo = defineStore("statusInfo", {
         'sm': {},
         'xlrd0': {},
         'xlrd1': {},
+        'scale': {}
     }),
     actions: {
         setModbusIO(data) {
@@ -19,5 +20,8 @@ export const useStatusInfo = defineStore("statusInfo", {
         setXLRD1(data) {
             this.xlrd1 = data;
         },
+        setScale(data) {
+            this.scale = data;
+        }
     },
 });

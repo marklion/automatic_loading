@@ -1,9 +1,8 @@
 <template>
-    <div>
-        <h2>实时摄像头</h2>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+    <div style="height: 100%;">
+        <div style="display: grid; grid-template-columns: repeat(1, 1fr); gap: 20px;height: 100%">
             <div v-for="(cam, index) in video_urls" :key="index">
-                <iframe :src="cam.url" frameborder="0" allowfullscreen style="width: 100%; height: 500px; border: 1px solid #ccc; border-radius: 4px;"></iframe>
+                <iframe :src="cam.url" frameborder="0" allowfullscreen style="width: 100%; height: 100%; border: 1px solid #ccc; border-radius: 4px;"></iframe>
             </div>
         </div>
     </div>

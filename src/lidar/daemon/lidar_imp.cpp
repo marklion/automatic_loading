@@ -338,7 +338,6 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
     ret.illegal_side = clst_ret.last;
 
     auto end_us_stamp = get_current_us_stamp();
-    m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "split cloud takes %ld us", end_us_stamp - start_us_stamp);
     return ret;
 }
 
