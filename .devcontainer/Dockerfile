@@ -45,3 +45,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y libcdk5-
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y libopencv-dev
 RUN n 22.20
 RUN npm install -g wetty@2.5.0
+RUN mkdir /root/sm4_tool/
+COPY SM4SignatureGenerator_Ubuntu2404.zip /root/sm4_tool/
+WORKDIR /root/sm4_tool/
+RUN unzip SM4SignatureGenerator_Ubuntu2404.zip
+RUN ./install.sh
+RUN ./build.sh

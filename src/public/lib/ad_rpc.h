@@ -241,6 +241,10 @@ public:
         }
         return 0;
     }
+    std::unique_ptr<AD_CO_MUTEX> create_co_mutex()
+    {
+        return std::make_unique<AD_CO_MUTEX>(std::static_pointer_cast<AD_EVENT_SC>(shared_from_this()));
+    }
 };
 
 #endif // _AD_RPC_H_

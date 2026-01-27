@@ -192,6 +192,19 @@ public:
     void lock();
     void unlock();
 };
+class AD_CO_LOCK_GUARD
+{
+    AD_CO_MUTEX &m_mutex;
+public:
+    AD_CO_LOCK_GUARD(AD_CO_MUTEX &_mutex) : m_mutex(_mutex)
+    {
+        m_mutex.lock();
+    }
+    ~AD_CO_LOCK_GUARD()
+    {
+        m_mutex.unlock();
+    }
+};
 class AD_EVENT_SC_TCP_LISTEN_NODE;
 typedef std::shared_ptr<AD_EVENT_SC_TCP_LISTEN_NODE> AD_EVENT_SC_TCP_LISTEN_NODE_PTR;
 class AD_EVENT_SC_TCP_DATA_NODE;

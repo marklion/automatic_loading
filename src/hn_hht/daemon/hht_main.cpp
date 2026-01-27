@@ -18,138 +18,7 @@
 #include <mutex>
 
 static al_log::log_tool g_logger(al_log::LOG_HHT);
-std::mutex g_mutex;
-
-class SM4SignatureGenerator
-{
-private:
-    static const int KEY_SIZE = 16; // 128 bits
-
-    // 将字节数组转换为十六进制字符串
-    static std::string bytesToHex(const unsigned char *data, size_t length)
-    {
-        std::stringstream ss;
-        ss << std::hex << std::setfill('0');
-        for (size_t i = 0; i < length; ++i)
-        {
-            ss << std::setw(2) << static_cast<int>(data[i]);
-        }
-        return ss.str();
-    }
-
-    // SM4加密
-    static std::string sm4Encrypt(const std::string &plaintext, const unsigned char *key)
-    {
-        EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-        if (!ctx)
-        {
-            g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Failed to create EVP_CIPHER_CTX");
-            return "";
-        }
-
-        // 设置加密
-        if (EVP_EncryptInit_ex(ctx, EVP_sm4_cbc(), NULL, key, NULL) != 1)
-        {
-            g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Failed to initialize SM4 encryption");
-            EVP_CIPHER_CTX_free(ctx);
-            return "";
-        }
-
-        // 启用PKCS7填充（默认启用，确保数据长度是块大小的倍数）
-        EVP_CIPHER_CTX_set_padding(ctx, 1);
-
-        // 计算输出缓冲区大小
-        int ciphertext_len = 0;
-        int len = 0;
-        std::vector<unsigned char> ciphertext(plaintext.size() + EVP_MAX_BLOCK_LENGTH);
-
-        // 执行加密
-        if (EVP_EncryptUpdate(
-                ctx,
-                ciphertext.data(),
-                &len,
-                reinterpret_cast<const unsigned char *>(plaintext.c_str()),
-                plaintext.length()) != 1)
-        {
-            g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Encryption update failed");
-            EVP_CIPHER_CTX_free(ctx);
-            return "";
-        }
-        ciphertext_len = len;
-
-        // 完成加密
-        if (EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len) != 1)
-        {
-            g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Encryption final failed");
-            EVP_CIPHER_CTX_free(ctx);
-            return "";
-        }
-        ciphertext_len += len;
-
-        EVP_CIPHER_CTX_free(ctx);
-
-        return bytesToHex(ciphertext.data(), ciphertext_len);
-    }
-    // 签名
-    static std::string signature(const std::string &data, const std::string &key)
-    {
-        auto hex_key = key;
-        if (hex_key.length() != KEY_SIZE * 2)
-        {
-            g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Key length is invalid. Expected %d hex characters.", KEY_SIZE * 2);
-            return "";
-        }
-        // 将十六进制字符串转换为字节数组
-        unsigned char key_bytes[KEY_SIZE];
-        for (size_t i = 0; i < KEY_SIZE; ++i)
-        {
-            std::string byteString = hex_key.substr(i * 2, 2);
-            key_bytes[i] = static_cast<unsigned char>(std::stoul(byteString, nullptr, 16));
-        }
-        // 使用SM4加密
-        return sm4Encrypt(data, key_bytes);
-    }
-
-public:
-    /**
-     * 生成签名
-     * @param appKey appKey
-     * @param appSecret appSecret
-     * @param timestamp 当前时间戳(毫秒)
-     * @return 签名
-     */
-    static std::string sign(const std::string &appKey,
-                            const std::string &appSecret,
-                            const std::string &timestamp
-                            )
-    {
-        // 参数映射
-        std::map<std::string, std::string> params = {
-            {"appKey", appKey},
-            {"timestamp", timestamp},
-            {"appSecret", appSecret},
-        };
-
-        // 1. 参数名称按首字母排序
-        std::vector<std::string> sortedKeys;
-        for (const auto &pair : params)
-        {
-            sortedKeys.push_back(pair.first);
-        }
-        std::sort(sortedKeys.begin(), sortedKeys.end());
-
-        // 2. 拼接参数值成一个字符串
-        std::string dataToEncrypt;
-        for (const auto &key : sortedKeys)
-        {
-            dataToEncrypt += params[key];
-        }
-
-        // 3. 使用 SM4 算法生成签名
-        return signature(dataToEncrypt, appSecret);
-    }
-};
-
+static std::unique_ptr<AD_CO_MUTEX> g_mutex = AD_RPC_SC::get_instance()->create_co_mutex();
 class hn_hht_imp : public hn_hht_serviceIf
 {
 public:
@@ -168,14 +37,22 @@ public:
     }
     virtual void get_order(std::string &_return, const std::string &_query_content)
     {
-        std::lock_guard<std::mutex> lock(g_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         auto &ci = config::root_config::get_instance();
         std::string app_key = ci(CONFIG_ITEM_HHT_KEY);
         std::string app_secret = ci(CONFIG_ITEM_HHT_SECRET);
         std::string timestamp = al_utils::get_current_timestamp_ms();
         auto content = al_utils::URLCodec::encode_query_param(_query_content);
-        std::string signature = SM4SignatureGenerator::sign(app_key, app_secret, timestamp);
-        std::string get_req = "https://api.hnjt.top/api/openapi/v1/transport/billInfo?no=" + content;
+        auto sig_cmd = "/root/sm4_tool/run_signature.sh '" + app_key + "' '" + app_secret + "' '" + timestamp + "' | awk -F ': ' '{print $2}' > /tmp/hht_sig_resp.txt";
+        AD_RPC_SC::get_instance()->non_block_system(sig_cmd);
+        std::ifstream sig_ifs("/tmp/hht_sig_resp.txt");
+        std::string signature;
+        if (sig_ifs.is_open())
+        {
+            std::getline(sig_ifs, signature);
+            sig_ifs.close();
+        }
+        std::string get_req = "https://openapi.hnjt.top/api/openapi/v1/transport/billInfo?no=" + content;
         std::string wget_cmd = "wget --no-check-certificate --method GET --timeout=15 ";
         wget_cmd += "--header 'appKey: " + app_key + "' ";
         wget_cmd += "--header 'signature: " + signature + "' ";
@@ -185,13 +62,13 @@ public:
         g_logger.log_print(al_log::LOG_LEVEL_INFO, "Generated signature: %s", signature.c_str());
         g_logger.log_print(al_log::LOG_LEVEL_INFO, "Executing wget command: %s", wget_cmd.c_str());
         AD_RPC_SC::get_instance()->non_block_system(wget_cmd);
-        AD_RPC_SC::get_instance()->yield_by_timer(0, 100);
         std::ifstream log_ifs("/tmp/hht_log.txt");
         if (log_ifs.is_open())
         {
             std::stringstream log_buffer;
             log_buffer << log_ifs.rdbuf();
             g_logger.log_print(al_log::LOG_LEVEL_INFO, "Wget log: %s", log_buffer.str().c_str());
+            log_ifs.close();
         }
         std::ifstream ifs("/tmp/hht_order_response.json");
         if (ifs.is_open())
@@ -199,6 +76,7 @@ public:
             std::stringstream buffer;
             buffer << ifs.rdbuf();
             _return = buffer.str();
+            ifs.close();
         }
         else
         {

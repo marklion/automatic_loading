@@ -9,11 +9,11 @@
 #include <mutex>
 
 int g_server_pid = 0;
-std::mutex g_mutex;
+static std::unique_ptr<AD_CO_MUTEX> g_mutex = AD_RPC_SC::get_instance()->create_co_mutex();
 
 static void refresh_live_server()
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
+    AD_CO_LOCK_GUARD lock(*g_mutex);
     if (g_server_pid > 0)
     {
         kill(g_server_pid, SIGKILL);
