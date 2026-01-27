@@ -21,6 +21,13 @@ float convertRegistersToFloat(uint16_t reg0, uint16_t reg1)
 
     return result;
 }
+static long long get_current_us_stamp()
+{
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    long long current_useconds = tv.tv_sec * 1000000LL + tv.tv_usec;
+    return current_useconds;
+}
 
 modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger):m_logger(_logger)
 {
@@ -56,6 +63,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     auto tmp_coil_write_meta = m_coil_write_meta;
                     auto tmp_coil_read_meta = m_coil_read_meta;
                     m_mutex.unlock();
+                    auto start_us_stamp = get_current_us_stamp();
                     for (auto &itr : tmp_float32_meta)
                     {
                         auto addr = itr.second.addr;
@@ -96,6 +104,8 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                             exception_occurred = true;
                         }
                     }
+                    auto end_us_stamp = get_current_us_stamp();
+                    m_logger->log("modbus_driver loop time: %lld ms", (end_us_stamp - start_us_stamp)/1000);
                     m_mutex.lock();
                     m_float32_abcd_meta = tmp_float32_meta;
                     m_coil_read_meta = tmp_coil_read_meta;

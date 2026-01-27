@@ -56,11 +56,32 @@ static void turn_on_off(std::ostream &out, std::vector<std::string> _params)
         out << check_resp << std::endl;
     }
 }
+
+static void run_against_file(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请指定文件");
+    check_resp += common_cli::check_params(_params, 1, "请指定雷达编号");
+    if (check_resp.empty())
+    {
+        ad_lidar::call_sm_remote(
+            [&](lidar_serviceClient &client)
+            {
+            run_result resp;
+            client.run_against_file( resp, _params[0], atoi(_params[1].c_str()));
+            out << "distance: " << resp.distance << ", side_z: " << resp.side_z << ", file_name: " << resp.file_name << std::endl; });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> lidar_menu(new cli::Menu("lidar"));
     lidar_menu->Insert(CLI_MENU_ITEM(cap_ply), "捕获当前点云", {});
     lidar_menu->Insert(CLI_MENU_ITEM(turn_on_off), "手动开关雷达", {"on/off", "[kit_name]"});
+    lidar_menu->Insert(CLI_MENU_ITEM(run_against_file), "基于文件运行算法", {"<file>", "<lidar_number>"});
     return lidar_menu;
 }
 

@@ -81,21 +81,24 @@ async function update_status_info() {
         }
     }
     ws_server.setData('status_info', status_info);
-    try {
-        const lockPath = '/tmp/cloud.lock';
-        // 获取文件锁
-        const release = await lockfile.lock(lockPath, {
-            retries: 5, // 重试次数
-            retryWait: 10 // 每次重试等待时间（毫秒）
-        });
-        start_time = print_spend(start_time, 'wait lock');
-        const data = await fs.promises.readFile('/tmp/cloud.bin');
-        start_time = print_spend(start_time, 'read file');
-        await release();
-        ws_server.setData('pcd', { data: data.toString('base64') });
-    } catch (error) {
-        console.error('Error occurred:', error);
+    if (status_info.sm.status != '空闲') {
+        try {
+            const lockPath = '/tmp/cloud.lock';
+            // 获取文件锁
+            const release = await lockfile.lock(lockPath, {
+                retries: 5, // 重试次数
+                retryWait: 10 // 每次重试等待时间（毫秒）
+            });
+            start_time = print_spend(start_time, 'wait lock');
+            const data = await fs.promises.readFile('/tmp/cloud.bin');
+            start_time = print_spend(start_time, 'read file');
+            await release();
+            ws_server.setData('pcd', { data: data.toString('base64') });
+        } catch (error) {
+            console.error('Error occurred:', error);
+        }
     }
+
     setTimeout(update_status_info, 200);
 }
 setInterval(async () => {

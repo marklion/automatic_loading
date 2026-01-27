@@ -129,6 +129,17 @@ void lidar_imp::cap_current_ply(ply_file_info &_return, const std::string &ply_t
     _return.tail_file_path = tail_resp.focus_ply_file;
     _return.tail_full_file_path = tail_resp.full_ply_file;
 }
+void lidar_imp::run_against_file(run_result &_return, const std::string &ply_file, const int32_t lidar_num)
+{
+    myPointCloud::Ptr cloud(new myPointCloud);
+    pcl::io::loadPLYFile(ply_file, *cloud);
+    auto pdriver = m_lidar_result[lidar_num];
+    pdriver->process_one_frame(cloud);
+    _return.distance = pdriver->get_distance();
+    _return.side_z = pdriver->get_side_z();
+    auto pi = pdriver->save_ply2file("file_run", false);
+    _return.file_name = pi.focus_ply_file;
+}
 long long get_current_us_stamp()
 {
     struct timeval tv;
@@ -245,6 +256,11 @@ myPointCloud::Ptr lidar_driver_info::pc_range_filter(myPointCloud::Ptr cloud)
     auto z_max = params.first_range_z_max;
     auto i_min = params.first_range_i_min;
     auto i_max = params.first_range_i_max;
+    if (m_for_tail)
+    {
+        x_min = -16;
+        x_max = 16;
+    }
     myPointCloud::Ptr tmp = cloud;
     pcl::PassThrough<myPoint> pass_x;
     pass_x.setInputCloud(tmp);
@@ -318,12 +334,17 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
 
     auto plane_DistanceThreshold = params.plane_distance_threshold;
     auto cluster_DistanceThreshold = params.cluster_distance_threshold;
+    if (_x_plane)
+    {
+        cluster_DistanceThreshold = params.tail_cluster_distance_threshold;
+    }
+
     auto AngleThreshold = params.angle_threshold;
     auto cluster_require_points = params.cluster_required_point_num;
 
     auto start_us_stamp = get_current_us_stamp();
     pc_after_split ret;
-    auto pickup_resp = pickup_pc_from_spec_range(_cloud);
+    auto pickup_resp = pickup_pc_from_spec_range(_cloud, _x_plane);
 
     // 在范围内点云中拟合垂直y轴的平面,范围内点云染蓝色，平面染黄色
     pcl::ModelCoefficients::Ptr coe_side(new pcl::ModelCoefficients);
@@ -341,20 +362,40 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
     return ret;
 }
 
-std::unique_ptr<pc_after_pickup> lidar_driver_info::pickup_pc_from_spec_range(myPointCloud::Ptr _orig_pc)
+std::unique_ptr<pc_after_pickup> lidar_driver_info::pickup_pc_from_spec_range(myPointCloud::Ptr _orig_pc, bool _x_plane)
 {
     const std::string config_sec = "get_state";
     lidar_params params;
     m_parent->get_lidar_params(params);
-
-    auto x_min = params.second_range_x_min;
-    auto x_max = params.second_range_x_max;
+    double x_min = 0;
+    double x_max = 0;
+    double z_min = 0;
+    double z_max = 0;
+    if (_x_plane)
+    {
+        z_min = params.second_range_z_min;
+        z_max = params.second_range_z_max;
+    }
+    else
+    {
+        x_min = params.second_range_x_min;
+        x_max = params.second_range_x_max;
+    }
     auto y_min = params.second_range_y_min;
     auto y_max = params.second_range_y_max;
     auto result = std::make_unique<pc_after_pickup>();
     myPointCloud::Ptr tmp(new myPointCloud);
 
-    split_cloud_by_pt(_orig_pc, "x", x_min, x_max, result->picked, tmp);
+    if (_x_plane)
+    {
+        y_min = -3;
+        y_max = 3;
+        split_cloud_by_pt(_orig_pc, "z", z_min, z_max, result->picked, tmp);
+    }
+    else
+    {
+        split_cloud_by_pt(_orig_pc, "x", x_min, x_max, result->picked, tmp);
+    }
     *result->last += *tmp;
     split_cloud_by_pt(result->picked, "y", y_min, y_max, result->picked, tmp);
     *result->last += *tmp;
@@ -487,13 +528,13 @@ void lidar_driver_info::head_get_distance(myPointCloud::Ptr _cloud)
     m_parent->get_lidar_params(params);
     auto line_DistanceThreshold = params.plane_distance_threshold;
 
-    auto key_seg = get_key_seg(_cloud, line_DistanceThreshold, 0);
+    auto key_seg = get_key_seg(pc_after_split_ret.legal_side, line_DistanceThreshold, 0);
     m_side_z = key_seg.first.z;
-    insert_several_points(_cloud, key_seg.first, key_seg.second);
+    insert_several_points(pc_after_split_ret.legal_side, key_seg.first, key_seg.second);
 
-    if (key_seg.second.x - key_seg.first.x > 2.3)
+    if (key_seg.second.x - key_seg.first.x > params.seg_length_req)
     {
-        update_distance(static_cast<double>((key_seg.first.x)));
+        update_distance(static_cast<double>((key_seg.second.x)));
     }
     put_cloud(pc_after_split_ret.content);
     put_cloud(pc_after_split_ret.legal_side);
@@ -823,22 +864,27 @@ void lidar_driver_info::process_msg(std::shared_ptr<pcMsg> msg)
     {
         save_full_cloud(msg);
         auto one_frame = make_cloud_by_msg(msg);
-        // 坐标转换
-        auto frame_after_trans = pc_transform(one_frame);
-        // 有效范围过滤
-        auto frame_after_filter = pc_range_filter(frame_after_trans);
-        log_cloud_size(frame_after_filter, "first filter");
-        // 体素滤波
-        frame_after_filter = pc_vox_filter(frame_after_filter);
-        log_cloud_size(frame_after_filter, "voxel filter");
-        if (m_for_tail)
-        {
-            tail_get_distance(frame_after_filter);
-        }
-        else
-        {
-            head_get_distance(frame_after_filter);
-        }
+        process_one_frame(one_frame);
+    }
+}
+
+void lidar_driver_info::process_one_frame(myPointCloud::Ptr _cloud)
+{
+    // 坐标转换
+    auto frame_after_trans = pc_transform(_cloud);
+    // 有效范围过滤
+    auto frame_after_filter = pc_range_filter(frame_after_trans);
+    log_cloud_size(frame_after_filter, "first filter");
+    // 体素滤波
+    frame_after_filter = pc_vox_filter(frame_after_filter);
+    log_cloud_size(frame_after_filter, "voxel filter");
+    if (m_for_tail)
+    {
+        tail_get_distance(frame_after_filter);
+    }
+    else
+    {
+        head_get_distance(frame_after_filter);
     }
 }
 

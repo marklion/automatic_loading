@@ -48,7 +48,7 @@ private:
         }
 
         // 设置加密
-        if (EVP_EncryptInit_ex(ctx, EVP_sm4_ecb(), NULL, key, NULL) != 1)
+        if (EVP_EncryptInit_ex(ctx, EVP_sm4_cbc(), NULL, key, NULL) != 1)
         {
             g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Failed to initialize SM4 encryption");
             EVP_CIPHER_CTX_free(ctx);
@@ -120,8 +120,8 @@ public:
      */
     static std::string sign(const std::string &appKey,
                             const std::string &appSecret,
-                            const std::string &timestamp,
-                            const std::string &queryContent)
+                            const std::string &timestamp
+                            )
     {
         // 参数映射
         std::map<std::string, std::string> params = {
@@ -174,8 +174,8 @@ public:
         std::string app_secret = ci(CONFIG_ITEM_HHT_SECRET);
         std::string timestamp = al_utils::get_current_timestamp_ms();
         auto content = al_utils::URLCodec::encode_query_param(_query_content);
-        std::string signature = SM4SignatureGenerator::sign(app_key, app_secret, timestamp, content);
-        std::string get_req = "https://api-uat.hnjt.top/api/openapi/v1/transport/billInfo?no=" + content;
+        std::string signature = SM4SignatureGenerator::sign(app_key, app_secret, timestamp);
+        std::string get_req = "https://api.hnjt.top/api/openapi/v1/transport/billInfo?no=" + content;
         std::string wget_cmd = "wget --no-check-certificate --method GET --timeout=15 ";
         wget_cmd += "--header 'appKey: " + app_key + "' ";
         wget_cmd += "--header 'signature: " + signature + "' ";

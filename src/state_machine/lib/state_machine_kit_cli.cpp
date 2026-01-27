@@ -70,6 +70,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_ANGLE_THRESHOLD, "平面拟合角度偏差容许值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_PLANE_DISTANCE_THRESHOLD, "平面拟合距离偏差容许值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_CLUSTER_DISTANCE_THRESHOLD, "聚类距离阈值");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_TAIL_CLUSTER_DISTANCE_THRESHOLD, "尾部聚类距离阈值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_CLUSTER_REQUIRED_POINT_NUM, "最小聚类点数");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_I_MAX, "初步过滤强度最大值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_I_MIN, "初步过滤强度最小值");
@@ -83,7 +84,10 @@ static std::unique_ptr<cli::Menu> make_menu()
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_X_MAX, "二次过滤X最大值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MIN, "二次过滤Y最小值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MAX, "二次过滤Y最大值");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Z_MIN, "二次过滤Z最小值");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Z_MAX, "二次过滤Z最大值");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_VOXEL_LEAF_SIZE, "体素滤波叶子大小");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SEG_LENGTH_REQ, "分段长度要求");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_STUFF_NAME, "物料名称");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_VIDEO_NAME, "监控名称");
 

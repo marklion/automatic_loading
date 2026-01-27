@@ -45,6 +45,10 @@ struct lidar_params{
     40: double voxel_leaf_size,
     41: double cluster_distance_threshold,
     42: i32 cluster_required_point_num,
+    43: double seg_length_req,
+    44: double second_range_z_min,
+    45: double second_range_z_max,
+    46: double tail_cluster_distance_threshold,
 }
 
 struct ply_file_info{
@@ -54,9 +58,16 @@ struct ply_file_info{
     4: string tail_full_file_path,
 }
 
+struct run_result{
+    1: double distance,
+    2: double side_z,
+    3: string file_name,
+}
+
 service lidar_service{
     bool set_lidar_params(1: lidar_params params) throws (1: ad_lidar_gen_exp lidar_exp),
     lidar_params get_lidar_params() throws (1: ad_lidar_gen_exp lidar_exp),
     bool turn_on_off_lidar(1: bool is_on) throws (1: ad_lidar_gen_exp lidar_exp),
     ply_file_info cap_current_ply(1:string ply_tag) throws (1: ad_lidar_gen_exp lidar_exp),
+    run_result run_against_file(1:string ply_file, 2:i32 lidar_num) throws (1: ad_lidar_gen_exp lidar_exp),
 }

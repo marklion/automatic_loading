@@ -54,43 +54,51 @@ void log_service_imp::log_print(const std::string &log_msg, const int32_t module
     {
         file_name = "default.log";
     }
-    ofs.open(file_base + file_name, std::ios::out | std::ios::app);
-    if (ofs.is_open())
+    if (level_id == al_log::LOG_LEVEL_ERROR)
     {
-        ofs << log_msg;
-        ofs.close();
-    }
-    // Check if log file exceeds 5000 lines
-    std::ifstream ifs_check(file_base + file_name);
-    if (ifs_check.is_open())
-    {
-        std::string line;
-        int line_count = 0;
-        while (std::getline(ifs_check, line))
+        ofs.open(file_base + file_name, std::ios::out | std::ios::app);
+        if (ofs.is_open())
         {
-            line_count++;
-        }
-        ifs_check.close();
-
-        if (line_count > 5000)
-        {
-            std::ifstream ifs_read(file_base + file_name);
-            std::ofstream ofs_write(file_base + file_name + ".tmp");
-            int first_200_line = 0;
-            while (std::getline(ifs_read, line))
+            ofs << log_msg;
+            ofs.close();
+            // Check file size and trim if necessary
+            std::ifstream check_file(file_base + file_name, std::ios::binary | std::ios::ate);
+            if (check_file.is_open())
             {
-                if (first_200_line++ < 200)
+                if (check_file.tellg() > 100000)
                 {
-                    continue;
+                    check_file.close();
+                    // Read all lines and skip first 100
+                    std::ifstream input_file(file_base + file_name);
+                    std::vector<std::string> lines;
+                    std::string line;
+                    int line_count = 0;
+                    while (std::getline(input_file, line))
+                    {
+                        if (line_count >= 100)
+                        {
+                            lines.push_back(line);
+                        }
+                        line_count++;
+                    }
+                    input_file.close();
+
+                    // Write back
+                    std::ofstream output_file(file_base + file_name);
+                    for (const auto &l : lines)
+                    {
+                        output_file << l << "\n";
+                    }
+                    output_file.close();
                 }
-                ofs_write << line << "\n";
+                else
+                {
+                    check_file.close();
+                }
             }
-            ifs_read.close();
-            ofs_write.close();
-            std::remove((file_base + file_name).c_str());
-            std::rename((file_base + file_name + ".tmp").c_str(), (file_base + file_name).c_str());
         }
     }
+
     if (should_log((al_log::LOG_MODULE)module_id, (al_log::LOG_LEVEL)level_id))
     {
         dispatch_log_message(log_msg);

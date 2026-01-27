@@ -469,6 +469,7 @@ lidar_params state_machine_imp::make_params_from_kit()
 
     ret.angle_threshold = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_ANGLE_THRESHOLD]().c_str());
     ret.cluster_distance_threshold = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_CLUSTER_DISTANCE_THRESHOLD]().c_str());
+    ret.tail_cluster_distance_threshold = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_TAIL_CLUSTER_DISTANCE_THRESHOLD]().c_str());
     ret.cluster_required_point_num = atoi(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_CLUSTER_REQUIRED_POINT_NUM]().c_str());
     ret.first_range_x_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_X_MIN]().c_str());
     ret.first_range_x_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_X_MAX]().c_str());
@@ -480,6 +481,7 @@ lidar_params state_machine_imp::make_params_from_kit()
     ret.first_range_i_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_FIRST_RANGE_I_MAX]().c_str());
     ret.plane_distance_threshold = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_PLANE_DISTANCE_THRESHOLD]().c_str());
     ret.voxel_leaf_size = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_VOXEL_LEAF_SIZE]().c_str());
+    ret.seg_length_req = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SEG_LENGTH_REQ]().c_str());
     ret.head_trans0_0 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_0_0]().c_str());
     ret.head_trans0_1 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_0_1]().c_str());
     ret.head_trans0_2 = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_HEAD_TRANS_0_2]().c_str());
@@ -509,6 +511,8 @@ lidar_params state_machine_imp::make_params_from_kit()
     ret.second_range_x_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_X_MIN]().c_str());
     ret.second_range_y_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MAX]().c_str());
     ret.second_range_y_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MIN]().c_str());
+    ret.second_range_z_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Z_MIN]().c_str());
+    ret.second_range_z_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Z_MAX]().c_str());
 
     return ret;
 }
