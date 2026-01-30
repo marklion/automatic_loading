@@ -6,6 +6,7 @@ const { exec } = require('child_process');
 const cors = require('cors');
 const { DataSyncServer } = require('./websocket-data-sync.js');
 const lockfile = require('proper-lockfile');
+const net = require('net');
 
 const app = express();
 app.use(express.json());
@@ -50,12 +51,67 @@ app.get('/api/cli', async (req, res) => {
     let output = await run_cli(cli_cmd);
     res.send(output);
 })
-app.post('/api/push_sm', async(req, res) => {
+app.post('/api/push_sm', async (req, res) => {
     ws_server.setData('sm_event', req.body);
     res.send({ status: 'ok' });
 });
+const cast_info = {
+    url: '',
+    prompt:'',
+    plate:'',
+    weight:'',
+}
+function send_cast_info() {
+    ws_server.setData('video_cast', cast_info);
+}
+function initTcpClient() {
+    const client = new net.Socket();
+    let buffer = '';
 
-function print_spend(start_time, label='') {
+    client.connect(47001, 'localhost', () => {
+        console.log('TCP连接成功: localhost:47001');
+    });
+
+    client.on('data', (data) => {
+        buffer += data.toString();
+
+        // 尝试解析完整的JSON数据
+        let lines = buffer.split('\n');
+        buffer = lines[lines.length - 1]; // 保留未完成的部分
+
+        for (let i = 0; i < lines.length - 1; i++) {
+            const line = lines[i].trim();
+            if (line) {
+                try {
+                    const jsonData = JSON.parse(line);
+                    console.log('收到JSON数据:', jsonData);
+                    cast_info.url = jsonData.url || '';
+                    cast_info.prompt = jsonData.prompt || '';
+                    cast_info.plate = jsonData.plate || '';
+                    cast_info.weight = jsonData.weight || '';
+                    send_cast_info();
+                } catch (error) {
+                    console.log('JSON解析失败:', line, '错误:', error.message);
+                }
+            }
+        }
+    });
+
+    client.on('error', (error) => {
+        console.error('TCP连接错误:', error.message);
+        // 5秒后重新连接
+        setTimeout(initTcpClient, 5000);
+    });
+
+    client.on('close', () => {
+        console.log('TCP连接已关闭，5秒后重新连接...');
+        setTimeout(initTcpClient, 5000);
+    });
+
+    return client;
+}
+
+function print_spend(start_time, label = '') {
     let end_time = Date.now();
     console.log(`${label} Spend time: ${end_time - start_time} ms`);
     return end_time;
@@ -66,10 +122,10 @@ async function update_status_info() {
     let status_info = {};
     let module_data_map = {
         'modbus_io': 'modbus_io list_devices json',
-        'sm':'state_machine show_status json',
-        'xlrd0':'xlrd read_offset 0',
-        'xlrd1':'xlrd read_offset 1',
-        'scale':'scale read_weight',
+        'sm': 'state_machine show_status json',
+        'xlrd0': 'xlrd read_offset 0',
+        'xlrd1': 'xlrd read_offset 1',
+        'scale': 'scale read_weight',
     };
     for (let [module, cmd] of Object.entries(module_data_map)) {
         let output = await run_cli(cmd);
@@ -98,14 +154,13 @@ async function update_status_info() {
             console.error('Error occurred:', error);
         }
     }
-
+    send_cast_info();
     setTimeout(update_status_info, 200);
 }
-setInterval(async () => {
-
-}, 300);
 
 app.listen(PORT, async () => {
     console.log(`CLI server is running on http://localhost:${PORT}`);
+    // 初始化TCP客户端
+    initTcpClient();
     await update_status_info();
 });

@@ -172,6 +172,7 @@ std::string AD_EVENT_SC::co_list()
 
 void AD_EVENT_SC::runEventLoop()
 {
+    m_mutex = std::make_unique<AD_CO_MUTEX>(shared_from_this());
     while (m_fdToNode.size() > 0)
     {
         bool still_has_ready_co = true;
@@ -269,7 +270,7 @@ void AD_EVENT_SC::non_block_system(const std::string &_cmd)
 
  http_req_resp AD_EVENT_SC::req_http_post(const std::string &_url, const std::string &_body)
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    AD_CO_LOCK_GUARD lock(*m_mutex);
     std::string resp_file_name = "/tmp/req_http_post_response_" + std::to_string(syscall(SYS_gettid)) + ".json";
     std::string log_file_name = "/tmp/req_http_post_log_" + std::to_string(syscall(SYS_gettid)) + ".txt";
     std::string req_cmd = "wget --no-check-certificate --method POST --timeout=15 --header 'Content-Type: application/json'";

@@ -180,10 +180,18 @@ void lidar_imp::start_all_lidar_threads()
                 double tail_distance = tail_lidar->get_distance();
                 double side_z = drop_lidar->get_side_z();
                 state_machine::call_sm_remote(
-                    [drop_distance, tail_distance, side_z](state_machine_serviceClient &sm_client)
+                    [drop_distance](state_machine_serviceClient &sm_client)
                     {
                         sm_client.push_vehicle_front_position(drop_distance);
+                    });
+                state_machine::call_sm_remote(
+                    [tail_distance](state_machine_serviceClient &sm_client)
+                    {
                         sm_client.push_vehicle_tail_position(tail_distance);
+                    });
+                state_machine::call_sm_remote(
+                    [side_z](state_machine_serviceClient &sm_client)
+                    {
                         sm_client.push_side_z(side_z);
                     });
                 drop_lidar->serial_pc();
@@ -529,12 +537,17 @@ void lidar_driver_info::head_get_distance(myPointCloud::Ptr _cloud)
     auto line_DistanceThreshold = params.plane_distance_threshold;
 
     auto key_seg = get_key_seg(pc_after_split_ret.legal_side, line_DistanceThreshold, 0);
-    m_side_z = key_seg.first.z;
     insert_several_points(pc_after_split_ret.legal_side, key_seg.first, key_seg.second);
 
     if (key_seg.second.x - key_seg.first.x > params.seg_length_req)
     {
         update_distance(static_cast<double>((key_seg.second.x)));
+        update_side_z(static_cast<double>(key_seg.second.z));
+    }
+    else
+    {
+        update_distance(0);
+        update_side_z(0);
     }
     put_cloud(pc_after_split_ret.content);
     put_cloud(pc_after_split_ret.legal_side);
@@ -667,7 +680,8 @@ std::pair<myPoint, myPoint> lidar_driver_info::get_key_seg(myPointCloud::Ptr _cl
     {
         auto tmp_point = itr;
         tmp_point.y = max_z_point->y;
-        if (pointToLineDistance(tmp_point.getVector3fMap(), max_z_point->getVector3fMap(), key_line_dir) < line_distance_threshold)
+        auto ptd = pointToLineDistance(tmp_point.getVector3fMap(), max_z_point->getVector3fMap(), key_line_dir);
+        if (ptd < line_distance_threshold)
         {
             line_points.push_back(itr);
         }
@@ -676,7 +690,7 @@ std::pair<myPoint, myPoint> lidar_driver_info::get_key_seg(myPointCloud::Ptr _cl
         line_points.begin(), line_points.end(),
         [](const myPoint &a, const myPoint &b)
         {
-            return a.x < b.x;
+            return a.x > b.x;
         });
     if (line_points.empty())
     {
@@ -704,13 +718,19 @@ std::pair<myPoint, myPoint> lidar_driver_info::get_key_seg(myPointCloud::Ptr _cl
     begin.z = max_z_point->z;
     end.z = max_z_point->z;
 
-    return std::make_pair(begin, end);
+    return std::make_pair(end, begin);
 }
 
 void lidar_driver_info::update_distance(double _dist)
 {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     m_distance = _dist;
+}
+
+void lidar_driver_info::update_side_z(double _z)
+{
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    m_side_z = _z;
 }
 
 void lidar_driver_info::start_driver(int _index)

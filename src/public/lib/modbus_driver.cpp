@@ -29,7 +29,84 @@ static long long get_current_us_stamp()
     return current_useconds;
 }
 
-modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger):m_logger(_logger)
+void modbus_driver::batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta)
+{
+    if (_coil_write_meta.size() > 0)
+    {
+        int base_addr = _coil_write_meta.begin()->second.addr;
+        int reg_num = _coil_write_meta.size();
+        uint8_t *write_buf = (uint8_t *)(calloc(sizeof(uint8_t), reg_num));
+        for (auto &itr : _coil_write_meta)
+        {
+            if (itr.second.addr < base_addr)
+            {
+                base_addr = itr.second.addr;
+            }
+        }
+
+        for (auto &itr : _coil_write_meta)
+        {
+            write_buf[itr.second.addr - base_addr] = itr.second.value ? 1 : 0;
+        }
+        auto modbus_ret = modbus_write_bits(m_ctx, base_addr, reg_num, write_buf);
+        free(write_buf);
+    }
+}
+
+void modbus_driver::batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_read_meta)
+{
+    if (_coil_read_meta.size() > 0)
+    {
+        int base_addr = _coil_read_meta.begin()->second.addr;
+        int reg_num = _coil_read_meta.size();
+        for (auto &itr : _coil_read_meta)
+        {
+            if (itr.second.addr < base_addr)
+            {
+                base_addr = itr.second.addr;
+            }
+        }
+        uint8_t *read_buf = (uint8_t *)(calloc(sizeof(uint8_t), reg_num));
+        auto modbus_ret = modbus_read_input_bits(m_ctx, base_addr, reg_num, read_buf);
+        if (modbus_ret == reg_num)
+        {
+            for (auto &itr : _coil_read_meta)
+            {
+                itr.second.value = (read_buf[itr.second.addr - base_addr] != 0);
+            }
+        }
+        free(read_buf);
+    }
+}
+
+void modbus_driver::batch_float32_abcd_get(std::map<std::string, float_addr_pair> &_float32_abcd_meta)
+{
+    if (_float32_abcd_meta.size() > 0)
+    {
+        int base_addr = _float32_abcd_meta.begin()->second.addr;
+        int reg_num = _float32_abcd_meta.size() * 2;
+        for (auto &itr : _float32_abcd_meta)
+        {
+            if (itr.second.addr < base_addr)
+            {
+                base_addr = itr.second.addr;
+            }
+        }
+        unsigned short *read_buf = (unsigned short *)(calloc(sizeof(unsigned short), reg_num));
+        auto modbus_ret = modbus_read_registers(m_ctx, base_addr, reg_num, read_buf);
+        if (modbus_ret == reg_num)
+        {
+            for (auto &itr : _float32_abcd_meta)
+            {
+                int offset = itr.second.addr - base_addr;
+                itr.second.value = convertRegistersToFloat(read_buf[offset], read_buf[offset + 1]);
+            }
+        }
+        free(read_buf);
+    }
+}
+
+modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger) : m_logger(_logger)
 {
     auto ret = modbus_new_tcp(_ip.c_str(), _port);
     if (ret)
@@ -64,48 +141,11 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     auto tmp_coil_read_meta = m_coil_read_meta;
                     m_mutex.unlock();
                     auto start_us_stamp = get_current_us_stamp();
-                    for (auto &itr : tmp_float32_meta)
-                    {
-                        auto addr = itr.second.addr;
-                        unsigned short reg_buf[2] = {0};
-                        auto modbus_ret = modbus_read_registers(m_ctx, addr, 2, reg_buf);
-                        if (modbus_ret == 2)
-                        {
-                            itr.second.value = convertRegistersToFloat(reg_buf[0], reg_buf[1]);
-                        }
-                        else
-                        {
-                            m_logger->log("modbus_read_registers failed: %s", modbus_strerror(errno));
-                            exception_occurred = true;
-                        }
-                    }
-                    for (auto &itr : tmp_coil_write_meta)
-                    {
-                        auto addr = itr.second.addr;
-                        auto modbus_ret = modbus_write_bit(m_ctx, addr, itr.second.value);
-                        if (1 != modbus_ret)
-                        {
-                            m_logger->log("modbus_write_bit failed: %s", modbus_strerror(errno));
-                            exception_occurred = true;
-                        }
-                    }
-                    for (auto &itr : tmp_coil_read_meta)
-                    {
-                        auto addr = itr.second.addr;
-                        unsigned char coil_value = 0;
-                        auto modbus_ret = modbus_read_input_bits(m_ctx, addr, 1, &coil_value);
-                        if (modbus_ret == 1)
-                        {
-                            itr.second.value = (coil_value != 0);
-                        }
-                        else
-                        {
-                            m_logger->log("modbus_read_bits failed: %s", modbus_strerror(errno));
-                            exception_occurred = true;
-                        }
-                    }
+                    batch_bits_set(tmp_coil_write_meta);
+                    batch_bits_get(tmp_coil_read_meta);
+                    batch_float32_abcd_get(tmp_float32_meta);
                     auto end_us_stamp = get_current_us_stamp();
-                    m_logger->log("modbus_driver loop time: %lld ms", (end_us_stamp - start_us_stamp)/1000);
+                    m_logger->log("modbus_driver loop time: %lld ms", (end_us_stamp - start_us_stamp) / 1000);
                     m_mutex.lock();
                     m_float32_abcd_meta = tmp_float32_meta;
                     m_coil_read_meta = tmp_coil_read_meta;

@@ -66,6 +66,13 @@ al_sm_state_ready::al_sm_state_ready()
 
 void al_sm_state_ready::after_enter()
 {
+    m_sm->sm_set_vehicle_info(m_sm->sm_get_queueed_vehicle_info());
+    lidar_call_remote(
+        [this](lidar_serviceClient &client)
+        {
+            client.turn_on_off_lidar(true);
+        });
+
     m_sm->sm_set_current_prompt("请缓慢往前开");
 }
 
@@ -234,7 +241,6 @@ void state_machine_imp::push_cur_load(const double cur_load)
 
 void state_machine_imp::push_stuff_full_offset(const double offset)
 {
-    sm_set_stuff_full_offset(offset);
     auto &ci = config::root_config::get_instance();
     auto max_offset_str = ci(CONFIG_ITEM_SM_CONFIG_MAX_FULL_OFFSET);
     double max_offset = -10;
@@ -249,7 +255,8 @@ void state_machine_imp::push_stuff_full_offset(const double offset)
     }
     if (max_offset > -10)
     {
-        double stuff_top_z_offset = (0-sm_get_stuff_full_offset() - sm_get_side_z());
+        double stuff_top_z_offset = (0 - offset - sm_get_side_z());
+        sm_set_stuff_full_offset(stuff_top_z_offset);
         if (stuff_top_z_offset >= max_offset)
         {
             sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
@@ -263,14 +270,9 @@ void state_machine_imp::push_stuff_full_offset(const double offset)
 
 void state_machine_imp::trigger_sm(const vehicle_info &v_info)
 {
-    sm_set_vehicle_info(v_info);
+    sm_set_queueed_vehicle_info(v_info);
     if (apply_config_kit(v_info.stuff_name))
     {
-        lidar_call_remote(
-            [this](lidar_serviceClient &client)
-            {
-                client.turn_on_off_lidar(true);
-            });
         sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
     }
 }
@@ -565,6 +567,8 @@ void state_machine_imp::deliver_msg()
     neb::CJsonObject output;
     output.Add("url", sm_get_current_video_url());
     output.Add("prompt", sm_get_current_prompt());
+    output.Add("plate", sm_get_vehicle_info().plate + "|" + sm_get_vehicle_info().stuff_name);
+    output.Add("weight", al_utils::double2string(sm_get_current_load()) + " 吨");
     auto content = output.ToString();
     content += "\n";
     for (auto &node : m_data_nodes)
@@ -936,7 +940,6 @@ void al_sm_state_begin::after_enter()
         {
             m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_LC_READY);
         });
-    m_sm->sm_fix_side_z();
 }
 
 void al_sm_state_begin::before_exit()
@@ -946,6 +949,7 @@ void al_sm_state_begin::before_exit()
         AD_RPC_SC::get_instance()->stopTimer(m_action_timer);
         m_action_timer.reset();
     }
+    m_sm->sm_fix_side_z();
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_begin::handle_event(al_sm_event event)

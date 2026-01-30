@@ -109,6 +109,7 @@ public:
     lidar_driver_info(int _msop_port, int _difop_port) : m_msop_port(_msop_port), m_difop_port(_difop_port) {};
     void process_one_frame(myPointCloud::Ptr _cloud);
     void update_distance(double _dist);
+    void update_side_z(double _z);
     void start_driver(int _index);
     double get_distance();
     double get_side_z();

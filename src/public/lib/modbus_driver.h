@@ -27,6 +27,9 @@ class modbus_driver {
     std::mutex m_mutex;
     std::unique_ptr<modbus_logger> m_logger;
     std::thread *m_work_thread = nullptr;
+    void batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta);
+    void batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_read_meta);
+    void batch_float32_abcd_get(std::map<std::string, float_addr_pair> &_float32_abcd_meta);
 public:
     modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger);
     ~modbus_driver();

@@ -2,6 +2,7 @@
 #include <sys/unistd.h>
 #include <fcntl.h>
 #include <termios.h>
+#include "../../state_machine/lib/state_machine_lib.h"
 static al_log::log_tool g_logger(al_log::LOG_SCALE);
 bool scale_main_impl::set_params(const scale_config_params &_params)
 {
@@ -45,6 +46,11 @@ void scale_main_impl::set_weight(double _weight)
     scale_config_params params;
     get_params(params);
     m_current_weight = _weight * params.weight_coeff;
+    state_machine::call_sm_remote(
+        [&](state_machine_serviceClient &client)
+        {
+            client.push_cur_load(m_current_weight);
+        });
 }
 
 bool SER_FILE_NODE::prepare_serial_port()

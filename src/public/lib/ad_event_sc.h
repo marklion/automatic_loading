@@ -9,6 +9,7 @@
 #include <map>
 #include <mutex>
 
+class AD_CO_MUTEX;
 class AD_EVENT_SC_NODE : public std::enable_shared_from_this<AD_EVENT_SC_NODE>
 {
 public:
@@ -118,7 +119,7 @@ struct http_req_resp{
 
 class AD_EVENT_SC:public std::enable_shared_from_this<AD_EVENT_SC>
 {
-    std::mutex m_mutex;
+    std::unique_ptr<AD_CO_MUTEX> m_mutex;
 public:
     AD_EVENT_SC();
 

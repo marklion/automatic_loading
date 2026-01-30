@@ -118,6 +118,7 @@ class state_machine_imp : public state_machine_serviceIf
     double m_vehicle_tail_x = 0.0;
     std::string m_current_kit;
     vehicle_info m_vi;
+    vehicle_info m_que_vi;
     lidar_params make_params_from_kit();
     std::string m_current_prompt;
     std::string m_current_video_url;
@@ -137,7 +138,10 @@ public:
     }
     ~state_machine_imp();
     void deliver_msg();
-    void sm_set_current_load(double load) { m_current_load = load; }
+    void sm_set_current_load(double load) {
+        m_current_load = load;
+        deliver_msg();
+    }
     double sm_get_current_load() { return m_current_load; }
     void sm_set_stuff_full_offset(double offset) { m_stuff_full_offset = offset; }
     double sm_get_stuff_full_offset() { return m_stuff_full_offset; }
@@ -145,6 +149,8 @@ public:
     std::string sm_get_current_kit() { return m_current_kit; }
     void sm_set_vehicle_info(const vehicle_info &v_info) { m_vi = v_info; }
     vehicle_info sm_get_vehicle_info() { return m_vi; }
+    vehicle_info sm_get_queueed_vehicle_info() { return m_que_vi; }
+    void sm_set_queueed_vehicle_info(const vehicle_info &v_info) { m_que_vi = v_info; }
     void sm_set_vehicle_front_x(double front_x) { m_vehicle_front_x = front_x; }
     double sm_get_vehicle_front_x() { return m_vehicle_front_x; }
     void sm_set_vehicle_tail_x(double tail_x) { m_vehicle_tail_x = tail_x; }
