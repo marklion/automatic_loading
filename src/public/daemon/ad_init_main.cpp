@@ -137,7 +137,6 @@ public:
                 m_pid = new_pid;
                 set_start_time(al_utils::ad_utils_date_time().m_datetime_ms);
                 AD_RPC_SC::get_instance()->registerNode(shared_from_this());
-                rerun_config(m_module_name);
             }
         }
     }
@@ -229,20 +228,34 @@ public:
             _return.push_back(meta);
         }
     }
+    virtual void notify_started(const std::string &module_name)
+    {
+        rerun_config(module_name);
+    }
 };
 int main(int argc, char const *argv[])
 {
-    auto services = make_init_daemon_services();
-    for (auto service : services)
+    int wait_seconds = 0;
+    if (argc > 1)
     {
-        start_all_daemons(service);
-        delete service;
+        wait_seconds = atoi(argv[1]);
+        if (wait_seconds < 0)
+        {
+            wait_seconds = 0;
+        }
     }
+
     auto sc = AD_RPC_SC::get_instance();
-    sc->add_co([&]()
-               {
-        AD_RPC_SC::get_instance()->yield_by_timer(5);
-        rerun_config(); });
+    sc->add_co(
+        [&]()
+        {
+            auto services = make_init_daemon_services();
+            for (auto service : services)
+            {
+                start_all_daemons(service);
+                delete service;
+            }
+        });
     sc->enable_rpc_server(AD_RPC_PROCESS_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<public_serviceProcessor>(std::make_shared<public_service_imp>()));
     sc->start_server();

@@ -30,7 +30,9 @@ struct state_machine_status{
     7: sm_basic_config basic_config,
     8: bool is_front_dropped,
     9: string applied_kit,
-    10: double side_z
+    10: double side_z,
+    11: double expect_load_increase_speed,
+    12: double current_load_increase_speed,
 }
 
 service state_machine_service{

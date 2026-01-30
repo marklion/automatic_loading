@@ -5,6 +5,7 @@
 #include "../../public/lib/modbus_driver.h"
 #include "../../log/lib/log_lib.h"
 #include "../../state_machine/lib/state_machine_lib.h"
+#include "../../public/lib/al_utils.h"
 
 struct my_logger : public modbus_logger
 {
@@ -143,6 +144,6 @@ int main(int argc, char const *argv[])
     auto sc = AD_RPC_SC::get_instance();
     sc->enable_rpc_server(AD_RPC_XLRD_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<xlrd_serviceProcessor>(std::make_shared<xlrd_service_imp>()));
-    sc->start_server();
+    al_utils::start_server_notify_started("xlrd");
     return 0;
 }

@@ -21,6 +21,9 @@ namespace al_utils
     std::string get_current_timestamp_ms();
     std::string util_gbk2utf(const std::string &_utf);
     std::string double2string(const double _value, const int _precision = 2);
+    long long get_current_us_stamp();
+    void start_server_notify_started(const std::string &module_name);
+
     struct ad_utils_date_time
     {
         std::string m_date;

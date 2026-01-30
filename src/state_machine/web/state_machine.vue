@@ -24,6 +24,12 @@
             <el-descriptions-item label="应用配置套件">
                 {{ sm_status.applied_kit }}
             </el-descriptions-item>
+            <el-descriptions-item label="期望放料速度">
+                {{ sm_status.expect_load_increase_speed}}
+            </el-descriptions-item>
+            <el-descriptions-item label="实际放料速度">
+                {{ sm_status.current_load_increase_speed }}
+            </el-descriptions-item>
         </el-descriptions>
         <el-row align="middle">
             <el-col :span="8">

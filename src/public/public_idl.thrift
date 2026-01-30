@@ -10,4 +10,5 @@ struct daemon_meta{
 
 service public_service{
     list<daemon_meta> get_all_daemon_meta() throws (1: ad_public_gen_exp msg),
+    void notify_started(1:string module_name) throws (1: ad_public_gen_exp msg),
 }

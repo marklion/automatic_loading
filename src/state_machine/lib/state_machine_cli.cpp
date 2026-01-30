@@ -183,6 +183,8 @@ static void show_status(std::ostream &out, std::vector<std::string> _params)
                 v_info_json.Add("plate", status.v_info.plate);
                 v_info_json.Add("stuff_name", status.v_info.stuff_name);
                 status_json.Add("vehicle_info", v_info_json);
+                status_json.Add("expect_load_increase_speed", status.expect_load_increase_speed);
+                status_json.Add("current_load_increase_speed", status.current_load_increase_speed);
                 neb::CJsonObject basic_config_json;
                 basic_config_json.Add("max_load", status.basic_config.max_load);
                 basic_config_json.Add("max_full_offset", status.basic_config.max_full_offset);

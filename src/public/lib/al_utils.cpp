@@ -43,6 +43,26 @@ namespace al_utils
         out << std::fixed << std::setprecision(_precision) << _value;
         return out.str();
     }
+    long long get_current_us_stamp()
+    {
+        struct timeval tv;
+        gettimeofday(&tv, nullptr);
+        long long current_useconds = tv.tv_sec * 1000000LL + tv.tv_usec;
+        return current_useconds;
+    }
+    void start_server_notify_started(const std::string &module_name)
+    {
+        AD_RPC_SC::get_instance()->start_server(
+            [module_name]()
+            {
+                AD_RPC_SC::get_instance()->call_remote<public_serviceClient>(
+                    AD_RPC_PROCESS_SERVER_PORT,
+                    [module_name](public_serviceClient &client)
+                    {
+                        client.notify_started(module_name);
+                    });
+            });
+    }
     std::string util_utf2gbk(const std::string &_gbk)
     {
         char in_buff[9600] = {0};

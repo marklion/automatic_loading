@@ -1,4 +1,5 @@
 #include "lidar_imp.h"
+#include "../../public/lib/al_utils.h"
 int main(int argc, char const *argv[])
 {
     auto sc = AD_RPC_SC::get_instance();
@@ -10,6 +11,6 @@ int main(int argc, char const *argv[])
         {
             li->start_all_lidar_threads();
         });
-    sc->start_server();
+    al_utils::start_server_notify_started("lidar");
     return 0;
 }

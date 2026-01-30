@@ -113,3 +113,9 @@ void AD_RPC_SC::start_co_record()
             std::ofstream out(file_name, std::ios::trunc);
             out << get_instance()->co_list(); });
 }
+
+void AD_RPC_SC::start_server(std::function<void()> _init_finish_callback)
+{
+    add_co(_init_finish_callback);
+    start_server();
+}

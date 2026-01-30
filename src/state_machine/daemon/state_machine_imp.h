@@ -7,8 +7,10 @@
 #include "../lidar_gen_code/cpp/lidar_idl_types.h"
 #include "../../public/lib/ad_rpc.h"
 #include "../../log/lib/log_lib.h"
+#include "../../public/lib/al_utils.h"
 #include <memory>
 #include <string>
+#include "../../pid_control/lib/pid_control_lib.h"
 class state_machine_imp;
 struct al_sm_state
 {
@@ -126,6 +128,13 @@ class state_machine_imp : public state_machine_serviceIf
     std::vector<AD_EVENT_SC_TCP_DATA_NODE_PTR> m_data_nodes;
     double m_side_z = 0.0;
     double m_detect_side_z = 0.0;
+    double m_load_increase_speed = 0.0;
+    long long m_last_load_check_time = al_utils::get_current_us_stamp();
+    double m_last_load = 0.0;
+    AD_EVENT_SC_TIMER_NODE_PTR m_load_increase_calc_timer;
+    double m_expect_load_increase_speed = 0.0;
+    std::unique_ptr<pid_control::DiscretePID> m_load_increase_pid;
+    std::unique_ptr<pid_control::DiscretePID> m_stuff_offset_pid;
 public:
     state_machine_imp();
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
@@ -142,6 +151,10 @@ public:
         m_current_load = load;
         deliver_msg();
     }
+    void sm_start_ls_pid();
+    void sm_stop_ls_pid();
+    void sm_start_so_pid();
+    void sm_stop_so_pid();
     double sm_get_current_load() { return m_current_load; }
     void sm_set_stuff_full_offset(double offset) { m_stuff_full_offset = offset; }
     double sm_get_stuff_full_offset() { return m_stuff_full_offset; }
@@ -193,6 +206,9 @@ public:
     virtual bool set_default_kit(const std::string &kit_name);
     virtual void get_default_kit(std::string &_return);
     virtual void push_side_z(const double side_y);
+    void set_expect_load_increase_speed(double speed) { m_expect_load_increase_speed = speed; }
+    double get_expect_load_increase_speed() { return m_expect_load_increase_speed; }
+    double get_load_increase_speed() { return m_load_increase_speed; }
 };
 
 #endif // _STATE_MACHINE_IMP_H_

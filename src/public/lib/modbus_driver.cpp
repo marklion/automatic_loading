@@ -1,4 +1,5 @@
 #include "modbus_driver.h"
+#include "../../public/lib/al_utils.h"
 float convertRegistersToFloat(uint16_t reg0, uint16_t reg1)
 {
     // 创建字节数组
@@ -20,13 +21,6 @@ float convertRegistersToFloat(uint16_t reg0, uint16_t reg1)
     memcpy(&result, &int_val, sizeof(float));
 
     return result;
-}
-static long long get_current_us_stamp()
-{
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    long long current_useconds = tv.tv_sec * 1000000LL + tv.tv_usec;
-    return current_useconds;
 }
 
 void modbus_driver::batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta)
@@ -140,11 +134,11 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     auto tmp_coil_write_meta = m_coil_write_meta;
                     auto tmp_coil_read_meta = m_coil_read_meta;
                     m_mutex.unlock();
-                    auto start_us_stamp = get_current_us_stamp();
+                    auto start_us_stamp = al_utils::get_current_us_stamp();
                     batch_bits_set(tmp_coil_write_meta);
                     batch_bits_get(tmp_coil_read_meta);
                     batch_float32_abcd_get(tmp_float32_meta);
-                    auto end_us_stamp = get_current_us_stamp();
+                    auto end_us_stamp = al_utils::get_current_us_stamp();
                     m_logger->log("modbus_driver loop time: %lld ms", (end_us_stamp - start_us_stamp) / 1000);
                     m_mutex.lock();
                     m_float32_abcd_meta = tmp_float32_meta;

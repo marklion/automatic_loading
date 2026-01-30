@@ -201,7 +201,7 @@ int main(int argc, char const *argv[])
             {
                 g_plate_camera_handle = init_plate_camera(ip, *pmi);
             } });
-    sc->start_server();
+    al_utils::start_server_notify_started("plate_gate");
     VzLPRClient_Cleanup();
     return 0;
 }

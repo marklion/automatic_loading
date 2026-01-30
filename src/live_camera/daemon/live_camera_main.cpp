@@ -109,7 +109,7 @@ int main(int argc, char const *argv[])
     auto sc = AD_RPC_SC::get_instance();
     sc->enable_rpc_server(AD_RPC_LIVE_STREAM_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<live_camera_serviceProcessor>(std::make_shared<live_camera_imp>()));
-    sc->start_server();
+    al_utils::start_server_notify_started("live_camera");
     if (g_server_pid > 0)
     {
         kill(g_server_pid, SIGKILL);

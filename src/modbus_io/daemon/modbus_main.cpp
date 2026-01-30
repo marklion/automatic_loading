@@ -4,6 +4,7 @@
 #include "../../log/lib/log_lib.h"
 #include "../../config/lib/config_lib.h"
 #include "../../public/lib/modbus_driver.h"
+#include "../../public/lib/al_utils.h"
 
 std::vector<std::shared_ptr<modbus_device>> g_devices;
 al_log::log_tool g_logger(al_log::LOG_MODBUS_IO);
@@ -255,6 +256,6 @@ int main(int argc, char const *argv[])
     auto sc = AD_RPC_SC::get_instance();
     sc->enable_rpc_server(AD_RPC_MODBUS_IO_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<modbus_io_serviceProcessor>(std::make_shared<modbus_io_service_imp>()));
-    sc->start_server();
+    al_utils::start_server_notify_started("modbus_io");
     return 0;
 }

@@ -6,6 +6,7 @@
 #include "../../live_camera/lib/live_camera_lib.h"
 #include "../../public/lib/CJsonObject.hpp"
 #include "../../public/lib/al_utils.h"
+#include "../../pid_control/lib/pid_control_lib.h"
 
 void lidar_call_remote(std::function<void(lidar_serviceClient &)> func)
 {
@@ -27,6 +28,9 @@ void al_sm_state_init::after_enter()
     m_sm->sm_set_vehicle_info(vehicle_info());
     m_sm->sm_set_vehicle_front_x(100);
     m_sm->sm_set_vehicle_tail_x(100);
+    m_sm->set_expect_load_increase_speed(0);
+    m_sm->sm_stop_ls_pid();
+    m_sm->sm_stop_so_pid();
     lidar_call_remote(
         [](lidar_serviceClient &client)
         {
@@ -109,6 +113,8 @@ al_sm_state_emergency::al_sm_state_emergency()
 void al_sm_state_emergency::after_enter()
 {
     m_sm->sm_set_current_prompt("请停车");
+    m_sm->sm_stop_ls_pid();
+    m_sm->sm_stop_so_pid();
 }
 
 void al_sm_state_emergency::before_exit()
@@ -138,6 +144,8 @@ al_sm_state_manual::al_sm_state_manual()
 void al_sm_state_manual::after_enter()
 {
     m_sm->sm_set_current_prompt("人工装车");
+    m_sm->sm_stop_ls_pid();
+    m_sm->sm_stop_so_pid();
 }
 
 void al_sm_state_manual::before_exit()
@@ -375,31 +383,22 @@ void state_machine_imp::drop_stuff_control(bool _is_open)
     {
         std::string io_name;
         std::string another_io_name;
-        int stay_second = 2;
         if (_is_open)
         {
             io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
             another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
-            stay_second = atoi(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO_STAY).c_str());
         }
         else
         {
             io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
             another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
-            stay_second = atoi(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO_STAY).c_str());
         }
         if (!io_name.empty())
         {
             modbus_io::set_one_io(another_io_name, false);
             modbus_io::set_one_io(io_name, true);
             m_logger.log_print(al_log::LOG_LEVEL_INFO, "按下 [%s]", io_name.c_str());
-            AD_RPC_SC::get_instance()->start_one_time_timer(
-                stay_second,
-                [io_name, this]()
-                {
-                    modbus_io::set_one_io(io_name, false);
-                    m_logger.log_print(al_log::LOG_LEVEL_INFO, "松开 [%s]", io_name.c_str());
-                });
+            m_logger.log_print(al_log::LOG_LEVEL_INFO, "松开 [%s]", another_io_name.c_str());
         }
     }
 }
@@ -555,10 +554,44 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
             AD_RPC_SC::get_instance())
             .release());
     AD_RPC_SC::get_instance()->registerNode(m_listen_node);
+    m_load_increase_calc_timer = AD_RPC_SC::get_instance()->startTimer(
+        0,
+        333,
+        [this]()
+        {
+            double prev_load = m_last_load;
+            double curr_load = sm_get_current_load();
+            m_last_load = curr_load;
+            m_load_increase_speed = (curr_load - prev_load) * 3.3;
+            if (m_stuff_offset_pid)
+            {
+                auto measured_offset = sm_get_stuff_full_offset();
+                sm_basic_config basic_config;
+                get_basic_config(basic_config);
+                auto expected_offset = basic_config.max_full_offset;
+                auto output = m_stuff_offset_pid->execute(measured_offset, expected_offset);
+                set_expect_load_increase_speed(output);
+            }
+            if (m_load_increase_pid)
+            {
+                auto measured_speed = get_load_increase_speed();
+                auto expected_speed = get_expect_load_increase_speed();
+                auto output = m_load_increase_pid->execute(measured_speed, expected_speed);
+                if (output > 0)
+                {
+                    drop_stuff_control(true);
+                }
+                else if (output < 0)
+                {
+                    drop_stuff_control(false);
+                }
+            }
+        });
 }
 
 state_machine_imp::~state_machine_imp()
 {
+    AD_RPC_SC::get_instance()->stopTimer(m_load_increase_calc_timer);
     AD_RPC_SC::get_instance()->unregisterNode(m_listen_node);
 }
 
@@ -575,6 +608,35 @@ void state_machine_imp::deliver_msg()
     {
         send(node->getFd(), content.c_str(), content.size(), SOCK_NONBLOCK);
     }
+}
+
+void state_machine_imp::sm_start_ls_pid()
+{
+    auto &ci = config::root_config::get_instance();
+    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+    auto kp = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KP).c_str());
+    auto ki = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KI).c_str());
+    auto kd = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KD).c_str());
+    auto dz = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_DZ).c_str());
+    m_load_increase_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, kd, dz, dz - 0.2, 0.333);
+}
+
+void state_machine_imp::sm_stop_ls_pid()
+{
+    m_load_increase_pid.reset();
+}
+
+void state_machine_imp::sm_start_so_pid()
+{
+    auto &ci = config::root_config::get_instance();
+    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+    auto kp = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_SO_KP).c_str());
+    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, 0, 0, 0, 0, 0.333);
+}
+
+void state_machine_imp::sm_stop_so_pid()
+{
+    m_stuff_offset_pid.reset();
 }
 
 void state_machine_imp::save_cur_ply(const std::string &_ply_tag)
@@ -724,13 +786,12 @@ al_sm_state_working::al_sm_state_working()
 
 void al_sm_state_working::after_enter()
 {
-    m_sm->drop_stuff_control(true);
     m_sm->sm_set_current_prompt("请观察料堆高度，快装满时即可缓慢前进");
+    m_sm->sm_start_so_pid();
 }
 
 void al_sm_state_working::before_exit()
 {
-    m_sm->drop_stuff_control(false);
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event)
@@ -767,6 +828,8 @@ al_sm_state_cleanup::al_sm_state_cleanup()
 
 void al_sm_state_cleanup::after_enter()
 {
+    m_sm->sm_stop_ls_pid();
+    m_sm->sm_stop_so_pid();
     m_sm->sm_set_current_prompt("请驶离");
     m_sm->lc_drop_revoke_control(false);
 }
@@ -802,13 +865,11 @@ al_sm_state_ending::al_sm_state_ending()
 
 void al_sm_state_ending::after_enter()
 {
-    m_sm->drop_stuff_control(true);
     m_sm->sm_set_current_prompt("请缓慢前进");
 }
 
 void al_sm_state_ending::before_exit()
 {
-    m_sm->drop_stuff_control(false);
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
@@ -940,6 +1001,7 @@ void al_sm_state_begin::after_enter()
         {
             m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_LC_READY);
         });
+    m_sm->sm_start_ls_pid();
 }
 
 void al_sm_state_begin::before_exit()

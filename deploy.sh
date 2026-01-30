@@ -4,8 +4,8 @@ DATA_DIR=""
 SRC_DIR=`dirname $(realpath $0)`
 DATA_DIR_INPUT=${SRC_DIR}
 PORT_INPUT=35511
-SELF_SERIAL_INPUT=""
 BASE_URL_INPUT=""
+STARTUP_WAIT_SECONDS=0
 is_in_container() {
     ls /.dockerenv >/dev/null 2>&1
 }
@@ -24,7 +24,7 @@ get_docker_image() {
 
 start_all_server() {
     line=`wc -l $0|awk '{print $1}'`
-    line=`expr $line - 102`
+    line=`expr $line - 103`
     mkdir /tmp/sys_mt
     tail -n $line $0 | tar zx  -C /tmp/sys_mt/
     rsync -aK /tmp/sys_mt/ /
@@ -41,11 +41,11 @@ start_all_server() {
     pm2 start /dist/index.js
     wetty -c /bin/ad_cli &
     nginx -c /conf/nginx.conf
-    /bin/init_daemon
+    /bin/init_daemon ${WAIT_SECONDS}
 }
 
 start_docker_con() {
-    local CON_ID=`docker create --privileged --restart=always -e BASE_URL=${BASE_URL_INPUT} -v ${DATA_DIR_INPUT}:/database -p 47001:47001 -p 6690:6690/udp -p 7780:7780/udp -p 6691:6691/udp -p 7781:7781/udp -p 6692:6692/udp -p 7782:7782/udp -p ${PORT_INPUT}:80 ${DOCKER_IMG_NAME} /root/install.sh`
+    local CON_ID=`docker create --privileged --restart=always -e BASE_URL=${BASE_URL_INPUT} -e WAIT_SECONDS=${STARTUP_WAIT_SECONDS} -v ${DATA_DIR_INPUT}:/database -p 47001:47001 -p 6690:6690/udp -p 7780:7780/udp -p 6691:6691/udp -p 7781:7781/udp -p 6692:6692/udp -p 7782:7782/udp -p ${PORT_INPUT}:80 ${DOCKER_IMG_NAME} /root/install.sh`
     docker cp $0 ${CON_ID}:/root/ > /dev/null 2>&1
     docker start ${CON_ID} > /dev/null 2>&1
     echo ${CON_ID}
@@ -57,10 +57,11 @@ print_help_and_exit() {
     echo "    -d: 指定 data_dir 作为数据目录,默认为启动脚本所在目录"
     echo "    -p: 指定 port 作为服务端口,默认为 35511"
     echo "    -b: 指定 base_url 作为外网访问地址"
+    echo "    -w: 指定启动后的配置等待时间(秒),默认为 0 秒"
     exit
 }
 
-while getopts "hd:p:s:b:" arg
+while getopts "hd:p:s:b:w:" arg
 do
     case $arg in
         h)
@@ -72,11 +73,11 @@ do
         p)
             PORT_INPUT=$OPTARG
             ;;
-        s)
-            SELF_SERIAL_INPUT=$OPTARG
-            ;;
         b)
             BASE_URL_INPUT=${OPTARG}
+            ;;
+        w)
+            STARTUP_WAIT_SECONDS=$OPTARG
             ;;
         *)
             echo "invalid args"

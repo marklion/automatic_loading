@@ -91,6 +91,6 @@ int main(int argc, char const *argv[])
     auto sc = AD_RPC_SC::get_instance();
     sc->enable_rpc_server(AD_RPC_HHT_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<hn_hht_serviceProcessor>(std::make_shared<hn_hht_imp>()));
-    sc->start_server();
+    al_utils::start_server_notify_started("hht");
     return 0;
 }

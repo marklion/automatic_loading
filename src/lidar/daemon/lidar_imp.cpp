@@ -140,13 +140,6 @@ void lidar_imp::run_against_file(run_result &_return, const std::string &ply_fil
     auto pi = pdriver->save_ply2file("file_run", false);
     _return.file_name = pi.focus_ply_file;
 }
-long long get_current_us_stamp()
-{
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    long long current_useconds = tv.tv_sec * 1000000LL + tv.tv_usec;
-    return current_useconds;
-}
 
 static std::unique_ptr<robosense::lidar::RSDriverParam> init_rs_param(int msop_port, int difop_port)
 {
@@ -350,7 +343,7 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
     auto AngleThreshold = params.angle_threshold;
     auto cluster_require_points = params.cluster_required_point_num;
 
-    auto start_us_stamp = get_current_us_stamp();
+    auto start_us_stamp = al_utils::get_current_us_stamp();
     pc_after_split ret;
     auto pickup_resp = pickup_pc_from_spec_range(_cloud, _x_plane);
 
@@ -366,7 +359,7 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
     color_cloud(255, 255, 0, ret.legal_side);
     ret.illegal_side = clst_ret.last;
 
-    auto end_us_stamp = get_current_us_stamp();
+    auto end_us_stamp = al_utils::get_current_us_stamp();
     return ret;
 }
 
@@ -855,10 +848,10 @@ void lidar_driver_info::processCloud()
         }
         if (m_need_work)
         {
-            auto begin_us_stamp = get_current_us_stamp();
+            auto begin_us_stamp = al_utils::get_current_us_stamp();
             m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "====start to process one cloud====");
             process_msg(msg);
-            auto end_us_stamp = get_current_us_stamp();
+            auto end_us_stamp = al_utils::get_current_us_stamp();
             m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "====process one cloud takes %ld us====", end_us_stamp - begin_us_stamp);
         }
         m_free_cloud_queue.push(msg);

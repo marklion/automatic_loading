@@ -38,8 +38,11 @@ static std::unique_ptr<cli::Menu> make_menu()
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO, "停止放料按钮名称");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_DROP_LC, "下降溜槽按钮");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_REVOKE_LC, "上升溜槽按钮");
-    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO_STAY, "开始放料按钮按下持续时间(秒)");
-    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO_STAY, "停止放料按钮按下持续时间(秒)");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KP, "放料速度控制P参数");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KI, "放料速度控制I参数");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KD, "放料速度控制D参数");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_DZ, "放料速度控制死区");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_PID_SO_KP, "料位高度控制P参数");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_DROP_LC_STAY, "下降溜槽按钮按下持续时间(秒)");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_REVOKE_LC_STAY, "上升溜槽按钮按下持续时间(秒)");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_IS_FRONT_DROPPING, "是否前放料(1-是,0-否)");

@@ -228,6 +228,7 @@ public:
         signal(SIGPIPE, SIG_IGN);
         runEventLoop();
     }
+    void start_server(std::function<void()> _init_finish_callback);
     void stop_server()
     {
         disable_rpc_server();
