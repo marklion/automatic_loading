@@ -3,7 +3,6 @@
 #include "../../modbus_io/lib/modbus_io_lib.h"
 #include "../lidar_gen_code/cpp/lidar_service.h"
 #include "../lidar_gen_code/cpp/lidar_idl_types.h"
-#include "../../live_camera/lib/live_camera_lib.h"
 #include "../../public/lib/CJsonObject.hpp"
 #include "../../public/lib/al_utils.h"
 #include "../../pid_control/lib/pid_control_lib.h"
@@ -96,7 +95,7 @@ std::unique_ptr<al_sm_state> al_sm_state_ready::handle_event(al_sm_event event)
         new_state = std::make_unique<al_sm_state_manual>();
         break;
     case AL_SM_EVENT_VEHICLE_COME:
-        new_state = std::make_unique<al_sm_state_begin>();
+        new_state = std::make_unique<al_sm_state_judge>();
         break;
     default:
         break;
@@ -569,7 +568,7 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
                 sm_basic_config basic_config;
                 get_basic_config(basic_config);
                 auto expected_offset = basic_config.max_full_offset;
-                auto output = m_stuff_offset_pid->execute(measured_offset, expected_offset);
+                auto output = m_stuff_offset_pid->execute_continuous(measured_offset, expected_offset);
                 set_expect_load_increase_speed(output);
             }
             if (m_load_increase_pid)
@@ -952,6 +951,9 @@ std::string al_sm_state::state_name(al_sm_event _event)
     case AL_SM_EVENT_VEHICLE_COME:
         ret = "车辆到达";
         break;
+    case AL_SM_EVENT_VEHICLE_STAY:
+        ret = "车辆停留";
+        break;
     case AL_SM_EVENT_VEHICLE_LEAVE:
         ret = "车辆离开";
         break;
@@ -1028,6 +1030,65 @@ std::unique_ptr<al_sm_state> al_sm_state_begin::handle_event(al_sm_event event)
         break;
     case AL_SM_EVENT_LC_READY:
         new_state = std::make_unique<al_sm_state_working>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+al_sm_state_judge::al_sm_state_judge()
+{
+    m_name = "判定";
+}
+
+void al_sm_state_judge::after_enter()
+{
+    m_last_head_position = m_sm->sm_get_vehicle_front_x();
+    m_judge_timer = AD_RPC_SC::get_instance()->startTimer(
+        5,
+        [&](){
+            auto last_hp = m_last_head_position;
+            auto curr_hp = m_sm->sm_get_vehicle_front_x();
+            m_last_head_position = curr_hp;
+            sm_basic_config basic_config;
+            m_sm->get_basic_config(basic_config);
+            if (last_hp > basic_config.front_min_x && last_hp < basic_config.front_max_x &&
+                curr_hp > basic_config.front_min_x && curr_hp < basic_config.front_max_x)
+            {
+                m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_STAY);
+            }
+            else if (curr_hp < basic_config.front_min_x)
+            {
+                auto distance = basic_config.front_min_x - curr_hp;
+                m_sm->sm_set_current_prompt("请前进 " + al_utils::double2string(distance) + " 米");
+            }
+            else if (curr_hp > basic_config.front_max_x)
+            {
+                auto distance = curr_hp - basic_config.front_max_x;
+                m_sm->sm_set_current_prompt("请后退 " + al_utils::double2string(distance) + " 米");
+            }
+        });
+}
+
+void al_sm_state_judge::before_exit()
+{
+    AD_RPC_SC::get_instance()->stopTimer(m_judge_timer);
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_judge::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_VEHICLE_STAY:
+        new_state = std::make_unique<al_sm_state_begin>();
         break;
     default:
         break;

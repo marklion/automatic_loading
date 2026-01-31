@@ -21,6 +21,7 @@ struct al_sm_state
         AL_SM_EVENT_RESET_TO_INIT,
         AL_SM_EVENT_GET_READY,
         AL_SM_EVENT_VEHICLE_COME,
+        AL_SM_EVENT_VEHICLE_STAY,
         AL_SM_EVENT_VEHICLE_LEAVE,
         AL_SM_EVENT_VEHICLE_DISAPPEAR,
         AL_SM_EVENT_LOAD_ACHIEVED,
@@ -40,6 +41,16 @@ struct al_sm_state
 struct al_sm_state_working : public al_sm_state
 {
     al_sm_state_working();
+    void after_enter() override;
+    void before_exit() override;
+    std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
+};
+
+struct al_sm_state_judge : public al_sm_state
+{
+    double m_last_head_position = 0;
+    AD_EVENT_SC_TIMER_NODE_PTR m_judge_timer;
+    al_sm_state_judge();
     void after_enter() override;
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
