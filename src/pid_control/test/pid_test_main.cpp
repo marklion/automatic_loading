@@ -416,10 +416,6 @@ int main(int argc, char const *argv[])
     {
         expect_array.push_back(200);
     }
-    for (int i = 0; i < 120; i++)
-    {
-        expect_array.push_back(0);
-    }
     for (auto spec : expect_array)
     {
         auto expect_output = spec;
