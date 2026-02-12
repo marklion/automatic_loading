@@ -7,9 +7,14 @@ const cors = require('cors');
 const { DataSyncServer } = require('./websocket-data-sync.js');
 const lockfile = require('proper-lockfile');
 const net = require('net');
+const multer = require('multer');
 
 const app = express();
 app.use(express.json());
+
+// 配置 multer 用于临时存储上传的文件
+const upload = multer({ dest: '/tmp/uploads/' });
+
 const PORT = 35511;
 
 app.use(cors());
@@ -45,6 +50,49 @@ async function run_cli(cli_cmd) {
     fs.unlinkSync(tmpFile);
     return output;
 }
+
+// 文件上传接口
+app.post('/api/upload_firmware', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: '没有文件被上传' });
+        }
+
+        // 检查文件名是否为 install.sh
+        if (req.file.originalname !== 'install.sh') {
+            // 删除临时文件
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ error: '只允许上传 install.sh 文件' });
+        }
+
+        // 目标路径
+        const targetPath = path.join('/root', 'install.sh');
+
+        // 将文件从临时目录移动到 /root/
+        fs.copyFileSync(req.file.path, targetPath);
+
+        // 删除临时文件
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+            status: 'success',
+            message: '文件上传成功',
+            filepath: targetPath
+        });
+    } catch (error) {
+        console.error('文件上传错误:', error);
+        // 如果临时文件还存在，删除它
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ error: '文件上传失败: ' + error.message });
+    }
+});
+
+app.post('/api/update_system', async (req, res) => {
+    res.send({ status: 'updating' });
+    await runCommand('chmod +x /root/install.sh && kill -9 $(pgrep -f init_daemon)');
+});
 
 app.get('/api/cli', async (req, res) => {
     let cli_cmd = decodeURIComponent(req.query.cmd || '');

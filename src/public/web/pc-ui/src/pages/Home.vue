@@ -1,21 +1,22 @@
 <template>
   <div>
-    <el-input v-model="remote_hostname" placeholder="Please input">
-      <template #append>
-        <el-button @click="enter_config_page" type="primary">进入配置界面</el-button>
-      </template>
-      <template #prepend>
+    <el-row>
+      <el-col :span="8">
+        <el-menu default-active="0" mode="horizontal" :ellipsis="false" @select="handleSelect">
+          <el-menu-item index="0">
+            操作中心
+          </el-menu-item>
+          <el-menu-item index="1">配置工具</el-menu-item>
+          <el-menu-item index="2">更新</el-menu-item>
+        </el-menu>
+      </el-col>
+      <el-col :span="8" v-if="current_nav_index == '0'">
         <el-switch v-model="resize_switch" active-text="允许调整大小" inactive-text="禁止调整大小"></el-switch>
-      </template>
-      <template #prefix v-if="resize_switch">
         <el-button @click="reset_layout">重置布局</el-button>
-      </template>
-    </el-input>
-    <el-dialog v-model="config_page_should_show" :z-index="2000" title="配置" fullscreen>
-      <iframe src="/wetty" style="width: 100vw; height: 80vh; border: none"></iframe>
-    </el-dialog>
-    <grid-layout :layout="layout" :col-num="12" :row-height="30" :is-draggable="resize_switch"
-      :is-resizable="resize_switch" :auto-size="false" @layout-updated="saveLayout">
+      </el-col>
+    </el-row>
+    <grid-layout v-if="current_nav_index == '0'" :layout="layout" :col-num="12" :row-height="30"
+      :is-draggable="resize_switch" :is-resizable="resize_switch" :auto-size="false" @layout-updated="saveLayout">
       <grid-item v-for="item in layout" :key="item.i" :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i">
         <!-- 你的组件内容 -->
         <div style="width: 100%; height: 100%; padding:5px;">
@@ -23,6 +24,14 @@
         </div>
       </grid-item>
     </grid-layout>
+    <div v-else-if="current_nav_index == '1'">
+      <iframe src="/wetty" style="width: 100vw; height: 80vh; border: none"></iframe>
+    </div>
+    <div v-else-if="current_nav_index == '2'">
+      <el-upload action="/api/upload_firmware" :limit="1" :on-success="confirm_update">
+        <el-button type="primary">上传</el-button>
+      </el-upload>
+    </div>
   </div>
 </template>
 
@@ -37,7 +46,10 @@ import Scale from "../../../../../scale/web/scale.vue";
 import { ref, computed, onMounted } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
 import { GridLayout, GridItem } from 'vue3-grid-layout-next';
+import { ElMessageBox } from 'element-plus'
+import axios from "axios";
 const layout = ref([])
+const current_nav_index = ref('0');
 const resize_switch = ref(false);
 const my_components = {
   '0': IoPanel,
@@ -126,9 +138,29 @@ const remote_hostname = computed({
   get: () => hostname_store.remoteName,
   set: (value) => hostname_store.setRemoteName(value),
 });
-const config_page_should_show = ref(false);
-function enter_config_page() {
-  config_page_should_show.value = true;
+function handleSelect(key, keyPath) {
+  current_nav_index.value = key;
+}
+async function confirm_update(response, file, fileList) {
+  if (response.status == "success") {
+    ElMessageBox.confirm('固件上传成功，是否立即更新系统？', '确认', {
+      confirmButtonText: '更新',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }).then(async () => {
+      await axios.post("/api/update_system", {});
+      ElMessageBox.alert('系统将重启以应用更新。', '提示', {
+        confirmButtonText: '确定',
+        callback: () => {
+          window.location.reload();
+        }
+      });
+    }).catch(() => {
+    });
+
+  } else {
+    alert("固件上传失败：" + response.message);
+  }
 }
 </script>
 
