@@ -572,13 +572,13 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
     AD_RPC_SC::get_instance()->registerNode(m_listen_node);
     m_load_increase_calc_timer = AD_RPC_SC::get_instance()->startTimer(
         0,
-        333,
+        80,
         [this]()
         {
             double prev_load = m_last_load;
             double curr_load = sm_get_current_load();
             m_last_load = curr_load;
-            m_load_increase_speed = (curr_load - prev_load) / 0.333;
+            m_load_increase_speed = (curr_load - prev_load) / 0.08;
             if (m_stuff_offset_pid)
             {
                 auto measured_offset = sm_get_stuff_full_offset();
@@ -634,12 +634,13 @@ void state_machine_imp::sm_start_ls_pid()
     auto ki = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KI).c_str());
     auto kd = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KD).c_str());
     auto dz = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_DZ).c_str());
-    m_load_increase_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, kd, dz, 10, 0.333);
+    m_load_increase_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, kd, dz, 10, 0.08);
 }
 
 void state_machine_imp::sm_stop_ls_pid()
 {
     m_load_increase_pid.reset();
+    drop_stuff_control(false);
 }
 
 void state_machine_imp::sm_start_so_pid()
@@ -647,7 +648,7 @@ void state_machine_imp::sm_start_so_pid()
     auto &ci = config::root_config::get_instance();
     auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
     auto kp = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_SO_KP).c_str());
-    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, 0, 0, 0, 10, 0.333);
+    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, 0, 0, 0, 10, 0.08);
 }
 
 void state_machine_imp::sm_stop_so_pid()

@@ -144,7 +144,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     m_float32_abcd_meta = tmp_float32_meta;
                     m_coil_read_meta = tmp_coil_read_meta;
                     m_mutex.unlock();
-                    usleep(1000 * 200);
+                    usleep(1000 * 70);
                 }
                 m_logger->log("modbus_driver thread stopped");
             });

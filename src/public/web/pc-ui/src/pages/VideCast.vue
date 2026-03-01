@@ -4,22 +4,37 @@
             <iframe :key="iframeKey" :src="video_cast_url + '/'"></iframe>
         </div>
         <div class="text-section">
-            <div class="text-block">{{ text1 }}</div>
-            <div class="text-block">{{ text2 }}</div>
-            <div class="text-block">{{ text3 }}</div>
+            <div class="text-block1">{{ text1 }}</div>
+            <div class="text-block2">{{ text2 }}</div>
+            <div class="text-block3">{{ text3 }}</div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { DataSyncClient } from "../ws_sync_client";
 const client = new DataSyncClient('/ws/');
-const text1 = ref("文本一");
-const text2 = ref("文本二");
-const text3 = ref("文本三");
+const text1 = ref("");
+const text2 = ref("欢迎");
+const text3 = ref("");
 const iframeKey = ref(0);
 const video_cast_url = ref('');
+let refreshTimer = null;
+
+onMounted(() => {
+    refreshTimer = setInterval(() => {
+        window.location.reload();
+    }, 20000);
+});
+
+onBeforeUnmount(() => {
+    if (refreshTimer !== null) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+    }
+});
+
 client.watchData((key, value) => {
     if (key === 'video_cast') {
         let orig_url = video_cast_url.value;
@@ -66,8 +81,34 @@ client.watchData((key, value) => {
     padding: 12px;
     box-sizing: border-box;
 }
+.text-block1 {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 60px;
+    font-weight: 700;
+    font-family: "SimHei", "黑体", sans-serif;
+    color: #333333;
+}
+.text-block2 {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 60px;
+    font-weight: 700;
+    font-family: "SimHei", "黑体", sans-serif;
+    color: #333333;
+}
 
-.text-block {
+.text-block3 {
     flex: 1;
     display: flex;
     align-items: center;

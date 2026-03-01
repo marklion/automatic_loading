@@ -405,11 +405,13 @@ int main(int argc, char const *argv[])
     auto Skp = atof(argv[1]);
     auto Ski = atof(argv[2]);
     auto Skd = atof(argv[3]);
-    auto Ckp = atof(argv[4]);
-    ControlledObject co(0, 0, 3, 0.02, 0.002, 0.0005, 0.0003);
-    ItObject io(0.33);
-    pid_control::DiscretePID pc_inner(Skp, Ski, Skd, 0.008, 10, 0.33);
-    pid_control::DiscretePID pc_outer(Ckp, 0, 0, 0, 10, 0.33);
+    auto SDZ = atof(argv[4]);
+    auto Ckp = atof(argv[5]);
+    auto Cki = atof(argv[6]);
+    ControlledObject co(0, 0, 3, 0.02, 0.002, 0,0);
+    ItObject io(0.08);
+    pid_control::DiscretePID pc_inner(Skp, Ski, Skd, SDZ, 10, 0.08);
+    pid_control::DiscretePID pc_outer(Ckp, Cki, 0, 0, 10, 0.08);
 
     std::vector<double> expect_array;
     for (int i = 0; i < 200; i++)

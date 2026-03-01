@@ -33,7 +33,7 @@ public:
     {
         AD_RPC_SC::get_instance()->startTimer(
             0,
-            240,
+            72,
             [this]()
             {
                 auto front_distance = this->read_distance(true);
