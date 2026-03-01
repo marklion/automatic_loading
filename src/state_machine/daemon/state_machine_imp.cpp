@@ -28,6 +28,7 @@ al_sm_state_init::al_sm_state_init()
 void al_sm_state_init::after_enter()
 {
     m_sm->sm_set_current_prompt("");
+    m_sm->sm_set_current_ann("", -1);
     m_sm->sm_set_current_video_url("");
     m_sm->sm_set_current_kit("");
     m_sm->sm_set_stuff_full_offset(100);
@@ -94,6 +95,7 @@ void al_sm_state_ready::after_enter()
         });
 
     m_sm->sm_set_current_prompt("请缓慢往前开");
+    m_sm->sm_set_current_ann("请缓慢前进", 5);
 }
 
 void al_sm_state_ready::before_exit()
@@ -129,6 +131,7 @@ al_sm_state_emergency::al_sm_state_emergency()
 void al_sm_state_emergency::after_enter()
 {
     m_sm->sm_set_current_prompt("请停车");
+    m_sm->sm_set_current_ann("停车停车", -1);
     m_sm->sm_stop_ls_pid();
     m_sm->sm_stop_so_pid();
 }
@@ -370,6 +373,7 @@ bool state_machine_imp::set_basic_config(const sm_basic_config &config)
     ci.set_child(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X, std::to_string(config.front_max_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X, std::to_string(config.tail_min_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X, std::to_string(config.tail_max_x));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_CHANNEL_NAME, config.channel_name);
     return true;
 }
 
@@ -384,6 +388,7 @@ void state_machine_imp::get_basic_config(sm_basic_config &_return)
         _return.front_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X));
         _return.tail_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X));
         _return.tail_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X));
+        _return.channel_name = ci(CONFIG_ITEM_SM_CONFIG_CHANNEL_NAME);
     }
     catch (...)
     {
@@ -476,6 +481,12 @@ void state_machine_imp::get_default_kit(std::string &_return)
 void state_machine_imp::push_side_z(const double side_z)
 {
     m_detect_side_z = side_z;
+}
+
+void state_machine_imp::cast_info_update(const std::string &prompt, const std::string &ann_content, const int32_t ann_gap)
+{
+    sm_set_current_ann(ann_content, ann_gap);
+    sm_set_current_prompt(prompt);
 }
 
 lidar_params state_machine_imp::make_params_from_kit()
@@ -618,6 +629,12 @@ void state_machine_imp::deliver_msg()
     output.Add("prompt", sm_get_current_prompt());
     output.Add("plate", sm_get_vehicle_info().plate + "|" + sm_get_vehicle_info().stuff_name);
     output.Add("weight", al_utils::double2string(sm_get_current_load()) + " 吨");
+    neb::CJsonObject ann_obj;
+    auto ann_info = sm_get_current_ann();
+    ann_obj.Add("content", ann_info.first);
+    ann_obj.Add("gap", ann_info.second);
+    output.Add("ann", ann_obj);
+
     auto content = output.ToString();
     content += "\n";
     for (auto &node : m_data_nodes)
@@ -803,7 +820,8 @@ al_sm_state_working::al_sm_state_working()
 
 void al_sm_state_working::after_enter()
 {
-    m_sm->sm_set_current_prompt("正在装车，请停车");
+    m_sm->sm_set_current_ann("开始装车", -1);
+    m_sm->sm_set_current_prompt("开始装车");
     m_sm->sm_start_so_pid();
 }
 
@@ -848,6 +866,7 @@ void al_sm_state_cleanup::after_enter()
     m_sm->sm_stop_ls_pid();
     m_sm->sm_stop_so_pid();
     m_sm->sm_set_current_prompt("请驶离");
+    m_sm->sm_set_current_ann("请驶离", -1);
     m_sm->lc_drop_revoke_control(false);
 }
 
@@ -882,7 +901,8 @@ al_sm_state_ending::al_sm_state_ending()
 
 void al_sm_state_ending::after_enter()
 {
-    m_sm->sm_set_current_prompt("快装完了，请停车");
+    m_sm->sm_set_current_prompt("快装完了，慢点前进");
+    m_sm->sm_set_current_ann("快装完了，慢点前进", -1);
 }
 
 void al_sm_state_ending::before_exit()
@@ -919,10 +939,13 @@ al_sm_state_pause::al_sm_state_pause()
 void al_sm_state_pause::after_enter()
 {
     m_sm->sm_set_current_prompt("请缓慢前进");
+    m_sm->sm_set_current_ann("前进前进", 5);
 }
 
 void al_sm_state_pause::before_exit()
 {
+    m_sm->sm_set_current_prompt("请停车");
+    m_sm->sm_set_current_ann("停车停车", 1);
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_pause::handle_event(al_sm_event event)
@@ -1008,7 +1031,8 @@ al_sm_state_begin::al_sm_state_begin()
 
 void al_sm_state_begin::after_enter()
 {
-    m_sm->sm_set_current_prompt("请停车等待");
+    m_sm->sm_set_current_prompt("停车到位");
+    m_sm->sm_set_current_ann("停车到位", -1);
     auto stay_second = m_sm->lc_drop_revoke_control(true);
     if (m_action_timer)
     {
@@ -1069,27 +1093,37 @@ void al_sm_state_judge::after_enter()
             auto curr_hp = m_sm->sm_get_vehicle_front_x();
             sm_basic_config basic_config;
             m_sm->get_basic_config(basic_config);
+            std::string ann_content;
             if (curr_hp > basic_config.front_min_x && curr_hp < basic_config.front_max_x)
             {
                 m_sm->sm_set_current_prompt("请停车等待");
                 m_stable_count++;
+                ann_content = "停车停车";
             }
             else if (curr_hp < basic_config.front_min_x)
             {
                 auto distance = basic_config.front_min_x - curr_hp;
                 m_sm->sm_set_current_prompt("请前进 " + al_utils::double2string(distance) + " 米");
                 m_stable_count = 0;
+                ann_content = "前进前进";
             }
             else if (curr_hp > basic_config.front_max_x)
             {
                 auto distance = curr_hp - basic_config.front_max_x;
                 m_sm->sm_set_current_prompt("请后退 " + al_utils::double2string(distance) + " 米");
                 m_stable_count = 0;
+                ann_content = "后退后退";
             }
             if (m_stable_count >= 8)
             {
+                m_sm->sm_set_current_ann("", -1);
                 m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_STAY);
             }
+            else if (ann_content != m_last_ann_content)
+            {
+                m_sm->sm_set_current_ann(ann_content, 5);
+            }
+            m_last_ann_content = ann_content;
         });
 }
 

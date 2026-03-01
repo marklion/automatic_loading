@@ -19,6 +19,7 @@ struct sm_basic_config{
     4: double front_max_x,
     5: double tail_min_x,
     6: double tail_max_x,
+    7: string channel_name,
 }
 struct state_machine_status{
     1: string status,
@@ -56,4 +57,5 @@ service state_machine_service{
     sm_basic_config get_basic_config() throws (1: ad_sm_gen_exp msg),
     bool set_default_kit(1: string kit_name) throws (1: ad_sm_gen_exp msg),
     string get_default_kit() throws (1: ad_sm_gen_exp msg),
+    oneway void cast_info_update(1:string prompt, 2:string ann_content, 3:i32 ann_gap),
 }

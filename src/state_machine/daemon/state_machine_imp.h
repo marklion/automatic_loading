@@ -48,8 +48,8 @@ struct al_sm_state_working : public al_sm_state
 
 struct al_sm_state_judge : public al_sm_state
 {
-    double m_last_head_position = 0;
     int m_stable_count = 0;
+    std::string m_last_ann_content;
     AD_EVENT_SC_TIMER_NODE_PTR m_judge_timer;
     al_sm_state_judge();
     void after_enter() override;
@@ -147,6 +147,8 @@ class state_machine_imp : public state_machine_serviceIf
     double m_expect_load_increase_speed = 0.0;
     std::unique_ptr<pid_control::DiscretePID> m_load_increase_pid;
     std::unique_ptr<pid_control::DiscretePID> m_stuff_offset_pid;
+    std::string m_ann_content;
+    int m_ann_gap;
 public:
     state_machine_imp();
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
@@ -162,6 +164,18 @@ public:
     void sm_set_current_load(double load) {
         m_current_load = load;
         deliver_msg();
+    }
+    void sm_set_current_ann(const std::string &content, int gap)
+    {
+        sm_basic_config tmp_info;
+        get_basic_config(tmp_info);
+        m_ann_content = tmp_info.channel_name + "," + content;
+        m_ann_gap = gap;
+        deliver_msg();
+    }
+    std::pair<std::string, int> sm_get_current_ann()
+    {
+        return {m_ann_content, m_ann_gap};
     }
     void sm_start_ls_pid();
     void sm_stop_ls_pid();
@@ -221,6 +235,7 @@ public:
     void set_expect_load_increase_speed(double speed) { m_expect_load_increase_speed = speed; }
     double get_expect_load_increase_speed() { return m_expect_load_increase_speed; }
     double get_load_increase_speed() { return m_load_increase_speed; }
+    virtual void cast_info_update(const std::string &prompt, const std::string &ann_content, const int32_t ann_gap);
 };
 
 #endif // _STATE_MACHINE_IMP_H_

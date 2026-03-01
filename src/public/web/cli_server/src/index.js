@@ -108,6 +108,10 @@ const cast_info = {
     prompt:'',
     plate:'',
     weight:'',
+    ann:{
+        content:'',
+        gap:-1,
+    }
 }
 function send_cast_info() {
     ws_server.setData('video_cast', cast_info);
@@ -137,6 +141,7 @@ function initTcpClient() {
                     cast_info.prompt = jsonData.prompt || '';
                     cast_info.plate = jsonData.plate || '';
                     cast_info.weight = jsonData.weight || '';
+                    cast_info.ann = jsonData.ann || { content: '', gap: -1 };
                     send_cast_info();
                 } catch (error) {
                     console.log('JSON解析失败:', line, '错误:', error.message);

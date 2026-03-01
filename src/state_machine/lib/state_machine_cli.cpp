@@ -239,6 +239,7 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
     check_resp += common_cli::check_params(_params, 3, "车头位置最大值:");
     check_resp += common_cli::check_params(_params, 4, "车尾位置最小值:");
     check_resp += common_cli::check_params(_params, 5, "车尾位置最大值:");
+    check_resp += common_cli::check_params(_params, 6, "通道名称:");
     if (check_resp.empty())
     {
         sm_basic_config config;
@@ -250,6 +251,7 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
             config.front_max_x = std::stod(_params[3]);
             config.tail_min_x = std::stod(_params[4]);
             config.tail_max_x = std::stod(_params[5]);
+            config.channel_name = _params[6];
         }
         catch (...)
         {
@@ -315,6 +317,37 @@ static void default_kit(std::ostream &out, std::vector<std::string> _params)
     }
 }
 
+static void cast_info(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请输入提示语:");
+    check_resp += common_cli::check_params(_params, 1, "请输入公告内容:");
+    check_resp += common_cli::check_params(_params, 2, "请输入公告间隔(秒):");
+    if (check_resp.empty())
+    {
+        std::string prompt = _params[0];
+        std::string ann_content = _params[1];
+        int ann_gap = std::stoi(_params[2]);
+        state_machine::call_sm_remote(
+            [&](state_machine_serviceClient &client)
+            {
+                client.cast_info_update(prompt, ann_content, ann_gap);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
+static void cast_clean(std::ostream &out, std::vector<std::string> _params)
+{
+    state_machine::call_sm_remote(
+        [&](state_machine_serviceClient &client)
+        {
+            client.cast_info_update("", "", -1);
+        });
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     g_sm_kit_cli = new state_machine_kit_cli();
@@ -323,7 +356,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(kit_delete_item), "删除配置项", {"<kit_name>", "<item_key>"});
     sm_menu->Insert(CLI_MENU_ITEM(delete_kit), "删除配置套件", {"<kit_name>"});
     sm_menu->Insert(CLI_MENU_ITEM(list_kits_json), "列出配置套件", {});
-    sm_menu->Insert(CLI_MENU_ITEM(set_basic_config), "设置基本配置", {"<max_load>", "<max_full_offset>", "<front_min_x>", "<front_max_x>", "<tail_min_x>", "<tail_max_x>"});
+    sm_menu->Insert(CLI_MENU_ITEM(set_basic_config), "设置基本配置", {"<max_load>", "<max_full_offset>", "<front_min_x>", "<front_max_x>", "<tail_min_x>", "<tail_max_x>", "<channel_name>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_load), "模拟当前重量", {"<load_value>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_offset), "模拟满载偏移", {"<offset_value>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_front_x), "模拟车头位置", {"<front_x>"});
@@ -332,6 +365,8 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(mock_vehicle_info), "模拟车辆信息", {"<plate>", "<stuff_name>"});
     sm_menu->Insert(CLI_MENU_ITEM(sm_opt), "状态机操作", {"<e|r>"});
     sm_menu->Insert(CLI_MENU_ITEM(default_kit), "设置默认配置套件", {"<kit_name>"});
+    sm_menu->Insert(CLI_MENU_ITEM(cast_info), "更新提示信息", {"<prompt>", "<ann_content>", "<ann_gap>"});
+    sm_menu->Insert(CLI_MENU_ITEM(cast_clean), "清除提示信息", {});
     sm_menu->Insert(std::move(g_sm_kit_cli->menu));
 
     return sm_menu;
@@ -370,7 +405,8 @@ std::string state_machine_cli::make_bdr()
                     std::to_string(bc.front_min_x) + " " +
                     std::to_string(bc.front_max_x) + " " +
                     std::to_string(bc.tail_min_x) + " " +
-                    std::to_string(bc.tail_max_x) + "\n";
+                    std::to_string(bc.tail_max_x) + " \"" +
+                    bc.channel_name + "\"\n";
             }
             std::string default_kit;
             client.get_default_kit(default_kit);

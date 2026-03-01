@@ -14,6 +14,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { DataSyncClient } from "../ws_sync_client";
+import Speech from 'speak-tts';
 const client = new DataSyncClient('/ws/');
 const text1 = ref("");
 const text2 = ref("欢迎");
@@ -21,11 +22,34 @@ const text3 = ref("");
 const iframeKey = ref(0);
 const video_cast_url = ref('');
 let refreshTimer = null;
+let ann_timer = null;
 
-onMounted(() => {
-    refreshTimer = setInterval(() => {
-        window.location.reload();
-    }, 20000);
+let ann_content = '';
+let ann_gap = -1;
+let ann_should_refresh = false;
+let ann_gap_counter = 0;
+
+onMounted(async () => {
+    // refreshTimer = setInterval(() => {
+    //     window.location.reload();
+    // }, 60 * 1000 * 5);
+    ann_timer = setInterval(() => {
+        if (ann_should_refresh) {
+            do_ann(ann_content);
+            ann_should_refresh = false;
+        }
+        ann_gap_counter += 1;
+        if (ann_gap > 0 && ann_gap_counter >= ann_gap) {
+            ann_should_refresh = true;
+            ann_gap_counter = 0;
+        }
+    }, 1000);
+    await speech.init({
+        volume: 1, // 音量
+        lang: 'zh-CN', // 语言，设置为中文
+        rate: 1, // 语速
+        pitch: 1, // 音调
+    });
 });
 
 onBeforeUnmount(() => {
@@ -33,7 +57,27 @@ onBeforeUnmount(() => {
         clearInterval(refreshTimer);
         refreshTimer = null;
     }
+    if (ann_timer !== null) {
+        clearInterval(ann_timer);
+        ann_timer = null;
+    }
 });
+const speech = new Speech();
+
+
+// 播报方法
+const speak = async (text) => {
+    if (speech.hasBrowserSupport()) {
+        await speech.speak({
+            text: text,
+        });
+    }
+};
+async function do_ann(content) {
+    if (content && content.trim() !== '') {
+        await speak(content);
+    }
+}
 
 client.watchData((key, value) => {
     if (key === 'video_cast') {
@@ -42,12 +86,17 @@ client.watchData((key, value) => {
         text2.value = value.prompt;
         text1.value = value.plate;
         text3.value = value.weight;
-        if (video_cast_url.value != orig_url)
-        {
-        iframeKey.value += 1;  // 强制刷新 iframe
+        if (video_cast_url.value != orig_url) {
+            iframeKey.value += 1;  // 强制刷新 iframe
         }
         if (video_cast_url.value === '') {
             video_cast_url.value = 'about:blank';
+        }
+        if (ann_content != value.ann.content || ann_gap != value.ann.gap) {
+            ann_content = value.ann.content;
+            ann_gap = value.ann.gap;
+            ann_should_refresh = true;
+            ann_gap_counter = 0;
         }
     }
 }, 'video_cast');
@@ -81,6 +130,7 @@ client.watchData((key, value) => {
     padding: 12px;
     box-sizing: border-box;
 }
+
 .text-block1 {
     flex: 1;
     display: flex;
@@ -89,11 +139,12 @@ client.watchData((key, value) => {
     background: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 60px;
+    font-size: 40px;
     font-weight: 700;
     font-family: "SimHei", "黑体", sans-serif;
     color: #333333;
 }
+
 .text-block2 {
     flex: 1;
     display: flex;
@@ -102,7 +153,7 @@ client.watchData((key, value) => {
     background: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 60px;
+    font-size: 80px;
     font-weight: 700;
     font-family: "SimHei", "黑体", sans-serif;
     color: #333333;
