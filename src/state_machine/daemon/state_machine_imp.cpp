@@ -6,6 +6,13 @@
 #include "../../public/lib/CJsonObject.hpp"
 #include "../../public/lib/al_utils.h"
 #include "../../pid_control/lib/pid_control_lib.h"
+#include "../plate_gate_gen_code/cpp/plate_gate_idl_types.h"
+#include "../plate_gate_gen_code/cpp/plate_gate_service.h"
+
+void plate_gate_call_remote(std::function<void(plate_gate_serviceClient &)> func)
+{
+    AD_RPC_SC::get_instance()->call_remote<plate_gate_serviceClient>(AD_RPC_PLATE_GATE_SERVER_PORT, func);
+}
 
 void lidar_call_remote(std::function<void(lidar_serviceClient &)> func)
 {
@@ -34,6 +41,11 @@ void al_sm_state_init::after_enter()
         [](lidar_serviceClient &client)
         {
             client.turn_on_off_lidar(false);
+        });
+    plate_gate_call_remote(
+        [](plate_gate_serviceClient &client)
+        {
+            client.control_gate(false);
         });
 }
 
@@ -74,6 +86,11 @@ void al_sm_state_ready::after_enter()
         [this](lidar_serviceClient &client)
         {
             client.turn_on_off_lidar(true);
+        });
+    plate_gate_call_remote(
+        [this](plate_gate_serviceClient &client)
+        {
+            client.control_gate(true);
         });
 
     m_sm->sm_set_current_prompt("请缓慢往前开");
@@ -561,7 +578,7 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
             double prev_load = m_last_load;
             double curr_load = sm_get_current_load();
             m_last_load = curr_load;
-            m_load_increase_speed = (curr_load - prev_load) * 3.3;
+            m_load_increase_speed = (curr_load - prev_load) / 0.333;
             if (m_stuff_offset_pid)
             {
                 auto measured_offset = sm_get_stuff_full_offset();
@@ -617,7 +634,7 @@ void state_machine_imp::sm_start_ls_pid()
     auto ki = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KI).c_str());
     auto kd = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KD).c_str());
     auto dz = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_DZ).c_str());
-    m_load_increase_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, kd, dz, dz - 0.2, 0.333);
+    m_load_increase_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, kd, dz, 10, 0.333);
 }
 
 void state_machine_imp::sm_stop_ls_pid()
@@ -630,7 +647,7 @@ void state_machine_imp::sm_start_so_pid()
     auto &ci = config::root_config::get_instance();
     auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
     auto kp = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_SO_KP).c_str());
-    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, 0, 0, 0, 0, 0.333);
+    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, 0, 0, 0, 10, 0.333);
 }
 
 void state_machine_imp::sm_stop_so_pid()
@@ -785,7 +802,7 @@ al_sm_state_working::al_sm_state_working()
 
 void al_sm_state_working::after_enter()
 {
-    m_sm->sm_set_current_prompt("请观察料堆高度，快装满时即可缓慢前进");
+    m_sm->sm_set_current_prompt("正在装车，请停车");
     m_sm->sm_start_so_pid();
 }
 
@@ -864,7 +881,7 @@ al_sm_state_ending::al_sm_state_ending()
 
 void al_sm_state_ending::after_enter()
 {
-    m_sm->sm_set_current_prompt("请缓慢前进");
+    m_sm->sm_set_current_prompt("快装完了，请停车");
 }
 
 void al_sm_state_ending::before_exit()
@@ -1044,29 +1061,33 @@ al_sm_state_judge::al_sm_state_judge()
 
 void al_sm_state_judge::after_enter()
 {
-    m_last_head_position = m_sm->sm_get_vehicle_front_x();
     m_judge_timer = AD_RPC_SC::get_instance()->startTimer(
-        5,
-        [&](){
-            auto last_hp = m_last_head_position;
+        0, 500,
+        [&]()
+        {
             auto curr_hp = m_sm->sm_get_vehicle_front_x();
-            m_last_head_position = curr_hp;
             sm_basic_config basic_config;
             m_sm->get_basic_config(basic_config);
-            if (last_hp > basic_config.front_min_x && last_hp < basic_config.front_max_x &&
-                curr_hp > basic_config.front_min_x && curr_hp < basic_config.front_max_x)
+            if (curr_hp > basic_config.front_min_x && curr_hp < basic_config.front_max_x)
             {
-                m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_STAY);
+                m_sm->sm_set_current_prompt("请停车等待");
+                m_stable_count++;
             }
             else if (curr_hp < basic_config.front_min_x)
             {
                 auto distance = basic_config.front_min_x - curr_hp;
                 m_sm->sm_set_current_prompt("请前进 " + al_utils::double2string(distance) + " 米");
+                m_stable_count = 0;
             }
             else if (curr_hp > basic_config.front_max_x)
             {
                 auto distance = curr_hp - basic_config.front_max_x;
                 m_sm->sm_set_current_prompt("请后退 " + al_utils::double2string(distance) + " 米");
+                m_stable_count = 0;
+            }
+            if (m_stable_count >= 8)
+            {
+                m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_STAY);
             }
         });
 }

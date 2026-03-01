@@ -8,6 +8,7 @@ add_compile_options(-std=gnu++14 -g)
 aux_source_directory(./ MAIN_SRC)
 aux_source_directory(../gen_code/cpp RPC_SRC)
 aux_source_directory(../lidar_gen_code/cpp RPC_SRC)
+aux_source_directory(../plate_gate_gen_code/cpp RPC_SRC)
 
 find_library(LOG_LIB liblog_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
 find_library(AL_UTILS_LIB libal_utils.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)

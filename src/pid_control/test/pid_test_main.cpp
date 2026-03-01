@@ -386,7 +386,7 @@ private:
 };
 
 class ItObject{
-    double m_self = 0;
+    double m_self = -2.8;
     double m_delta_time = 0.1;
 public:
     ItObject(double _delta_time):m_delta_time(_delta_time){}
@@ -406,15 +406,15 @@ int main(int argc, char const *argv[])
     auto Ski = atof(argv[2]);
     auto Skd = atof(argv[3]);
     auto Ckp = atof(argv[4]);
-    ControlledObject co(0, 0, 150, 3.4, 0.2, 0.5, 0.03);
-    ItObject io(0.1);
-    pid_control::DiscretePID pc_inner(Skp, Ski, Skd, 8, 10, 0.1);
-    pid_control::DiscretePID pc_outer(Ckp, 0, 0, 0, 10, 0.1);
+    ControlledObject co(0, 0, 3, 0.02, 0.002, 0.0005, 0.0003);
+    ItObject io(0.33);
+    pid_control::DiscretePID pc_inner(Skp, Ski, Skd, 0.008, 10, 0.33);
+    pid_control::DiscretePID pc_outer(Ckp, 0, 0, 0, 10, 0.33);
 
-    std::vector<int> expect_array;
-    for (int i = 0; i < 120; i++)
+    std::vector<double> expect_array;
+    for (int i = 0; i < 200; i++)
     {
-        expect_array.push_back(200);
+        expect_array.push_back(-0.6);
     }
     for (auto spec : expect_array)
     {

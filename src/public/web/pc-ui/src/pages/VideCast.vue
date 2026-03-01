@@ -75,7 +75,7 @@ client.watchData((key, value) => {
     background: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 42px;
+    font-size: 100px;
     font-weight: 700;
     font-family: "SimHei", "黑体", sans-serif;
     color: #333333;

@@ -49,6 +49,7 @@ struct al_sm_state_working : public al_sm_state
 struct al_sm_state_judge : public al_sm_state
 {
     double m_last_head_position = 0;
+    int m_stable_count = 0;
     AD_EVENT_SC_TIMER_NODE_PTR m_judge_timer;
     al_sm_state_judge();
     void after_enter() override;
