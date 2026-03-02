@@ -5,7 +5,7 @@
         </div>
         <div class="text-section">
             <div class="text-block1">{{ text1 }}</div>
-            <div class="text-block2">{{ text2 }}</div>
+            <div :class="['text-block2', { 'text-block2-stop': text2.includes('停车') }]">{{ text2 }}</div>
             <div class="text-block3">{{ text3 }}</div>
         </div>
     </div>
@@ -48,7 +48,8 @@ onMounted(async () => {
         volume: 1, // 音量
         lang: 'zh-CN', // 语言，设置为中文
         rate: 1, // 语速
-        pitch: 1, // 音调
+        pitch: 1, // 音调,
+        voice:"Google 普通话（中国大陆）",
     });
 });
 
@@ -112,7 +113,7 @@ client.watchData((key, value) => {
 }
 
 .iframe-section {
-    flex: 4 1 80%;
+    flex: 4 1 20%;
     min-height: 0;
 }
 
@@ -153,10 +154,15 @@ client.watchData((key, value) => {
     background: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 80px;
+    font-size: 90px;
+    letter-spacing: 0.08em;
     font-weight: 700;
     font-family: "SimHei", "黑体", sans-serif;
-    color: #333333;
+    color: #063d96;
+}
+
+.text-block2-stop {
+    background: #ff0000;
 }
 
 .text-block3 {
