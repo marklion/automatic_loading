@@ -240,6 +240,7 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
     check_resp += common_cli::check_params(_params, 4, "车尾位置最小值:");
     check_resp += common_cli::check_params(_params, 5, "车尾位置最大值:");
     check_resp += common_cli::check_params(_params, 6, "通道名称:");
+    check_resp += common_cli::check_params(_params, 7, "最大卸载速度:");
     if (check_resp.empty())
     {
         sm_basic_config config;
@@ -252,6 +253,7 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
             config.tail_min_x = std::stod(_params[4]);
             config.tail_max_x = std::stod(_params[5]);
             config.channel_name = _params[6];
+            config.max_drop_speed = std::stod(_params[7]);
         }
         catch (...)
         {
@@ -356,7 +358,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(kit_delete_item), "删除配置项", {"<kit_name>", "<item_key>"});
     sm_menu->Insert(CLI_MENU_ITEM(delete_kit), "删除配置套件", {"<kit_name>"});
     sm_menu->Insert(CLI_MENU_ITEM(list_kits_json), "列出配置套件", {});
-    sm_menu->Insert(CLI_MENU_ITEM(set_basic_config), "设置基本配置", {"<max_load>", "<max_full_offset>", "<front_min_x>", "<front_max_x>", "<tail_min_x>", "<tail_max_x>", "<channel_name>"});
+    sm_menu->Insert(CLI_MENU_ITEM(set_basic_config), "设置基本配置", {"<max_load>", "<max_full_offset>", "<front_min_x>", "<front_max_x>", "<tail_min_x>", "<tail_max_x>", "<channel_name> <max_drop_speed>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_load), "模拟当前重量", {"<load_value>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_offset), "模拟满载偏移", {"<offset_value>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_front_x), "模拟车头位置", {"<front_x>"});
@@ -406,7 +408,8 @@ std::string state_machine_cli::make_bdr()
                     std::to_string(bc.front_max_x) + " " +
                     std::to_string(bc.tail_min_x) + " " +
                     std::to_string(bc.tail_max_x) + " \"" +
-                    bc.channel_name + "\"\n";
+                    bc.channel_name + "\" " +
+                    std::to_string(bc.max_drop_speed) + "\n";
             }
             std::string default_kit;
             client.get_default_kit(default_kit);

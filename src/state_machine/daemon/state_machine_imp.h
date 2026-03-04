@@ -29,6 +29,7 @@ struct al_sm_state
         AL_SM_EVENT_REACH_FULL,
         AL_SM_EVENT_BACK_TO_EMPTY,
         AL_SM_EVENT_LC_READY,
+        AL_SM_EVENT_LACK_LOAD,
     };
     state_machine_imp *m_sm = nullptr;
     std::string m_name;
@@ -142,13 +143,14 @@ class state_machine_imp : public state_machine_serviceIf
     double m_detect_side_z = 0.0;
     double m_load_increase_speed = 0.0;
     long long m_last_load_check_time = al_utils::get_current_us_stamp();
-    double m_last_load = 0.0;
     AD_EVENT_SC_TIMER_NODE_PTR m_load_increase_calc_timer;
     double m_expect_load_increase_speed = 0.0;
     std::unique_ptr<pid_control::DiscretePID> m_load_increase_pid;
     std::unique_ptr<pid_control::DiscretePID> m_stuff_offset_pid;
+    std::unique_ptr<pid_control::SmithPredictor> m_smith;
     std::string m_ann_content;
     int m_ann_gap;
+    pid_control::FixedWindowRateCalculator m_fwrc;
 public:
     state_machine_imp();
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
@@ -232,7 +234,7 @@ public:
     virtual bool set_default_kit(const std::string &kit_name);
     virtual void get_default_kit(std::string &_return);
     virtual void push_side_z(const double side_y);
-    void set_expect_load_increase_speed(double speed) { m_expect_load_increase_speed = speed; }
+    void set_expect_load_increase_speed(double speed);
     double get_expect_load_increase_speed() { return m_expect_load_increase_speed; }
     double get_load_increase_speed() { return m_load_increase_speed; }
     virtual void cast_info_update(const std::string &prompt, const std::string &ann_content, const int32_t ann_gap);

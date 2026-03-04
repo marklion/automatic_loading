@@ -716,8 +716,9 @@ std::pair<myPoint, myPoint> lidar_driver_info::get_key_seg(myPointCloud::Ptr _cl
 
 void lidar_driver_info::update_distance(double _dist)
 {
+    auto dist_after_filter = m_lp_filter.filter(_dist);
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
-    m_distance = _dist;
+    m_distance = dist_after_filter;
 }
 
 void lidar_driver_info::update_side_z(double _z)

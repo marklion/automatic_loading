@@ -38,12 +38,12 @@ onMounted(async () => {
             do_ann(ann_content);
             ann_should_refresh = false;
         }
-        ann_gap_counter += 1;
+        ann_gap_counter += 0.2;
         if (ann_gap > 0 && ann_gap_counter >= ann_gap) {
             ann_should_refresh = true;
             ann_gap_counter = 0;
         }
-    }, 1000);
+    }, 200);
     await speech.init({
         volume: 1, // 音量
         lang: 'zh-CN', // 语言，设置为中文

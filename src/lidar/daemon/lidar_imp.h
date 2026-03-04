@@ -10,11 +10,73 @@
 #include <rs_driver/msg/pcl_point_cloud_msg.hpp>
 #include <rs_driver/utility/sync_queue.hpp>
 #include <pcl/ModelCoefficients.h>
+#include <iostream>
+#include <vector>
+#include <cmath>
 
 typedef pcl::PointXYZRGB myPoint;
 typedef pcl::PointCloud<myPoint> myPointCloud;
 typedef PointCloudT<pcl::PointXYZI> pcMsg;
 
+class LowPassFilter
+{
+private:
+    double alpha;       // 滤波系数
+    double prev_output; // 上一次的输出值
+    bool initialized;   // 是否已初始化
+
+public:
+    // 构造函数：通过截止频率和采样频率计算系数
+    LowPassFilter(double cutoff_freq, double sample_freq)
+    {
+        double dt = 1.0 / sample_freq;
+        double rc = 1.0 / (2 * M_PI * cutoff_freq);
+        alpha = dt / (rc + dt);
+        prev_output = 0.0;
+        initialized = false;
+    }
+
+    // 构造函数：直接设置alpha系数
+    LowPassFilter(double alpha_coef) : alpha(alpha_coef), prev_output(0.0), initialized(false) {}
+
+    // 滤波函数
+    double filter(double input)
+    {
+        if (!initialized)
+        {
+            prev_output = input;
+            initialized = true;
+        }
+
+        double output = alpha * input + (1 - alpha) * prev_output;
+        prev_output = output;
+        return output;
+    }
+
+    // 重置滤波器状态
+    void reset()
+    {
+        prev_output = 0.0;
+        initialized = false;
+    }
+
+    // 批量滤波
+    std::vector<double> filter(const std::vector<double> &inputs)
+    {
+        std::vector<double> outputs;
+        outputs.reserve(inputs.size());
+
+        for (double input : inputs)
+        {
+            outputs.push_back(filter(input));
+        }
+
+        return outputs;
+    }
+
+    // 获取当前系数
+    double getAlpha() const { return alpha; }
+};
 struct lidar_ply_info
 {
     std::string full_ply_file;
@@ -45,6 +107,7 @@ enum LIDAR_POS_TYPE
 class lidar_imp;
 class lidar_driver_info
 {
+    LowPassFilter m_lp_filter;
     double m_distance = 0;
     double m_side_z = 0;
     std::recursive_mutex m_mutex;
@@ -105,8 +168,9 @@ class lidar_driver_info
     std::unique_ptr<myPoint> find_max_or_min_z_point(myPointCloud::Ptr _cloud, float _line_distance_threshold);
     float pointToLineDistance(const Eigen::Vector3f &point, const Eigen::Vector3f &line_point, const Eigen::Vector3f &line_dir);
     void insert_several_points(myPointCloud::Ptr _cloud, const myPoint &p1, const myPoint &p2, bool _is_red = false);
+
 public:
-    lidar_driver_info(int _msop_port, int _difop_port) : m_msop_port(_msop_port), m_difop_port(_difop_port) {};
+    lidar_driver_info(int _msop_port, int _difop_port) : m_msop_port(_msop_port), m_difop_port(_difop_port), m_lp_filter(0.05) {};
     void process_one_frame(myPointCloud::Ptr _cloud);
     void update_distance(double _dist);
     void update_side_z(double _z);
@@ -138,12 +202,13 @@ class lidar_imp : public lidar_serviceIf
     };
     LIDAR_INDEX get_lidar_index_by_type(LIDAR_POS_TYPE _type);
     bool m_is_lidar_on = false;
+
 public:
     virtual bool set_lidar_params(const lidar_params &params);
     virtual bool turn_on_off_lidar(const bool is_on);
     virtual void get_lidar_params(lidar_params &_return);
     virtual void cap_current_ply(ply_file_info &_return, const std::string &ply_tag);
-  virtual void run_against_file(run_result& _return, const std::string& ply_file, const int32_t lidar_num);
+    virtual void run_against_file(run_result &_return, const std::string &ply_file, const int32_t lidar_num);
     void start_all_lidar_threads();
 };
 

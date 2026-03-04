@@ -41,7 +41,7 @@ import StateMachine from "../../../../../state_machine/web/state_machine.vue";
 import LogExplore from "../../../../../log/web/log_explore.vue";
 import XlrdShow from "../../../../../xlrd/web/xlrd_show.vue";
 import LiveCamera from "../../../../../live_camera/web/live_camera.vue";
-import PcdShow from "@/components/PcdShow.vue";
+//import PcdShow from "@/components/PcdShow.vue";
 import Scale from "../../../../../scale/web/scale.vue";
 import { ref, computed, onMounted } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
@@ -57,8 +57,8 @@ const my_components = {
   '2': LogExplore,
   '3': XlrdShow,
   '4': LiveCamera,
-  '5': PcdShow,
-  '6': Scale,
+  '5': Scale,
+  //'6': PcdShow,
 }
 // 保存布局到本地存储
 const saveLayout = (newLayout) => {

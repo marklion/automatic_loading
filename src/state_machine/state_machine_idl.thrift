@@ -20,6 +20,7 @@ struct sm_basic_config{
     5: double tail_min_x,
     6: double tail_max_x,
     7: string channel_name,
+    8: double max_drop_speed,
 }
 struct state_machine_status{
     1: string status,

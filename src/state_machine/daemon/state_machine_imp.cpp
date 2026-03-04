@@ -8,6 +8,7 @@
 #include "../../pid_control/lib/pid_control_lib.h"
 #include "../plate_gate_gen_code/cpp/plate_gate_idl_types.h"
 #include "../plate_gate_gen_code/cpp/plate_gate_service.h"
+#include <fstream>
 
 void plate_gate_call_remote(std::function<void(plate_gate_serviceClient &)> func)
 {
@@ -374,6 +375,7 @@ bool state_machine_imp::set_basic_config(const sm_basic_config &config)
     ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X, std::to_string(config.tail_min_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X, std::to_string(config.tail_max_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_CHANNEL_NAME, config.channel_name);
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_MAX_DROP_SPEED, std::to_string(config.max_drop_speed));
     return true;
 }
 
@@ -389,6 +391,7 @@ void state_machine_imp::get_basic_config(sm_basic_config &_return)
         _return.tail_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X));
         _return.tail_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X));
         _return.channel_name = ci(CONFIG_ITEM_SM_CONFIG_CHANNEL_NAME);
+        _return.max_drop_speed = std::stod(ci(CONFIG_ITEM_SM_CONFIG_MAX_DROP_SPEED));
     }
     catch (...)
     {
@@ -483,6 +486,20 @@ void state_machine_imp::push_side_z(const double side_z)
     m_detect_side_z = side_z;
 }
 
+void state_machine_imp::set_expect_load_increase_speed(double speed)
+{
+    auto &ci = config::root_config::get_instance();
+    auto set_speed = atof(ci(CONFIG_ITEM_SM_CONFIG_MAX_DROP_SPEED).c_str());
+    if (speed < set_speed)
+    {
+        m_expect_load_increase_speed = speed;
+    }
+    else
+    {
+        m_expect_load_increase_speed = set_speed;
+    }
+}
+
 void state_machine_imp::cast_info_update(const std::string &prompt, const std::string &ann_content, const int32_t ann_gap)
 {
     sm_set_current_ann(ann_content, ann_gap);
@@ -566,7 +583,7 @@ public:
     }
 };
 
-state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_init>()), m_logger(al_log::LOG_STATE_MACHINE)
+state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_init>()), m_logger(al_log::LOG_STATE_MACHINE), m_fwrc(10)
 {
     m_listen_node.reset(
         std::make_unique<AD_EVENT_SC_TCP_LISTEN_NODE>(
@@ -586,10 +603,20 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
         80,
         [this]()
         {
-            double prev_load = m_last_load;
+            std::string one_record;
             double curr_load = sm_get_current_load();
-            m_last_load = curr_load;
-            m_load_increase_speed = (curr_load - prev_load) / 0.08;
+            m_fwrc.input(curr_load);
+            m_load_increase_speed = m_fwrc.get_rate();
+
+            one_record =
+                al_utils::ad_utils_date_time().m_datetime_ms + "," +
+                al_utils::double2string(curr_load) + "," +
+                al_utils::double2string(m_load_increase_speed, 5);
+            std::string mo_record;
+            std::string eo_record;
+            std::string es_record;
+            std::string out_record;
+            std::string so_record;
             if (m_stuff_offset_pid)
             {
                 auto measured_offset = sm_get_stuff_full_offset();
@@ -598,12 +625,21 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
                 auto expected_offset = basic_config.max_full_offset;
                 auto output = m_stuff_offset_pid->execute_continuous(measured_offset, expected_offset);
                 set_expect_load_increase_speed(output);
+                mo_record = al_utils::double2string(measured_offset, 5);
+                eo_record = al_utils::double2string(expected_offset, 5);
+                es_record = al_utils::double2string(output, 5);
             }
+            one_record +=
+                "," + mo_record + "," +
+                eo_record + "," +
+                es_record;
             if (m_load_increase_pid)
             {
                 auto measured_speed = get_load_increase_speed();
                 auto expected_speed = get_expect_load_increase_speed();
-                auto output = m_load_increase_pid->execute(measured_speed, expected_speed);
+                auto smith_output = m_smith->estimate(measured_speed);
+                auto output = m_load_increase_pid->execute(smith_output, expected_speed);
+                m_smith->updateControl(output);
                 if (output > 0)
                 {
                     drop_stuff_control(true);
@@ -612,7 +648,12 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
                 {
                     drop_stuff_control(false);
                 }
+                out_record = al_utils::double2string(output, 5);
+                so_record = al_utils::double2string(smith_output, 5);
             }
+            one_record += "," + out_record + "," + so_record;
+            std::ofstream ofs("/database/pid_real_info.csv", std::ios::app);
+            ofs << one_record << std::endl;
         });
 }
 
@@ -652,11 +693,13 @@ void state_machine_imp::sm_start_ls_pid()
     auto kd = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KD).c_str());
     auto dz = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_DZ).c_str());
     m_load_increase_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, kd, dz, 10, 0.08);
+    m_smith = std::make_unique<pid_control::SmithPredictor>(3,1, 2, 0.08);
 }
 
 void state_machine_imp::sm_stop_ls_pid()
 {
     m_load_increase_pid.reset();
+    m_smith.reset();
     drop_stuff_control(false);
 }
 
@@ -820,8 +863,6 @@ al_sm_state_working::al_sm_state_working()
 
 void al_sm_state_working::after_enter()
 {
-    m_sm->sm_set_current_ann("开始装车", -1);
-    m_sm->sm_set_current_prompt("开始装车");
     m_sm->sm_start_so_pid();
 }
 
@@ -866,7 +907,7 @@ void al_sm_state_cleanup::after_enter()
     m_sm->sm_stop_ls_pid();
     m_sm->sm_stop_so_pid();
     m_sm->sm_set_current_prompt("请驶离");
-    m_sm->sm_set_current_ann("请驶离", -1);
+    m_sm->sm_set_current_ann("装车结束，请驶离", -1);
     m_sm->lc_drop_revoke_control(false);
 }
 
@@ -911,6 +952,9 @@ void al_sm_state_ending::before_exit()
 
 std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
 {
+    auto &ci = config::root_config::get_instance();
+    auto max_load_str = ci(CONFIG_ITEM_SM_CONFIG_MAX_LOAD);
+    double max_load = atof(max_load_str.c_str());
     std::unique_ptr<al_sm_state> new_state;
     switch (event)
     {
@@ -923,7 +967,14 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
         break;
     case AL_SM_EVENT_REACH_FULL:
     case AL_SM_EVENT_LOAD_ACHIEVED:
-        new_state = std::make_unique<al_sm_state_cleanup>();
+        if (m_sm->sm_get_current_load() < max_load)
+        {
+            new_state = std::make_unique<al_sm_state_manual>();
+        }
+        else
+        {
+            new_state = std::make_unique<al_sm_state_cleanup>();
+        }
         break;
     default:
         break;
@@ -1130,6 +1181,8 @@ void al_sm_state_judge::after_enter()
 void al_sm_state_judge::before_exit()
 {
     AD_RPC_SC::get_instance()->stopTimer(m_judge_timer);
+    m_sm->sm_set_current_ann("开始装车", -1);
+    m_sm->sm_set_current_prompt("开始装车");
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_judge::handle_event(al_sm_event event)
