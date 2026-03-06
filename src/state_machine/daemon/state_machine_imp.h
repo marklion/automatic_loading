@@ -11,6 +11,47 @@
 #include <memory>
 #include <string>
 #include "../../pid_control/lib/pid_control_lib.h"
+class ButtonSim{
+    double m_period = 0;
+    double m_work_state = 0;
+    double m_state_count = 0;
+    double m_output = 0;
+public:
+    ButtonSim(double period) : m_period(period) {}
+    void set_work_state(double _input) {
+        auto lack = _input - m_work_state;
+        if (lack != 0)
+        {
+            m_state_count += (lack - (m_work_state - m_state_count));
+        }
+        m_work_state = _input;
+    }
+    double loop()
+    {
+        double ret = 0;
+
+        if (m_state_count > m_period)
+        {
+            m_state_count -= m_period;
+            ret = 1;
+        }
+        else if (m_state_count < -m_period)
+        {
+            m_state_count+= m_period;
+            ret = -1;
+        }
+        m_output = ret;
+        return ret;
+    }
+    double cur_output()
+    {
+        return m_output;
+    }
+    double cur_state()
+    {
+        return m_work_state;
+    }
+};
 class state_machine_imp;
 struct al_sm_state
 {
@@ -148,9 +189,12 @@ class state_machine_imp : public state_machine_serviceIf
     std::unique_ptr<pid_control::DiscretePID> m_load_increase_pid;
     std::unique_ptr<pid_control::DiscretePID> m_stuff_offset_pid;
     std::unique_ptr<pid_control::SmithPredictor> m_smith;
+    std::unique_ptr<ButtonSim> m_bs;
     std::string m_ann_content;
     int m_ann_gap;
     pid_control::FixedWindowRateCalculator m_fwrc;
+    bool m_is_stable = false;
+    int m_stable_count = 0;
 public:
     state_machine_imp();
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
@@ -230,6 +274,7 @@ public:
     virtual bool set_basic_config(const sm_basic_config &config);
     virtual void get_basic_config(sm_basic_config &_return);
     void drop_stuff_control(bool _is_open);
+    void drop_stuff_control();
     int lc_drop_revoke_control(bool _is_drop);
     virtual bool set_default_kit(const std::string &kit_name);
     virtual void get_default_kit(std::string &_return);

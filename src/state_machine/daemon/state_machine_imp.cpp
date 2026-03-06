@@ -285,7 +285,7 @@ void state_machine_imp::push_stuff_full_offset(const double offset)
     {
         double stuff_top_z_offset = (0 - offset - sm_get_side_z());
         sm_set_stuff_full_offset(stuff_top_z_offset);
-        if (stuff_top_z_offset >= max_offset)
+        if (m_is_stable)
         {
             sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
         }
@@ -423,6 +423,27 @@ void state_machine_imp::drop_stuff_control(bool _is_open)
             modbus_io::set_one_io(io_name, true);
             m_logger.log_print(al_log::LOG_LEVEL_INFO, "按下 [%s]", io_name.c_str());
             m_logger.log_print(al_log::LOG_LEVEL_INFO, "松开 [%s]", another_io_name.c_str());
+        }
+    }
+}
+
+void state_machine_imp::drop_stuff_control()
+{
+    auto &ci = config::root_config::get_instance();
+    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+    if (cur_kit.get_key() == sm_get_current_kit())
+    {
+        std::string io_name;
+        std::string another_io_name;
+        io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
+        another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
+        if (!io_name.empty())
+        {
+            modbus_io::set_one_io(io_name, false);
+        }
+        if (!another_io_name.empty())
+        {
+            modbus_io::set_one_io(another_io_name, false);
         }
     }
 }
@@ -582,6 +603,40 @@ public:
         m_service_imp = _imp;
     }
 };
+class SegFunction
+{
+    std::map<int, double> m_output_map;
+    double m_min = 0;
+    double m_cur_value = 0;
+
+public:
+    SegFunction(double _min) : m_min(_min) {}
+    void add_seg(int _input, double _output)
+    {
+        m_output_map[_input] = _output;
+    }
+    double update(double _input)
+    {
+        double target = m_min;
+        for (const auto &seg : m_output_map)
+        {
+            if (_input >= seg.first)
+            {
+                target = seg.second;
+            }
+            else
+            {
+                break;
+            }
+        }
+        m_cur_value = target;
+        return target;
+    }
+    double cur_value()
+    {
+        return m_cur_value;
+    }
+};
 
 state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_init>()), m_logger(al_log::LOG_STATE_MACHINE), m_fwrc(10)
 {
@@ -612,11 +667,6 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
                 al_utils::ad_utils_date_time().m_datetime_ms + "," +
                 al_utils::double2string(curr_load) + "," +
                 al_utils::double2string(m_load_increase_speed, 5);
-            std::string mo_record;
-            std::string eo_record;
-            std::string es_record;
-            std::string out_record;
-            std::string so_record;
             if (m_stuff_offset_pid)
             {
                 auto measured_offset = sm_get_stuff_full_offset();
@@ -624,34 +674,43 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
                 get_basic_config(basic_config);
                 auto expected_offset = basic_config.max_full_offset;
                 auto output = m_stuff_offset_pid->execute_continuous(measured_offset, expected_offset);
-                set_expect_load_increase_speed(output);
-                mo_record = al_utils::double2string(measured_offset, 5);
-                eo_record = al_utils::double2string(expected_offset, 5);
-                es_record = al_utils::double2string(output, 5);
-            }
-            one_record +=
-                "," + mo_record + "," +
-                eo_record + "," +
-                es_record;
-            if (m_load_increase_pid)
-            {
-                auto measured_speed = get_load_increase_speed();
-                auto expected_speed = get_expect_load_increase_speed();
-                auto smith_output = m_smith->estimate(measured_speed);
-                auto output = m_load_increase_pid->execute(smith_output, expected_speed);
-                m_smith->updateControl(output);
-                if (output > 0)
+                SegFunction sf(0);
+                sf.add_seg(1, 3);
+                sf.add_seg(2, 4);
+                auto sf_output = sf.update(output);
+                if (sf_output == 0)
+                {
+                    m_stable_count += 1;
+                    if (m_stable_count > 24)
+                    {
+                        m_is_stable = true;
+                    }
+                }
+                else
+                {
+                    m_stable_count = 0;
+                    m_is_stable = false;
+                }
+                m_bs->set_work_state(sf_output);
+                auto bs_output = m_bs->loop();
+                if (bs_output > 0)
                 {
                     drop_stuff_control(true);
                 }
-                else if (output < 0)
+                else if (bs_output < 0)
                 {
                     drop_stuff_control(false);
                 }
-                out_record = al_utils::double2string(output, 5);
-                so_record = al_utils::double2string(smith_output, 5);
+                else
+                {
+                    drop_stuff_control();
+                }
+                one_record +=
+                "," +al_utils::double2string(measured_offset) +
+                "," + al_utils::double2string(expected_offset) +
+                "," + al_utils::double2string(sf_output) +
+                "," + al_utils::double2string(bs_output);
             }
-            one_record += "," + out_record + "," + so_record;
             std::ofstream ofs("/database/pid_real_info.csv", std::ios::app);
             ofs << one_record << std::endl;
         });
@@ -693,7 +752,7 @@ void state_machine_imp::sm_start_ls_pid()
     auto kd = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KD).c_str());
     auto dz = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_DZ).c_str());
     m_load_increase_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, kd, dz, 10, 0.08);
-    m_smith = std::make_unique<pid_control::SmithPredictor>(3,1, 2, 0.08);
+    m_smith = std::make_unique<pid_control::SmithPredictor>(3, 1, 2, 0.08);
 }
 
 void state_machine_imp::sm_stop_ls_pid()
@@ -708,12 +767,15 @@ void state_machine_imp::sm_start_so_pid()
     auto &ci = config::root_config::get_instance();
     auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
     auto kp = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_SO_KP).c_str());
-    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, 0, 0, 0, 10, 0.08);
+    auto ki = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KI).c_str());
+    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, 0, 0, 10, 0.08);
+    m_bs = std::make_unique<ButtonSim>(0.08);
 }
 
 void state_machine_imp::sm_stop_so_pid()
 {
     m_stuff_offset_pid.reset();
+    m_bs.reset();
 }
 
 void state_machine_imp::save_cur_ply(const std::string &_ply_tag)
