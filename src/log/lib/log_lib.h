@@ -18,6 +18,7 @@ namespace al_log
         LOG_HHT,
         LOG_PLATE_GATE,
         LOG_SCALE,
+        LOG_DROP_SYSTEM,
         LOG_TEST,
     };
 

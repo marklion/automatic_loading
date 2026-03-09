@@ -16,6 +16,7 @@
 #include "../../hn_hht/lib/hn_hht_cli.h"
 #include "../../plate_gate/lib/plate_gate_cli.h"
 #include "../../scale/lib/scale_cli.h"
+#include "../../drop_system/lib/ds_cli.h"
 
 #define CLI_DEFAULT_CONFIG_FILE "/database/init.txt"
 
@@ -32,6 +33,7 @@ int un_safe_main(int argc, char const *argv[])
         new hn_hht_cli(),
         new plate_gate_cli(),
         new scale_cli(),
+        new ds_cli(),
     };
     auto root_menu = std::unique_ptr<cli::Menu>(new cli::Menu("ad"));
     for (auto &itr : sub_c)
