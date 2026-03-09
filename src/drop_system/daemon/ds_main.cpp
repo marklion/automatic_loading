@@ -1,0 +1,259 @@
+#include <iostream>
+#include "../gen_code/cpp/drop_system_idl_types.h"
+#include "../gen_code/cpp/drop_system_service.h"
+#include "../../public/lib/ad_rpc.h"
+#include "../../log/lib/log_lib.h"
+#include "../../config/lib/config_lib.h"
+#include "../../public/lib/modbus_driver.h"
+#include "../../public/lib/al_utils.h"
+#include "../../modbus_io/lib/modbus_io_lib.h"
+#include "../../pid_control/lib/pid_control_lib.h"
+
+struct ds_param_runtime
+{
+    ds_param_info m_param_info;
+    std::unique_ptr<modbus_driver> m_driver;
+};
+struct ds_logger : public modbus_logger
+{
+    al_log::log_tool m_logger;
+    ds_logger(al_log::log_tool &_logger) : m_logger(_logger)
+    {
+    }
+    virtual void log(const char *_fmt, ...)
+    {
+        char log_buffer[4096] = "";
+        va_list args;
+        va_start(args, _fmt);
+        vsnprintf(log_buffer, sizeof(log_buffer), _fmt, args);
+        va_end(args);
+        m_logger.log_print(al_log::LOG_LEVEL_ERROR, "%s", log_buffer);
+    }
+};
+
+std::vector<std::shared_ptr<ds_param_runtime>> g_devices;
+struct ds_io_runtime
+{
+    std::string m_input_device_name;
+    std::string m_output_on_device_name;
+    std::string m_output_off_device_name;
+    pid_control::DiscretePID m_pid;
+    double m_expect_rate = 0;
+    ds_io_runtime(const std::string &_in, const std::string &_on_out, const std::string &_off_out) : m_input_device_name(_in), m_output_on_device_name(_on_out), m_output_off_device_name(_off_out), m_pid(1, 0, 0, 0.05, 10, 0.08)
+    {
+    }
+    ds_io_runtime() : m_pid(1, 0, 0, 0.05, 10, 0.08)
+    {
+    }
+};
+std::map<std::string, ds_io_runtime> g_output_match_map;
+
+class ds_service_imp : public drop_system_serviceIf
+{
+    al_log::log_tool m_logger;
+
+    std::shared_ptr<ds_param_runtime> find_param_by_name(const std::string &device_name)
+    {
+        for (const auto &param_ptr : g_devices)
+        {
+            if (param_ptr->m_param_info.device_name == device_name)
+            {
+                return param_ptr;
+            }
+        }
+        return nullptr;
+    }
+    void refresh_driver()
+    {
+        for (auto &one_dev : g_devices)
+        {
+            bool should_refresh = false;
+            if (!one_dev->m_driver)
+            {
+                should_refresh = true;
+            }
+            else if (one_dev->m_driver && one_dev->m_driver->params_changed(one_dev->m_param_info.ip, one_dev->m_param_info.port, one_dev->m_param_info.slave_id))
+            {
+                should_refresh = true;
+            }
+            if (should_refresh)
+            {
+                one_dev->m_driver.reset();
+                one_dev->m_driver = std::make_unique<modbus_driver>(one_dev->m_param_info.ip, one_dev->m_param_info.port, one_dev->m_param_info.slave_id, new ds_logger(m_logger));
+                one_dev->m_driver->add_u16_meta("distance", 1);
+            }
+        }
+    }
+    pid_control::DiscretePID m_pid;
+    double m_expect_rate = 0;
+
+public:
+    ds_service_imp() : m_logger(al_log::log_tool(al_log::LOG_DROP_SYSTEM)), m_pid(1, 0, 0, 0.05, 10, 0.08)
+    {
+    }
+    virtual bool add_param(const ds_param_info &param_info)
+    {
+        if (param_info.device_name.length() > 0)
+        {
+            auto exist_device = find_param_by_name(param_info.device_name);
+            if (exist_device == nullptr)
+            {
+                auto new_one = std::make_shared<ds_param_runtime>();
+                new_one->m_param_info = param_info;
+                g_devices.push_back(new_one);
+            }
+            else
+            {
+                exist_device->m_param_info.ip = param_info.ip;
+                exist_device->m_param_info.port = param_info.port;
+                exist_device->m_param_info.min_value = param_info.min_value;
+                exist_device->m_param_info.max_value = param_info.max_value;
+            }
+        }
+
+        return true;
+    }
+    virtual void del_param(const std::string &device_name)
+    {
+        auto exist_device = find_param_by_name(device_name);
+        if (exist_device)
+        {
+            g_devices.erase(
+                std::remove_if(
+                    g_devices.begin(), g_devices.end(),
+                    [&](const std::shared_ptr<ds_param_runtime> &ptr)
+                    { return ptr->m_param_info.device_name == device_name; }),
+                g_devices.end());
+        }
+    }
+    virtual void get_all_params(std::vector<ds_param_info> &_return)
+    {
+        for (const auto &param_ptr : g_devices)
+        {
+            _return.push_back(param_ptr->m_param_info);
+        }
+    }
+    virtual void readout(ds_readout &_return, const std::string &device_name)
+    {
+        auto exist_device = find_param_by_name(device_name);
+        if (exist_device && exist_device->m_driver)
+        {
+            auto value = exist_device->m_driver->read_u16("distance");
+            auto rate = (value - exist_device->m_param_info.min_value) / (exist_device->m_param_info.max_value - exist_device->m_param_info.min_value);
+            if (rate > 1)
+            {
+                rate = 1;
+            }
+            else if (rate < 0)
+            {
+                rate = 0;
+            }
+            _return.value = value;
+            _return.rate = rate;
+        }
+    }
+
+    virtual bool add_output_match(const std::string &input_device_name, const ds_input_output &output_match)
+    {
+        if (input_device_name.length() > 0)
+        {
+            g_output_match_map[input_device_name] = ds_io_runtime(input_device_name, output_match.output_on_device_name, output_match.output_off_device_name);
+        }
+
+        return true;
+    }
+    virtual void del_output_match(const std::string &input_device_name)
+    {
+        auto iter = g_output_match_map.find(input_device_name);
+        if (iter != g_output_match_map.end())
+        {
+            g_output_match_map.erase(iter);
+        }
+    }
+
+    virtual void get_all_output_match(std::vector<ds_input_output> &_return)
+    {
+        for (auto &itr : g_output_match_map)
+        {
+            ds_input_output tmp;
+            tmp.input_device_name = itr.first;
+            tmp.output_on_device_name = itr.second.m_output_on_device_name;
+            tmp.output_off_device_name = itr.second.m_output_off_device_name;
+            _return.push_back(tmp);
+        }
+    }
+
+    virtual void set_output(const double expect_rate, const std::string &input_device_name)
+    {
+        auto iter = g_output_match_map.find(input_device_name);
+        if (iter != g_output_match_map.end())
+        {
+            iter->second.m_expect_rate = expect_rate;
+        }
+    }
+    virtual void turn_on_off(const bool on)
+    {
+        auto &ci = config::root_config::get_instance();
+        ci[CONFIG_ITEM_DS_PID_ON] = on ? "1" : "0";
+        for (auto &itr:g_output_match_map)
+        {
+            itr.second.m_pid.reset();
+        }
+    }
+    virtual bool is_turned_on()
+    {
+        bool ret = false;
+        auto &ci = config::root_config::get_instance();
+        auto on_str = ci[CONFIG_ITEM_DS_PID_ON]();
+        if (on_str == "1")
+        {
+            ret = true;
+        }
+        return ret;
+    }
+};
+
+int main(int argc, char const *argv[])
+{
+    auto sc = AD_RPC_SC::get_instance();
+    sc->enable_rpc_server(AD_RPC_DROP_SYSTEM_SERVER_PORT);
+    auto dssi = std::make_shared<ds_service_imp>();
+    sc->add_rpc_server(std::make_shared<drop_system_serviceProcessor>(dssi));
+    sc->startTimer(
+        0,
+        80,
+        [&]
+        {
+            if (dssi->is_turned_on())
+            {
+                for (auto &dev : g_output_match_map)
+                {
+                    auto input_dev_name = dev.second.m_input_device_name;
+                    auto output_on_dev_name = dev.second.m_output_on_device_name;
+                    auto output_off_dev_name = dev.second.m_output_off_device_name;
+                    auto expect_rate = dev.second.m_expect_rate;
+                    ds_readout readout;
+                    dssi->readout(readout, input_dev_name);
+                    auto measure_value = readout.rate;
+                    auto pid_output = dev.second.m_pid.execute_continuous(measure_value, expect_rate);
+                    if (pid_output > 0)
+                    {
+                        modbus_io::set_one_io(output_off_dev_name, false);
+                        modbus_io::set_one_io(output_on_dev_name, true);
+                    }
+                    else if (pid_output == 0)
+                    {
+                        modbus_io::set_one_io(output_on_dev_name, false);
+                        modbus_io::set_one_io(output_off_dev_name, false);
+                    }
+                    else
+                    {
+                        modbus_io::set_one_io(output_on_dev_name, false);
+                        modbus_io::set_one_io(output_off_dev_name, true);
+                    }
+                }
+            }
+        });
+    al_utils::start_server_notify_started("drop_system");
+    return 0;
+}

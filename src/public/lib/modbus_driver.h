@@ -10,6 +10,10 @@ struct float_addr_pair{
     int addr;
     float value;
 };
+struct u16_addr_pair{
+    int addr;
+    uint16_t value;
+};
 struct coil_addr_pair{
     int addr;
     bool value;
@@ -19,6 +23,7 @@ struct modbus_logger{
 };
 class modbus_driver {
     std::map<std::string, float_addr_pair> m_float32_abcd_meta;
+    std::map<std::string, u16_addr_pair> m_u16_meta;
     std::map<std::string, coil_addr_pair> m_coil_write_meta;
     std::map<std::string, coil_addr_pair> m_coil_read_meta;
     modbus_t *m_ctx;
@@ -30,6 +35,10 @@ class modbus_driver {
     void batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta);
     void batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_read_meta);
     void batch_float32_abcd_get(std::map<std::string, float_addr_pair> &_float32_abcd_meta);
+    void batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_meta);
+    std::string m_ip;
+    unsigned short m_port;
+    int m_slave_id = 0;
 public:
     modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger);
     ~modbus_driver();
@@ -38,9 +47,12 @@ public:
     void del_coil_write_meta(const std::string &_name);
     void add_coil_read_meta(const std::string &_name, int addr);
     void del_coil_read_meta(const std::string &_name);
+    void add_u16_meta(const std::string &_name, int addr);
     float read_float32_abcd(const std::string &_name);
     void write_coil(const std::string &_name, bool _value);
     bool read_coil(const std::string &_name);
+    bool params_changed(const std::string &_ip, unsigned short _port, int _slave_id);
+    unsigned short read_u16(const std::string &_name);
     bool exception_happened()
     {
         return exception_occurred;

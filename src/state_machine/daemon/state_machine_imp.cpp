@@ -9,6 +9,7 @@
 #include "../plate_gate_gen_code/cpp/plate_gate_idl_types.h"
 #include "../plate_gate_gen_code/cpp/plate_gate_service.h"
 #include <fstream>
+#include "../../drop_system/lib/ds_lib.h"
 
 void plate_gate_call_remote(std::function<void(plate_gate_serviceClient &)> func)
 {
@@ -675,8 +676,8 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
                 auto expected_offset = basic_config.max_full_offset;
                 auto output = m_stuff_offset_pid->execute_continuous(measured_offset, expected_offset);
                 SegFunction sf(0);
-                sf.add_seg(1, 3);
-                sf.add_seg(2, 4);
+                sf.add_seg(0.05, 0.5);
+                sf.add_seg(0.1, 1);
                 auto sf_output = sf.update(output);
                 if (sf_output == 0)
                 {
@@ -691,25 +692,17 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
                     m_stable_count = 0;
                     m_is_stable = false;
                 }
-                m_bs->set_work_state(sf_output);
-                auto bs_output = m_bs->loop();
-                if (bs_output > 0)
-                {
-                    drop_stuff_control(true);
-                }
-                else if (bs_output < 0)
-                {
-                    drop_stuff_control(false);
-                }
-                else
-                {
-                    drop_stuff_control();
-                }
+                auto &ci = config::root_config::get_instance();
+                auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+                auto ds_input_dev = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DS_INPUT_DEV);
+                drop_system::call_remote_ds(
+                    [&](drop_system_serviceClient &client){
+                        client.set_output(sf_output, ds_input_dev);
+                    });
                 one_record +=
                 "," +al_utils::double2string(measured_offset) +
                 "," + al_utils::double2string(expected_offset) +
-                "," + al_utils::double2string(sf_output) +
-                "," + al_utils::double2string(bs_output);
+                "," + al_utils::double2string(sf_output);
             }
             std::ofstream ofs("/database/pid_real_info.csv", std::ios::app);
             ofs << one_record << std::endl;

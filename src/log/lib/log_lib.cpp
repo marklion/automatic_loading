@@ -48,6 +48,7 @@ namespace al_log
         {LOG_HHT, "HHT"},
         {LOG_PLATE_GATE, "PLATE_GATE"},
         {LOG_SCALE, "SCALE"},
+        {LOG_DROP_SYSTEM, "DROP_SYSTEM"},
     };
     void log_tool::log_print(LOG_LEVEL _level, const char *_format, ...)
     {

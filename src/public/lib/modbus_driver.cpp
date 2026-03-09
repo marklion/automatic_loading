@@ -100,7 +100,34 @@ void modbus_driver::batch_float32_abcd_get(std::map<std::string, float_addr_pair
     }
 }
 
-modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger) : m_logger(_logger)
+void modbus_driver::batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_meta)
+{
+    if (_u16_meta.size() > 0)
+    {
+        int base_addr = _u16_meta.begin()->second.addr;
+        int reg_num = _u16_meta.size();
+        for (auto &itr : _u16_meta)
+        {
+            if (itr.second.addr < base_addr)
+            {
+                base_addr = itr.second.addr;
+            }
+        }
+        unsigned short *read_buf = (unsigned short *)(calloc(sizeof(unsigned short), reg_num));
+        auto modbus_ret = modbus_read_registers(m_ctx, base_addr, reg_num, read_buf);
+        if (modbus_ret == reg_num)
+        {
+            for (auto &itr : _u16_meta)
+            {
+                int offset = itr.second.addr - base_addr;
+                itr.second.value = read_buf[offset];
+            }
+        }
+        free(read_buf);
+    }
+}
+
+modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger) : m_logger(_logger), m_ip(_ip), m_port(_port), m_slave_id(_slave_id)
 {
     auto ret = modbus_new_tcp(_ip.c_str(), _port);
     if (ret)
@@ -133,6 +160,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     auto tmp_float32_meta = m_float32_abcd_meta;
                     auto tmp_coil_write_meta = m_coil_write_meta;
                     auto tmp_coil_read_meta = m_coil_read_meta;
+                    auto tmp_u16_meta = m_u16_meta;
                     m_mutex.unlock();
                     auto start_us_stamp = al_utils::get_current_us_stamp();
                     batch_bits_set(tmp_coil_write_meta);
@@ -143,6 +171,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     m_mutex.lock();
                     m_float32_abcd_meta = tmp_float32_meta;
                     m_coil_read_meta = tmp_coil_read_meta;
+                    m_u16_meta = tmp_u16_meta;
                     m_mutex.unlock();
                     usleep(1000 * 70);
                 }
@@ -212,6 +241,15 @@ void modbus_driver::del_coil_read_meta(const std::string &_name)
     m_coil_read_meta.erase(_name);
 }
 
+void modbus_driver::add_u16_meta(const std::string &_name, int addr)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    u16_addr_pair pair;
+    pair.addr = addr;
+    pair.value = 0;
+    m_u16_meta[_name] = pair;
+}
+
 float modbus_driver::read_float32_abcd(const std::string &_name)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -241,6 +279,30 @@ bool modbus_driver::read_coil(const std::string &_name)
     std::lock_guard<std::mutex> lock(m_mutex);
     auto itr = m_coil_read_meta.find(_name);
     if (itr != m_coil_read_meta.end())
+    {
+        ret = itr->second.value;
+    }
+
+    return ret;
+}
+
+bool modbus_driver::params_changed(const std::string &_ip, unsigned short _port, int _slave_id)
+{
+    bool ret = true;
+    if (_ip == m_ip && _port == m_port && _slave_id == m_slave_id)
+    {
+        ret = false;
+    }
+
+    return ret;
+}
+
+unsigned short modbus_driver::read_u16(const std::string &_name)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    unsigned short ret = 0;
+    auto itr = m_u16_meta.find(_name);
+    if (itr != m_u16_meta.end())
     {
         ret = itr->second.value;
     }
