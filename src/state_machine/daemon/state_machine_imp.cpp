@@ -97,7 +97,7 @@ void al_sm_state_ready::after_enter()
         });
 
     m_sm->sm_set_current_prompt("请缓慢往前开");
-    m_sm->sm_set_current_ann("请缓慢前进", 5);
+    m_sm->sm_set_current_ann("请缓慢前进", 10);
 }
 
 void al_sm_state_ready::before_exit()
@@ -1075,7 +1075,7 @@ al_sm_state_pause::al_sm_state_pause()
 void al_sm_state_pause::after_enter()
 {
     m_sm->sm_set_current_prompt("请缓慢前进");
-    m_sm->sm_set_current_ann("前进前进", 5);
+    m_sm->sm_set_current_ann("前进前进", 10);
 }
 
 void al_sm_state_pause::before_exit()
@@ -1257,7 +1257,7 @@ void al_sm_state_judge::after_enter()
             }
             else if (ann_content != m_last_ann_content)
             {
-                m_sm->sm_set_current_ann(ann_content, 5);
+                m_sm->sm_set_current_ann(ann_content, 10);
             }
             m_last_ann_content = ann_content;
         });
