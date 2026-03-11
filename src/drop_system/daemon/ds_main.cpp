@@ -63,6 +63,14 @@ class ds_service_imp : public drop_system_serviceIf
         }
         return nullptr;
     }
+
+    pid_control::DiscretePID m_pid;
+    double m_expect_rate = 0;
+
+public:
+    ds_service_imp() : m_logger(al_log::log_tool(al_log::LOG_DROP_SYSTEM)), m_pid(1, 0, 0, 0.05, 10, 0.08)
+    {
+    }
     void refresh_driver()
     {
         for (auto &one_dev : g_devices)
@@ -84,13 +92,6 @@ class ds_service_imp : public drop_system_serviceIf
             }
         }
     }
-    pid_control::DiscretePID m_pid;
-    double m_expect_rate = 0;
-
-public:
-    ds_service_imp() : m_logger(al_log::log_tool(al_log::LOG_DROP_SYSTEM)), m_pid(1, 0, 0, 0.05, 10, 0.08)
-    {
-    }
     virtual bool add_param(const ds_param_info &param_info)
     {
         if (param_info.device_name.length() > 0)
@@ -109,6 +110,7 @@ public:
                 exist_device->m_param_info.min_value = param_info.min_value;
                 exist_device->m_param_info.max_value = param_info.max_value;
             }
+            refresh_driver();
         }
 
         return true;
@@ -124,6 +126,7 @@ public:
                     [&](const std::shared_ptr<ds_param_runtime> &ptr)
                     { return ptr->m_param_info.device_name == device_name; }),
                 g_devices.end());
+            refresh_driver();
         }
     }
     virtual void get_all_params(std::vector<ds_param_info> &_return)
@@ -136,10 +139,11 @@ public:
     virtual void readout(ds_readout &_return, const std::string &device_name)
     {
         auto exist_device = find_param_by_name(device_name);
+        auto range = exist_device->m_param_info.max_value - exist_device->m_param_info.min_value;
         if (exist_device && exist_device->m_driver)
         {
             auto value = exist_device->m_driver->read_u16("distance");
-            auto rate = (value - exist_device->m_param_info.min_value) / (exist_device->m_param_info.max_value - exist_device->m_param_info.min_value);
+            auto rate = (value - exist_device->m_param_info.min_value) / range;
             if (rate > 1)
             {
                 rate = 1;
@@ -150,6 +154,12 @@ public:
             }
             _return.value = value;
             _return.rate = rate;
+        }
+        if (_return.value > (exist_device->m_param_info.max_value + range * 0.1) ||
+            _return.value < (exist_device->m_param_info.min_value - range * 0.1))
+        {
+            m_logger.log_print(al_log::LOG_LEVEL_ERROR, "readout value %f of device %s is out of range", _return.value, device_name.c_str());
+            _return.rate = 1;
         }
     }
 
@@ -195,7 +205,7 @@ public:
     {
         auto &ci = config::root_config::get_instance();
         ci[CONFIG_ITEM_DS_PID_ON] = on ? "1" : "0";
-        for (auto &itr:g_output_match_map)
+        for (auto &itr : g_output_match_map)
         {
             itr.second.m_pid.reset();
         }
@@ -224,6 +234,24 @@ int main(int argc, char const *argv[])
         80,
         [&]
         {
+            bool need_refresh = false;
+            for (auto &itr : g_devices)
+            {
+                if (itr->m_driver && itr->m_driver->exception_happened())
+                {
+                    need_refresh = true;
+                    al_utils::record_self_health(itr->m_param_info.device_name + " modbus driver exception");
+                }
+                else
+                {
+                    al_utils::record_self_health("");
+                }
+            }
+
+            if (need_refresh)
+            {
+                dssi->refresh_driver();
+            }
             if (dssi->is_turned_on())
             {
                 for (auto &dev : g_output_match_map)
@@ -235,7 +263,7 @@ int main(int argc, char const *argv[])
                     ds_readout readout;
                     dssi->readout(readout, input_dev_name);
                     auto measure_value = readout.rate;
-                    auto pid_output = dev.second.m_pid.execute_continuous(measure_value, expect_rate);
+                    auto pid_output = dev.second.m_pid.execute(measure_value, expect_rate);
                     if (pid_output > 0)
                     {
                         modbus_io::set_one_io(output_off_dev_name, false);

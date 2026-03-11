@@ -695,14 +695,44 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
                 auto &ci = config::root_config::get_instance();
                 auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
                 auto ds_input_dev = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DS_INPUT_DEV);
-                drop_system::call_remote_ds(
-                    [&](drop_system_serviceClient &client){
-                        client.set_output(sf_output, ds_input_dev);
-                    });
+                if (ds_input_dev.empty())
+                {
+                    int bs_input = 0;
+                    if (sf_output == 0.5)
+                    {
+                        bs_input = 3;
+                    }
+                    else if (sf_output == 1)
+                    {
+                        bs_input = 4;
+                    }
+                    m_bs->set_work_state(bs_input);
+                    auto bs_output = m_bs->loop();
+                    if (bs_output > 0)
+                    {
+                        drop_stuff_control(true);
+                    }
+                    else if (bs_output < 0)
+                    {
+                        drop_stuff_control(false);
+                    }
+                    else
+                    {
+                        drop_stuff_control();
+                    }
+                }
+                else
+                {
+                    drop_system::call_remote_ds(
+                        [&](drop_system_serviceClient &client)
+                        {
+                            client.set_output(sf_output, ds_input_dev);
+                        });
+                }
                 one_record +=
-                "," +al_utils::double2string(measured_offset) +
-                "," + al_utils::double2string(expected_offset) +
-                "," + al_utils::double2string(sf_output);
+                    "," + al_utils::double2string(measured_offset) +
+                    "," + al_utils::double2string(expected_offset) +
+                    "," + al_utils::double2string(sf_output);
             }
             std::ofstream ofs("/database/pid_real_info.csv", std::ios::app);
             ofs << one_record << std::endl;

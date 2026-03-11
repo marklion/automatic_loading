@@ -23,6 +23,8 @@ namespace al_utils
     std::string double2string(const double _value, const int _precision = 2);
     long long get_current_us_stamp();
     void start_server_notify_started(const std::string &module_name);
+    void record_self_health(const std::string &_except_info);
+    void get_health_records(std::vector<health_info> &_return);
 
     struct ad_utils_date_time
     {

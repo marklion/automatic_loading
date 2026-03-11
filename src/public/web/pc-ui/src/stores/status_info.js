@@ -5,7 +5,8 @@ export const useStatusInfo = defineStore("statusInfo", {
         'sm': {},
         'xlrd0': {},
         'xlrd1': {},
-        'scale': {}
+        'scale': {},
+        'drop_system':{},
     }),
     actions: {
         setModbusIO(data) {
@@ -22,6 +23,9 @@ export const useStatusInfo = defineStore("statusInfo", {
         },
         setScale(data) {
             this.scale = data;
+        },
+        setDropSystem(data) {
+            this.drop_system = data;
         }
     },
 });

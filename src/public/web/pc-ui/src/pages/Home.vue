@@ -41,6 +41,7 @@ import StateMachine from "../../../../../state_machine/web/state_machine.vue";
 import LogExplore from "../../../../../log/web/log_explore.vue";
 import XlrdShow from "../../../../../xlrd/web/xlrd_show.vue";
 import LiveCamera from "../../../../../live_camera/web/live_camera.vue";
+import DropSystem from "../../../../../drop_system/web/drop_system.vue";
 //import PcdShow from "@/components/PcdShow.vue";
 import Scale from "../../../../../scale/web/scale.vue";
 import { ref, computed, onMounted } from "vue";
@@ -58,7 +59,7 @@ const my_components = {
   '3': XlrdShow,
   '4': LiveCamera,
   '5': Scale,
-  //'6': PcdShow,
+  '6': DropSystem,
 }
 // 保存布局到本地存储
 const saveLayout = (newLayout) => {
@@ -69,11 +70,12 @@ function reset_layout() {
   layout.value =
     [
       {
-        "x": 4,
-        "y": 6,
-        "w": 3,
+        "x": 0,
+        "y": 20,
+        "w": 2,
         "h": 3,
         "i": "6",
+
       },
       {
         "x": 0,
@@ -81,41 +83,47 @@ function reset_layout() {
         "w": 2,
         "h": 20,
         "i": "0",
+
       },
       {
         "x": 2,
         "y": 0,
-        "w": 6,
-        "h": 6,
+        "w": 7,
+        "h": 7,
         "i": "1",
+
       },
       {
-        "x": 8,
+        "x": 9,
         "y": 0,
-        "w": 4,
-        "h": 6,
+        "w": 3,
+        "h": 5,
         "i": "2",
+
       },
       {
-        "x": 2,
-        "y": 6,
+        "x": 9,
+        "y": 5,
         "w": 2,
         "h": 3,
         "i": "3",
-      },
-      {
-        "x": 7,
-        "y": 6,
-        "w": 5,
-        "h": 17,
-        "i": "4",
+
       },
       {
         "x": 2,
-        "y": 9,
-        "w": 5,
+        "y": 8,
+        "w": 10,
         "h": 14,
+        "i": "4",
+
+      },
+      {
+        "x": 11,
+        "y": 5,
+        "w": 1,
+        "h": 2,
         "i": "5",
+
       }
     ]
 

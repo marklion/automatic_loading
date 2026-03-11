@@ -741,6 +741,7 @@ void lidar_driver_info::start_driver(int _index)
         [&](const Error &err)
         {
             m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Lidar %d error msg=%s", m_lidar_index + 1, err.toString().c_str());
+            al_utils::record_self_health("Lidar " + std::to_string(m_lidar_index + 1) + " error: " + err.toString());
         });
     auto init_resp = driver.init(*init_rs_param(m_msop_port, m_difop_port));
     if (init_resp)
@@ -835,6 +836,7 @@ void lidar_driver_info::driverReturnPointCloudToCallerCallback(std::shared_ptr<p
     else
     {
         m_stuffed_cloud_queue.push(msg);
+        al_utils::record_self_health("");
     }
 }
 

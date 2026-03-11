@@ -53,6 +53,29 @@ void scale_main_impl::set_weight(double _weight)
         });
 }
 
+bool scale_main_impl::is_offline()
+{
+    bool ret = false;
+    if (m_sfn && m_sfn->is_offline())
+    {
+        ret = true;
+    }
+    return ret;
+}
+
+bool SER_FILE_NODE::is_offline()
+{
+    bool ret = false;
+
+    auto cur_time = time(nullptr);
+    if (cur_time - m_last_recv_timestamp > 2)
+    {
+        ret = true;
+    }
+
+    return ret;
+}
+
 bool SER_FILE_NODE::prepare_serial_port()
 {
     int fd = open(m_dev_name.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
@@ -106,6 +129,7 @@ void SER_FILE_NODE::handleEvent()
     {
         return;
     }
+    m_last_recv_timestamp = time(nullptr);
     char buffer[256];
     ssize_t bytes_read = read(m_ser_fd, buffer, sizeof(buffer) - 1);
     std::string data_str(buffer, bytes_read);

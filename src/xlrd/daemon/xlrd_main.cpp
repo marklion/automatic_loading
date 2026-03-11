@@ -131,6 +131,11 @@ public:
             {
                 m_logger.log_print(al_log::LOG_LEVEL_ERROR, "modbus exception happened when reading distance");
                 apply_driver_config();
+                al_utils::record_self_health("xlrd modbus error");
+            }
+            else
+            {
+                al_utils::record_self_health("");
             }
             ret -= params.distance_offset;
         }

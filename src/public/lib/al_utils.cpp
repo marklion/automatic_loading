@@ -4,6 +4,8 @@
 #include <iconv.h>
 namespace al_utils
 {
+    static std::string g_self_module_name;
+    bool g_exception_happened = false;
     static int code_convert(char *from_charset, char *to_charset, char *inbuf, size_t inlen, char *outbuf, size_t outlen)
     {
         iconv_t cd;
@@ -61,6 +63,42 @@ namespace al_utils
                     {
                         client.notify_started(module_name);
                     });
+            });
+        g_self_module_name = module_name;
+    }
+    void record_self_health(const std::string &_except_info)
+    {
+        bool should_record = false;
+        if (_except_info.empty())
+        {
+            if (g_exception_happened)
+            {
+                should_record = true;
+                g_exception_happened = false;
+            }
+        }
+        else
+        {
+            should_record = true;
+            g_exception_happened = true;
+        }
+        if (should_record)
+        {
+            AD_RPC_SC::get_instance()->call_remote<public_serviceClient>(
+                AD_RPC_PROCESS_SERVER_PORT,
+                [&](public_serviceClient &client)
+                {
+                    client.record_health(_except_info, g_self_module_name);
+                });
+        }
+    }
+    void get_health_records(std::vector<health_info> &_return)
+    {
+        AD_RPC_SC::get_instance()->call_remote<public_serviceClient>(
+            AD_RPC_PROCESS_SERVER_PORT,
+            [&](public_serviceClient &client)
+            {
+                client.get_health_records(_return);
             });
     }
     std::string util_utf2gbk(const std::string &_gbk)

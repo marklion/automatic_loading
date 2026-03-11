@@ -77,11 +77,13 @@ public:
             buffer << ifs.rdbuf();
             _return = buffer.str();
             ifs.close();
+            al_utils::record_self_health("");
         }
         else
         {
             g_logger.log_print(al_log::LOG_LEVEL_ERROR, "Failed to open HHT order response file");
             _return = "";
+            al_utils::record_self_health("hht get order failed");
         }
     }
 };

@@ -179,6 +179,7 @@ async function update_status_info() {
         'xlrd0': 'xlrd read_offset 0',
         'xlrd1': 'xlrd read_offset 1',
         'scale': 'scale read_weight',
+        'drop_system': 'drop_system show_status',
     };
     for (let [module, cmd] of Object.entries(module_data_map)) {
         let output = await run_cli(cmd);

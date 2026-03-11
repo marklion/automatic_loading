@@ -2,6 +2,7 @@
 #include "../gen_code/cpp/drop_system_idl_types.h"
 #include "../gen_code/cpp/drop_system_service.h"
 #include "ds_lib.h"
+#include "../../public/lib/CJsonObject.hpp"
 
 static void add_device(std::ostream &out, std::vector<std::string> _params)
 {
@@ -9,6 +10,8 @@ static void add_device(std::ostream &out, std::vector<std::string> _params)
     check_resp += common_cli::check_params(_params, 1, "请输入设备IP:");
     check_resp += common_cli::check_params(_params, 2, "请输入设备端口:");
     check_resp += common_cli::check_params(_params, 3, "请输入设备Modbus地址:");
+    check_resp += common_cli::check_params(_params, 4, "请输入设备最小值:");
+    check_resp += common_cli::check_params(_params, 5, "请输入设备最大值:");
     if (check_resp.empty())
     {
         std::string name = _params[0];
@@ -23,6 +26,8 @@ static void add_device(std::ostream &out, std::vector<std::string> _params)
                 param_info.ip = ip;
                 param_info.port = port;
                 param_info.slave_id = slave_id;
+                param_info.min_value = atof(_params[4].c_str());
+                param_info.max_value = atof(_params[5].c_str());
                 client.add_param(param_info);
             });
     }
@@ -147,6 +152,28 @@ static void turn_on_off(std::ostream &out, std::vector<std::string> _params)
     }
 }
 
+static void show_status(std::ostream &out, std::vector<std::string> _params)
+{
+    drop_system::call_remote_ds(
+        [&](drop_system_serviceClient &client)
+        {
+            neb::CJsonObject status_json("[]");
+            std::vector<ds_param_info> param_infos;
+            client.get_all_params(param_infos);
+            for (auto &itr:param_infos)
+            {
+                ds_readout tmp;
+                client.readout(tmp, itr.device_name);
+                neb::CJsonObject one_dev;
+                one_dev.Add("device_name", itr.device_name);
+                one_dev.Add("value", tmp.value);
+                one_dev.Add("rate", tmp.rate);
+                status_json.Add(one_dev);
+            }
+            out << status_json.ToString() << std::endl;
+        });
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> ds_menu(new cli::Menu("drop_system"));
@@ -157,6 +184,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     ds_menu->Insert(CLI_MENU_ITEM(del_match), "删除匹配", {"<input_device_name>"});
     ds_menu->Insert(CLI_MENU_ITEM(set_expect), "设置期望值", {"<input_device_name>", "<expect_rate>"});
     ds_menu->Insert(CLI_MENU_ITEM(turn_on_off), "开关控制", {"<on|off>"});
+    ds_menu->Insert(CLI_MENU_ITEM(show_status), "显示状态", {});
     return ds_menu;
 }
 ds_cli::ds_cli() : common_cli(make_menu(), "drop_system")
@@ -174,7 +202,13 @@ std::string ds_cli::make_bdr()
             client.get_all_params(param_infos);
             for (const auto &param_info : param_infos)
             {
-                ret += "add_device \"" + param_info.device_name + "\" \"" + param_info.ip + "\" " + std::to_string(param_info.port) + " " + std::to_string(param_info.slave_id) + "\n";
+                ret += "add_device \"" +
+                    param_info.device_name + "\" \"" +
+                    param_info.ip + "\" " +
+                    std::to_string(param_info.port) + " " +
+                    std::to_string(param_info.slave_id) + " " +
+                    std::to_string(param_info.min_value) + " " +
+                    std::to_string(param_info.max_value) + "\n";
             }
             std::vector<ds_input_output> output_matches;
             client.get_all_output_match(output_matches);

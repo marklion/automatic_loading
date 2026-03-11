@@ -18,6 +18,7 @@ public:
     virtual void get_params(scale_config_params &_return);
     virtual double read_weight();
     void set_weight(double _weight);
+    bool is_offline();
 };
 class SER_FILE_NODE:public AD_EVENT_SC_NODE{
     int m_ser_fd = -1;
@@ -25,11 +26,13 @@ class SER_FILE_NODE:public AD_EVENT_SC_NODE{
     std::string m_baud_rate;
     scale_main_impl *m_scale_impl = nullptr;
     std::string m_read_buffer;
+    int m_last_recv_timestamp = 0;
 public:
     SER_FILE_NODE(const std::string &_dev_name, const std::string &_baud_rate, scale_main_impl *_scale_impl):m_dev_name(_dev_name),m_baud_rate(_baud_rate), m_scale_impl(_scale_impl)
     {
 
     }
+    bool is_offline();
     bool prepare_serial_port();
     virtual ~SER_FILE_NODE();
     virtual int getFd() const

@@ -234,6 +234,48 @@ public:
     {
         rerun_config(module_name);
     }
+
+    virtual void record_health(const std::string &except_info, const std::string &module_name)
+    {
+        auto date_string = al_utils::ad_utils_date_time().m_datetime_ms;
+        std::string record = date_string + "," + module_name + "," + except_info + "\n";
+
+        std::ifstream in_file("/database/health_records.txt");
+        std::stringstream file_content;
+        if (in_file)
+        {
+            file_content << in_file.rdbuf();
+            in_file.close();
+        }
+
+        // 重新打开文件并写入（覆盖模式）
+        std::ofstream out_file("/database/health_records.txt", std::ios::trunc);
+        if (!out_file)
+        {
+            return;
+        }
+        out_file << record << file_content.str();
+    }
+    virtual void get_health_records(std::vector<health_info> &_return)
+    {
+        std::ifstream health_record_file("/database/health_records.txt");
+        std::string line;
+        int max_line_number = 10;
+        while (std::getline(health_record_file, line) && max_line_number-- > 0)
+        {
+            auto first_comma_pos = line.find(',');
+            auto second_comma_pos = line.find(',', first_comma_pos + 1);
+            if (first_comma_pos != std::string::npos && second_comma_pos != std::string::npos)
+            {
+                health_info info;
+                info.record_time = line.substr(0, first_comma_pos);
+                info.module_name = line.substr(first_comma_pos + 1, second_comma_pos - first_comma_pos - 1);
+                info.except_info = line.substr(second_comma_pos + 1);
+                _return.push_back(info);
+            }
+        }
+        health_record_file.close();
+    }
 };
 int main(int argc, char const *argv[])
 {

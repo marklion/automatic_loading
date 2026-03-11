@@ -166,6 +166,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
                     batch_bits_set(tmp_coil_write_meta);
                     batch_bits_get(tmp_coil_read_meta);
                     batch_float32_abcd_get(tmp_float32_meta);
+                    batch_u16_get(tmp_u16_meta);
                     auto end_us_stamp = al_utils::get_current_us_stamp();
                     m_logger->log("modbus_driver loop time: %lld ms", (end_us_stamp - start_us_stamp) / 1000);
                     m_mutex.lock();
