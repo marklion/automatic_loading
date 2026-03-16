@@ -45,7 +45,7 @@ struct al_sm_state
     virtual void before_exit() = 0;
     virtual std::unique_ptr<al_sm_state> handle_event(al_sm_event event) = 0;
     static std::string state_name(al_sm_event _event);
-    virtual void make_output_metrix(std::vector<pid_output_producer> &output_vec);
+    virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec);
     pid_output_producer get_output(int _index);
 };
 
@@ -55,7 +55,7 @@ struct al_sm_state_working : public al_sm_state
     void after_enter() override;
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
-    virtual void make_output_metrix(std::vector<pid_output_producer> &output_vec) override;
+    virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec) override;
 };
 
 struct al_sm_state_judge : public al_sm_state
@@ -83,7 +83,7 @@ struct al_sm_state_ending : public al_sm_state
     void after_enter() override;
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
-    virtual void make_output_metrix(std::vector<pid_output_producer> &output_vec) override;
+    virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec) override;
 };
 
 struct al_sm_state_init : public al_sm_state
@@ -132,7 +132,7 @@ struct al_sm_state_first_heap:public al_sm_state{
     void after_enter() override;
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
-    virtual void make_output_metrix(std::vector<pid_output_producer> &output_vec) override;
+    virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec) override;
 };
 
 

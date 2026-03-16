@@ -883,7 +883,7 @@ std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event
     return new_state;
 }
 
-void al_sm_state_working::make_output_metrix(std::vector<pid_output_producer> &output_vec)
+void al_sm_state_working::make_output_matrix(std::vector<pid_output_producer> &output_vec)
 {
     output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
     output_vec.push_back(pid_output_producer(0.5, AL_ACTION_FORWARD));
@@ -974,7 +974,7 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
     return new_state;
 }
 
-void al_sm_state_ending::make_output_metrix(std::vector<pid_output_producer> &output_vec)
+void al_sm_state_ending::make_output_matrix(std::vector<pid_output_producer> &output_vec)
 {
     output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
     output_vec.push_back(pid_output_producer(0.5, AL_ACTION_STOP));
@@ -1031,14 +1031,14 @@ std::string al_sm_state::state_name(al_sm_event _event)
     return ret;
 }
 
-void al_sm_state::make_output_metrix(std::vector<pid_output_producer> &output_vec)
+void al_sm_state::make_output_matrix(std::vector<pid_output_producer> &output_vec)
 {
 }
 
 pid_output_producer al_sm_state::get_output(int _index)
 {
     std::vector<pid_output_producer> output_vec;
-    make_output_metrix(output_vec);
+    make_output_matrix(output_vec);
     if (_index >= 0 && _index < output_vec.size())
     {
         return output_vec[_index];
@@ -1218,7 +1218,7 @@ std::unique_ptr<al_sm_state> al_sm_state_first_heap::handle_event(al_sm_event ev
     return new_state;
 }
 
-void al_sm_state_first_heap::make_output_metrix(std::vector<pid_output_producer> &output_vec)
+void al_sm_state_first_heap::make_output_matrix(std::vector<pid_output_producer> &output_vec)
 {
     output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
     output_vec.push_back(pid_output_producer(0.5, AL_ACTION_FORWARD));
