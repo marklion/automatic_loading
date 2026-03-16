@@ -45,6 +45,7 @@ struct ds_io_runtime
     ds_io_runtime() : m_pid(1, 0, 0, 0.05, 10, 0.08)
     {
     }
+    bool m_is_moving = false;
 };
 std::map<std::string, ds_io_runtime> g_output_match_map;
 
@@ -221,6 +222,16 @@ public:
         }
         return ret;
     }
+
+    virtual bool is_moved_by_pid(const std::string &input_device_name)
+    {
+        auto iter = g_output_match_map.find(input_device_name);
+        if (iter != g_output_match_map.end())
+        {
+            return iter->second.m_is_moving;
+        }
+        return false;
+    }
 };
 
 int main(int argc, char const *argv[])
@@ -266,16 +277,19 @@ int main(int argc, char const *argv[])
                     auto pid_output = dev.second.m_pid.execute(measure_value, expect_rate);
                     if (pid_output > 0)
                     {
+                        dev.second.m_is_moving = true;
                         modbus_io::set_one_io(output_off_dev_name, false);
                         modbus_io::set_one_io(output_on_dev_name, true);
                     }
                     else if (pid_output == 0)
                     {
+                        dev.second.m_is_moving = false;
                         modbus_io::set_one_io(output_on_dev_name, false);
                         modbus_io::set_one_io(output_off_dev_name, false);
                     }
                     else
                     {
+                        dev.second.m_is_moving = true;
                         modbus_io::set_one_io(output_on_dev_name, false);
                         modbus_io::set_one_io(output_off_dev_name, true);
                     }

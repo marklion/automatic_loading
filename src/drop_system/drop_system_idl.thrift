@@ -33,4 +33,5 @@ service drop_system_service{
     void set_output(1:double expect_rate, 2:string input_device_name) throws (1: drop_system_gen_exp msg),
     void turn_on_off(1:bool on) throws (1: drop_system_gen_exp msg),
     bool is_turned_on() throws (1: drop_system_gen_exp msg),
+    bool is_moved_by_pid(1:string input_device_name) throws (1: drop_system_gen_exp msg),
 }
