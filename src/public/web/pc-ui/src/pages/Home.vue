@@ -28,8 +28,13 @@
       <iframe src="/wetty" style="width: 100vw; height: 80vh; border: none"></iframe>
     </div>
     <div v-else-if="current_nav_index == '2'">
+      <el-table :data="health_record" style="width: 100%">
+        <el-table-column prop="record_time" label="时间" />
+        <el-table-column label="模块名称" prop="module_name" />
+        <el-table-column label="异常信息" prop="except_info" />
+      </el-table>
       <el-upload action="/api/upload_firmware" :limit="1" :on-success="confirm_update">
-        <el-button type="primary">上传</el-button>
+        <el-button type="primary">上传更新包</el-button>
       </el-upload>
     </div>
   </div>
@@ -44,12 +49,13 @@ import LiveCamera from "../../../../../live_camera/web/live_camera.vue";
 import DropSystem from "../../../../../drop_system/web/drop_system.vue";
 //import PcdShow from "@/components/PcdShow.vue";
 import Scale from "../../../../../scale/web/scale.vue";
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, getCurrentInstance } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
 import { GridLayout, GridItem } from 'vue3-grid-layout-next';
 import { ElMessageBox } from 'element-plus'
 import axios from "axios";
 const layout = ref([])
+const health_record = ref([]);
 const current_nav_index = ref('0');
 const resize_switch = ref(false);
 const my_components = {
@@ -61,6 +67,10 @@ const my_components = {
   '5': Scale,
   '6': DropSystem,
 }
+
+const instance = getCurrentInstance();
+
+
 // 保存布局到本地存储
 const saveLayout = (newLayout) => {
   localStorage.setItem('dashboard-layout', JSON.stringify(newLayout))
@@ -140,6 +150,12 @@ onMounted(() => {
   if (layout.value.length === 0) {
     reset_layout();
   }
+  setTimeout(async () => {
+    let resp = await instance.appContext.config.globalProperties.$call_remote_cli(
+      `process list_health_records json`
+    );
+    health_record.value = resp;
+  }, 5000);
 })
 const hostname_store = useRemoteHostName();
 const remote_hostname = computed({

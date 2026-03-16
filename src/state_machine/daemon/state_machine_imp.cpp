@@ -782,7 +782,6 @@ void state_machine_imp::sm_stop_ls_pid()
 {
     m_load_increase_pid.reset();
     m_smith.reset();
-    drop_stuff_control(false);
 }
 
 void state_machine_imp::sm_start_so_pid()
@@ -793,12 +792,24 @@ void state_machine_imp::sm_start_so_pid()
     auto ki = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KI).c_str());
     m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, 0, 0, 10, 0.08);
     m_bs = std::make_unique<ButtonSim>(0.08);
+    drop_system::call_remote_ds(
+        [&](drop_system_serviceClient &client)
+        {
+            client.turn_on_off(true);
+        });
 }
 
 void state_machine_imp::sm_stop_so_pid()
 {
     m_stuff_offset_pid.reset();
     m_bs.reset();
+    drop_system::call_remote_ds(
+        [&](drop_system_serviceClient &client)
+        {
+            client.turn_on_off(false);
+        });
+    AD_RPC_SC::get_instance()->yield_by_timer(0, 200);
+    drop_stuff_control(false);
 }
 
 void state_machine_imp::save_cur_ply(const std::string &_ply_tag)
@@ -1081,7 +1092,7 @@ void al_sm_state_pause::after_enter()
 void al_sm_state_pause::before_exit()
 {
     m_sm->sm_set_current_prompt("请停车");
-    m_sm->sm_set_current_ann("停车停车", 1);
+    m_sm->sm_set_current_ann("停车停车", 10);
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_pause::handle_event(al_sm_event event)
@@ -1223,7 +1234,7 @@ al_sm_state_judge::al_sm_state_judge()
 void al_sm_state_judge::after_enter()
 {
     m_judge_timer = AD_RPC_SC::get_instance()->startTimer(
-        0, 500,
+        0, 125,
         [&]()
         {
             auto curr_hp = m_sm->sm_get_vehicle_front_x();
@@ -1250,7 +1261,7 @@ void al_sm_state_judge::after_enter()
                 m_stable_count = 0;
                 ann_content = "后退后退";
             }
-            if (m_stable_count >= 8)
+            if (m_stable_count >= 40)
             {
                 m_sm->sm_set_current_ann("", -1);
                 m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_STAY);

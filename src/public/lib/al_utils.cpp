@@ -4,7 +4,7 @@
 #include <iconv.h>
 namespace al_utils
 {
-    static std::string g_self_module_name;
+    std::string g_self_module_name;
     bool g_exception_happened = false;
     static int code_convert(char *from_charset, char *to_charset, char *inbuf, size_t inlen, char *outbuf, size_t outlen)
     {
@@ -63,8 +63,8 @@ namespace al_utils
                     {
                         client.notify_started(module_name);
                     });
+                g_self_module_name = module_name;
             });
-        g_self_module_name = module_name;
     }
     void record_self_health(const std::string &_except_info)
     {
@@ -79,8 +79,11 @@ namespace al_utils
         }
         else
         {
-            should_record = true;
-            g_exception_happened = true;
+            if (!g_exception_happened)
+            {
+                should_record = true;
+                g_exception_happened = true;
+            }
         }
         if (should_record)
         {

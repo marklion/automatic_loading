@@ -30,9 +30,9 @@ let ann_should_refresh = false;
 let ann_gap_counter = 0;
 
 onMounted(async () => {
-    // refreshTimer = setInterval(() => {
-    //     window.location.reload();
-    // }, 60 * 1000 * 5);
+    refreshTimer = setInterval(() => {
+        window.location.reload();
+    }, 60 * 1000 * 40);
     ann_timer = setInterval(() => {
         if (ann_should_refresh) {
             do_ann(ann_content);
