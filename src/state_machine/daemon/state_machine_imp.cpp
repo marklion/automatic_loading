@@ -29,7 +29,7 @@ al_sm_state_init::al_sm_state_init()
 
 void al_sm_state_init::after_enter()
 {
-    m_sm->sm_set_current_prompt("");
+    m_sm->sm_set_current_prompt("自动装车");
     m_sm->sm_set_current_ann("", -1);
     m_sm->sm_set_current_video_url("");
     m_sm->sm_set_current_kit("");
@@ -37,9 +37,8 @@ void al_sm_state_init::after_enter()
     m_sm->sm_set_vehicle_info(vehicle_info());
     m_sm->sm_set_vehicle_front_x(100);
     m_sm->sm_set_vehicle_tail_x(100);
-    m_sm->set_expect_load_increase_speed(0);
-    m_sm->sm_stop_ls_pid();
     m_sm->sm_stop_so_pid();
+    m_sm->close_all_stuff_drop();
     lidar_call_remote(
         [](lidar_serviceClient &client)
         {
@@ -97,7 +96,7 @@ void al_sm_state_ready::after_enter()
         });
 
     m_sm->sm_set_current_prompt("请缓慢往前开");
-    m_sm->sm_set_current_ann("请缓慢前进", 10);
+    m_sm->sm_set_current_ann("请缓慢前进", -1);
 }
 
 void al_sm_state_ready::before_exit()
@@ -134,8 +133,7 @@ void al_sm_state_emergency::after_enter()
 {
     m_sm->sm_set_current_prompt("请停车");
     m_sm->sm_set_current_ann("停车停车", -1);
-    m_sm->sm_stop_ls_pid();
-    m_sm->sm_stop_so_pid();
+    m_sm->close_all_stuff_drop();
 }
 
 void al_sm_state_emergency::before_exit()
@@ -165,8 +163,7 @@ al_sm_state_manual::al_sm_state_manual()
 void al_sm_state_manual::after_enter()
 {
     m_sm->sm_set_current_prompt("人工装车");
-    m_sm->sm_stop_ls_pid();
-    m_sm->sm_stop_so_pid();
+    m_sm->close_all_stuff_drop();
 }
 
 void al_sm_state_manual::before_exit()
@@ -286,14 +283,6 @@ void state_machine_imp::push_stuff_full_offset(const double offset)
     {
         double stuff_top_z_offset = (0 - offset - sm_get_side_z());
         sm_set_stuff_full_offset(stuff_top_z_offset);
-        if (m_is_stable)
-        {
-            sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
-        }
-        else
-        {
-            sm_handle_event(al_sm_state::AL_SM_EVENT_BACK_TO_EMPTY);
-        }
     }
 }
 
@@ -376,7 +365,9 @@ bool state_machine_imp::set_basic_config(const sm_basic_config &config)
     ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X, std::to_string(config.tail_min_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X, std::to_string(config.tail_max_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_CHANNEL_NAME, config.channel_name);
-    ci.set_child(CONFIG_ITEM_SM_CONFIG_MAX_DROP_SPEED, std::to_string(config.max_drop_speed));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_EMPTY_OFFSET, std::to_string(config.empty_offset));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_LACK_OFFSET, std::to_string(config.lack_offset));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_ALMOST_FULL_OFFSET, std::to_string(config.almost_full_offset));
     return true;
 }
 
@@ -392,60 +383,13 @@ void state_machine_imp::get_basic_config(sm_basic_config &_return)
         _return.tail_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X));
         _return.tail_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X));
         _return.channel_name = ci(CONFIG_ITEM_SM_CONFIG_CHANNEL_NAME);
-        _return.max_drop_speed = std::stod(ci(CONFIG_ITEM_SM_CONFIG_MAX_DROP_SPEED));
+        _return.empty_offset = std::stod(ci(CONFIG_ITEM_SM_CONFIG_EMPTY_OFFSET));
+        _return.lack_offset = std::stod(ci(CONFIG_ITEM_SM_CONFIG_LACK_OFFSET));
+        _return.almost_full_offset = std::stod(ci(CONFIG_ITEM_SM_CONFIG_ALMOST_FULL_OFFSET));
     }
     catch (...)
     {
         m_logger.log_print(al_log::LOG_LEVEL_DEBUG, "Invalid basic config:%s", ci.expend_to_string().c_str());
-    }
-}
-
-void state_machine_imp::drop_stuff_control(bool _is_open)
-{
-    auto &ci = config::root_config::get_instance();
-    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
-    if (cur_kit.get_key() == sm_get_current_kit())
-    {
-        std::string io_name;
-        std::string another_io_name;
-        if (_is_open)
-        {
-            io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
-            another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
-        }
-        else
-        {
-            io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
-            another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
-        }
-        if (!io_name.empty())
-        {
-            modbus_io::set_one_io(another_io_name, false);
-            modbus_io::set_one_io(io_name, true);
-            m_logger.log_print(al_log::LOG_LEVEL_INFO, "按下 [%s]", io_name.c_str());
-            m_logger.log_print(al_log::LOG_LEVEL_INFO, "松开 [%s]", another_io_name.c_str());
-        }
-    }
-}
-
-void state_machine_imp::drop_stuff_control()
-{
-    auto &ci = config::root_config::get_instance();
-    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
-    if (cur_kit.get_key() == sm_get_current_kit())
-    {
-        std::string io_name;
-        std::string another_io_name;
-        io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_OPEN_IO);
-        another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_CLOSE_IO);
-        if (!io_name.empty())
-        {
-            modbus_io::set_one_io(io_name, false);
-        }
-        if (!another_io_name.empty())
-        {
-            modbus_io::set_one_io(another_io_name, false);
-        }
     }
 }
 
@@ -489,6 +433,21 @@ int state_machine_imp::lc_drop_revoke_control(bool _is_drop)
     return ret;
 }
 
+void state_machine_imp::close_all_stuff_drop()
+{
+    auto &ci = config::root_config::get_instance();
+    auto all_kits = ci[CONFIG_ITEM_SM_CONFIG_KITS].get_children();
+    for (auto &kit : all_kits)
+    {
+        auto ds_input_dev = (*kit)(CONFIG_ITEM_SM_CONFIG_KIT_DS_INPUT_DEV);
+        drop_system::call_remote_ds(
+            [ds_input_dev](drop_system_serviceClient &client)
+            {
+                client.set_output(0, ds_input_dev);
+            });
+    }
+}
+
 bool state_machine_imp::set_default_kit(const std::string &kit_name)
 {
     auto &ci = config::root_config::get_instance();
@@ -508,24 +467,31 @@ void state_machine_imp::push_side_z(const double side_z)
     m_detect_side_z = side_z;
 }
 
-void state_machine_imp::set_expect_load_increase_speed(double speed)
-{
-    auto &ci = config::root_config::get_instance();
-    auto set_speed = atof(ci(CONFIG_ITEM_SM_CONFIG_MAX_DROP_SPEED).c_str());
-    if (speed < set_speed)
-    {
-        m_expect_load_increase_speed = speed;
-    }
-    else
-    {
-        m_expect_load_increase_speed = set_speed;
-    }
-}
-
 void state_machine_imp::cast_info_update(const std::string &prompt, const std::string &ann_content, const int32_t ann_gap)
 {
     sm_set_current_ann(ann_content, ann_gap);
     sm_set_current_prompt(prompt);
+}
+
+void state_machine_imp::prompt_ann_while_running(al_action_prompt _fs)
+{
+    std::string content = "";
+    switch (_fs)
+    {
+    case AL_ACTION_FORWARD:
+        content = "前进一点";
+        break;
+    case AL_ACTION_REVERSE:
+        content = "后退一点";
+        break;
+    case AL_ACTION_STOP:
+        content = "停车停车";
+        break;
+    default:
+        break;
+    }
+    sm_set_current_ann(content, -1);
+    sm_set_current_prompt(content);
 }
 
 lidar_params state_machine_imp::make_params_from_kit()
@@ -654,94 +620,10 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
             AD_RPC_SC::get_instance())
             .release());
     AD_RPC_SC::get_instance()->registerNode(m_listen_node);
-    m_load_increase_calc_timer = AD_RPC_SC::get_instance()->startTimer(
-        0,
-        80,
-        [this]()
-        {
-            std::string one_record;
-            double curr_load = sm_get_current_load();
-            m_fwrc.input(curr_load);
-            m_load_increase_speed = m_fwrc.get_rate();
-
-            one_record =
-                al_utils::ad_utils_date_time().m_datetime_ms + "," +
-                al_utils::double2string(curr_load) + "," +
-                al_utils::double2string(m_load_increase_speed, 5);
-            if (m_stuff_offset_pid)
-            {
-                auto measured_offset = sm_get_stuff_full_offset();
-                sm_basic_config basic_config;
-                get_basic_config(basic_config);
-                auto expected_offset = basic_config.max_full_offset;
-                auto output = m_stuff_offset_pid->execute_continuous(measured_offset, expected_offset);
-                SegFunction sf(0);
-                sf.add_seg(0.05, 0.5);
-                sf.add_seg(0.1, 1);
-                auto sf_output = sf.update(output);
-                if (sf_output == 0)
-                {
-                    m_stable_count += 1;
-                    if (m_stable_count > 24)
-                    {
-                        m_is_stable = true;
-                    }
-                }
-                else
-                {
-                    m_stable_count = 0;
-                    m_is_stable = false;
-                }
-                auto &ci = config::root_config::get_instance();
-                auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
-                auto ds_input_dev = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DS_INPUT_DEV);
-                if (ds_input_dev.empty())
-                {
-                    int bs_input = 0;
-                    if (sf_output == 0.5)
-                    {
-                        bs_input = 3;
-                    }
-                    else if (sf_output == 1)
-                    {
-                        bs_input = 4;
-                    }
-                    m_bs->set_work_state(bs_input);
-                    auto bs_output = m_bs->loop();
-                    if (bs_output > 0)
-                    {
-                        drop_stuff_control(true);
-                    }
-                    else if (bs_output < 0)
-                    {
-                        drop_stuff_control(false);
-                    }
-                    else
-                    {
-                        drop_stuff_control();
-                    }
-                }
-                else
-                {
-                    drop_system::call_remote_ds(
-                        [&](drop_system_serviceClient &client)
-                        {
-                            client.set_output(sf_output, ds_input_dev);
-                        });
-                }
-                one_record +=
-                    "," + al_utils::double2string(measured_offset) +
-                    "," + al_utils::double2string(expected_offset) +
-                    "," + al_utils::double2string(sf_output);
-            }
-            std::ofstream ofs("/database/pid_real_info.csv", std::ios::app);
-            ofs << one_record << std::endl;
-        });
 }
 
 state_machine_imp::~state_machine_imp()
 {
-    AD_RPC_SC::get_instance()->stopTimer(m_load_increase_calc_timer);
     AD_RPC_SC::get_instance()->unregisterNode(m_listen_node);
 }
 
@@ -766,50 +648,60 @@ void state_machine_imp::deliver_msg()
     }
 }
 
-void state_machine_imp::sm_start_ls_pid()
-{
-    auto &ci = config::root_config::get_instance();
-    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
-    auto kp = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KP).c_str());
-    auto ki = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KI).c_str());
-    auto kd = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KD).c_str());
-    auto dz = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_DZ).c_str());
-    m_load_increase_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, kd, dz, 10, 0.08);
-    m_smith = std::make_unique<pid_control::SmithPredictor>(3, 1, 2, 0.08);
-}
-
-void state_machine_imp::sm_stop_ls_pid()
-{
-    m_load_increase_pid.reset();
-    m_smith.reset();
-}
-
 void state_machine_imp::sm_start_so_pid()
 {
-    auto &ci = config::root_config::get_instance();
-    auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
-    auto kp = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_SO_KP).c_str());
-    auto ki = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_PID_LS_KI).c_str());
-    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(kp, ki, 0, 0, 10, 0.08);
-    m_bs = std::make_unique<ButtonSim>(0.08);
-    drop_system::call_remote_ds(
-        [&](drop_system_serviceClient &client)
+    m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(1, 0, 0, 0, 10, 0.08);
+    m_so_pid_timer = AD_RPC_SC::get_instance()->startTimer(
+        0,
+        80,
+        [this]()
         {
-            client.turn_on_off(true);
+            // 1. 获取测量值
+            auto measured_offset = sm_get_stuff_full_offset();
+            std::string one_record;
+            one_record =
+                al_utils::ad_utils_date_time().m_datetime_ms + "," +
+                std::to_string(measured_offset);
+            sm_basic_config basic_config;
+            get_basic_config(basic_config);
+
+            // 2. 获取期望值并计算输出值
+            auto expected_offset = basic_config.max_full_offset;
+            auto output = m_stuff_offset_pid->execute_continuous(measured_offset, expected_offset);
+            // 3. 将输出按照配置分段
+            SegFunction sf(0);
+            sf.add_seg(basic_config.almost_full_offset, 1);
+            sf.add_seg(basic_config.lack_offset, 2);
+            sf.add_seg(basic_config.empty_offset, 3);
+            auto sf_output = (int)sf.update(output);
+            if (sf_output == 0 || sf_output == 1)
+            {
+                sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
+            }
+
+            // 4. 用当前状态的输出处理矩阵处理上步分段
+            auto state_pid_output = m_state->get_output(sf_output);
+            prompt_ann_while_running(state_pid_output.m_cur_action);
+            auto &ci = config::root_config::get_instance();
+            auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
+            auto ds_input_dev = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DS_INPUT_DEV);
+
+            drop_system::call_remote_ds(
+                [&](drop_system_serviceClient &client)
+                {
+                    client.set_output(state_pid_output.m_output_rate, ds_input_dev);
+                });
+            one_record +=
+                "," + al_utils::double2string(state_pid_output.m_output_rate);
+            std::ofstream ofs("/database/pid_real_info.csv", std::ios::app);
+            ofs << one_record << std::endl;
         });
 }
 
 void state_machine_imp::sm_stop_so_pid()
 {
+    AD_RPC_SC::get_instance()->stopTimer(m_so_pid_timer);
     m_stuff_offset_pid.reset();
-    m_bs.reset();
-    drop_system::call_remote_ds(
-        [&](drop_system_serviceClient &client)
-        {
-            client.turn_on_off(false);
-        });
-    AD_RPC_SC::get_instance()->yield_by_timer(0, 200);
-    drop_stuff_control(false);
 }
 
 void state_machine_imp::save_cur_ply(const std::string &_ply_tag)
@@ -964,6 +856,7 @@ void al_sm_state_working::after_enter()
 
 void al_sm_state_working::before_exit()
 {
+    m_sm->sm_stop_so_pid();
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event)
@@ -984,13 +877,18 @@ std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event
     case AL_SM_EVENT_LOAD_ACHIEVED:
         new_state = std::make_unique<al_sm_state_cleanup>();
         break;
-    case AL_SM_EVENT_REACH_FULL:
-        new_state = std::make_unique<al_sm_state_pause>();
-        break;
     default:
         break;
     }
     return new_state;
+}
+
+void al_sm_state_working::make_output_matrix(std::vector<pid_output_producer> &output_vec)
+{
+    output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
+    output_vec.push_back(pid_output_producer(0.5, AL_ACTION_FORWARD));
+    output_vec.push_back(pid_output_producer(1, AL_ACTION_STOP));
+    output_vec.push_back(pid_output_producer(0, AL_ACTION_REVERSE));
 }
 
 al_sm_state_cleanup::al_sm_state_cleanup()
@@ -1000,11 +898,10 @@ al_sm_state_cleanup::al_sm_state_cleanup()
 
 void al_sm_state_cleanup::after_enter()
 {
-    m_sm->sm_stop_ls_pid();
-    m_sm->sm_stop_so_pid();
-    m_sm->sm_set_current_prompt("请驶离");
-    m_sm->sm_set_current_ann("装车结束，请驶离", -1);
+    m_sm->sm_set_current_prompt("装车结束,请驶离");
+    m_sm->sm_set_current_ann("请驶离", -1);
     m_sm->lc_drop_revoke_control(false);
+    m_sm->close_all_stuff_drop();
 }
 
 void al_sm_state_cleanup::before_exit()
@@ -1038,12 +935,12 @@ al_sm_state_ending::al_sm_state_ending()
 
 void al_sm_state_ending::after_enter()
 {
-    m_sm->sm_set_current_prompt("快装完了，慢点前进");
-    m_sm->sm_set_current_ann("快装完了，慢点前进", -1);
+    m_sm->sm_start_so_pid();
 }
 
 void al_sm_state_ending::before_exit()
 {
+    m_sm->sm_stop_so_pid();
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
@@ -1061,7 +958,6 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
     case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
         new_state = std::make_unique<al_sm_state_manual>();
         break;
-    case AL_SM_EVENT_REACH_FULL:
     case AL_SM_EVENT_LOAD_ACHIEVED:
         if (m_sm->sm_get_current_load() < max_load)
         {
@@ -1078,45 +974,12 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
     return new_state;
 }
 
-al_sm_state_pause::al_sm_state_pause()
+void al_sm_state_ending::make_output_matrix(std::vector<pid_output_producer> &output_vec)
 {
-    m_name = "暂停";
-}
-
-void al_sm_state_pause::after_enter()
-{
-    m_sm->sm_set_current_prompt("请缓慢前进");
-    m_sm->sm_set_current_ann("前进前进", 10);
-}
-
-void al_sm_state_pause::before_exit()
-{
-    m_sm->sm_set_current_prompt("请停车");
-    m_sm->sm_set_current_ann("停车停车", 10);
-}
-
-std::unique_ptr<al_sm_state> al_sm_state_pause::handle_event(al_sm_event event)
-{
-    std::unique_ptr<al_sm_state> new_state;
-    switch (event)
-    {
-    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
-        new_state = std::make_unique<al_sm_state_emergency>();
-        break;
-    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
-        new_state = std::make_unique<al_sm_state_manual>();
-        break;
-    case AL_SM_EVENT_VEHICLE_DISAPPEAR:
-    case AL_SM_EVENT_LOAD_ACHIEVED:
-        new_state = std::make_unique<al_sm_state_cleanup>();
-        break;
-    case AL_SM_EVENT_BACK_TO_EMPTY:
-        new_state = std::make_unique<al_sm_state_working>();
-        break;
-    default:
-        break;
-    }
-    return new_state;
+    output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
+    output_vec.push_back(pid_output_producer(0.5, AL_ACTION_STOP));
+    output_vec.push_back(pid_output_producer(0.5, AL_ACTION_STOP));
+    output_vec.push_back(pid_output_producer(0, AL_ACTION_REVERSE));
 }
 
 std::string al_sm_state::state_name(al_sm_event _event)
@@ -1151,14 +1014,11 @@ std::string al_sm_state::state_name(al_sm_event _event)
     case AL_SM_EVENT_LOAD_ACHIEVED:
         ret = "达到装载量";
         break;
+    case AL_SM_EVENT_REACH_FULL:
+        ret = "料位达满";
+        break;
     case AL_SM_EVENT_LOAD_CLEAR:
         ret = "装载量清零";
-        break;
-    case AL_SM_EVENT_REACH_FULL:
-        ret = "达到满载偏移";
-        break;
-    case AL_SM_EVENT_BACK_TO_EMPTY:
-        ret = "回到空载偏移";
         break;
     case AL_SM_EVENT_LC_READY:
         ret = "溜槽就绪";
@@ -1169,6 +1029,24 @@ std::string al_sm_state::state_name(al_sm_event _event)
     }
 
     return ret;
+}
+
+void al_sm_state::make_output_matrix(std::vector<pid_output_producer> &output_vec)
+{
+}
+
+pid_output_producer al_sm_state::get_output(int _index)
+{
+    std::vector<pid_output_producer> output_vec;
+    make_output_matrix(output_vec);
+    if (_index >= 0 && _index < output_vec.size())
+    {
+        return output_vec[_index];
+    }
+    else
+    {
+        return pid_output_producer(0, AL_ACTION_STOP);
+    }
 }
 
 al_sm_state_begin::al_sm_state_begin()
@@ -1192,7 +1070,6 @@ void al_sm_state_begin::after_enter()
         {
             m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_LC_READY);
         });
-    m_sm->sm_start_ls_pid();
 }
 
 void al_sm_state_begin::before_exit()
@@ -1218,7 +1095,7 @@ std::unique_ptr<al_sm_state> al_sm_state_begin::handle_event(al_sm_event event)
         new_state = std::make_unique<al_sm_state_manual>();
         break;
     case AL_SM_EVENT_LC_READY:
-        new_state = std::make_unique<al_sm_state_working>();
+        new_state = std::make_unique<al_sm_state_first_heap>();
         break;
     default:
         break;
@@ -1268,7 +1145,7 @@ void al_sm_state_judge::after_enter()
             }
             else if (ann_content != m_last_ann_content)
             {
-                m_sm->sm_set_current_ann(ann_content, 10);
+                m_sm->sm_set_current_ann(ann_content, 25);
             }
             m_last_ann_content = ann_content;
         });
@@ -1277,8 +1154,6 @@ void al_sm_state_judge::after_enter()
 void al_sm_state_judge::before_exit()
 {
     AD_RPC_SC::get_instance()->stopTimer(m_judge_timer);
-    m_sm->sm_set_current_ann("开始装车", -1);
-    m_sm->sm_set_current_prompt("开始装车");
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_judge::handle_event(al_sm_event event)
@@ -1299,4 +1174,54 @@ std::unique_ptr<al_sm_state> al_sm_state_judge::handle_event(al_sm_event event)
         break;
     }
     return new_state;
+}
+
+al_sm_state_first_heap::al_sm_state_first_heap()
+{
+    m_name = "首堆";
+}
+
+void al_sm_state_first_heap::after_enter()
+{
+    m_sm->sm_start_so_pid();
+}
+
+void al_sm_state_first_heap::before_exit()
+{
+    m_sm->sm_stop_so_pid();
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_first_heap::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+    switch (event)
+    {
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+    case AL_SM_EVENT_VEHICLE_DISAPPEAR:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    case AL_SM_EVENT_VEHICLE_LEAVE:
+        new_state = std::make_unique<al_sm_state_ending>();
+        break;
+    case AL_SM_EVENT_LOAD_ACHIEVED:
+        new_state = std::make_unique<al_sm_state_cleanup>();
+        break;
+    case AL_SM_EVENT_REACH_FULL:
+        new_state = std::make_unique<al_sm_state_working>();
+        break;
+    default:
+        break;
+    }
+    return new_state;
+}
+
+void al_sm_state_first_heap::make_output_matrix(std::vector<pid_output_producer> &output_vec)
+{
+    output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
+    output_vec.push_back(pid_output_producer(0.5, AL_ACTION_FORWARD));
+    output_vec.push_back(pid_output_producer(1, AL_ACTION_STOP));
+    output_vec.push_back(pid_output_producer(1, AL_ACTION_STOP));
 }

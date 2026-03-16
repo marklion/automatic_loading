@@ -11,48 +11,17 @@
 #include <memory>
 #include <string>
 #include "../../pid_control/lib/pid_control_lib.h"
-class ButtonSim{
-    double m_period = 0;
-    double m_work_state = 0;
-    double m_state_count = 0;
-    double m_output = 0;
-public:
-    ButtonSim(double period) : m_period(period) {}
-    void set_work_state(double _input) {
-        auto lack = _input - m_work_state;
-        if (lack != 0)
-        {
-            m_state_count += (lack - (m_work_state - m_state_count));
-        }
-        m_work_state = _input;
-    }
-    double loop()
-    {
-        double ret = 0;
-
-        if (m_state_count > m_period)
-        {
-            m_state_count -= m_period;
-            ret = 1;
-        }
-        else if (m_state_count < -m_period)
-        {
-            m_state_count+= m_period;
-            ret = -1;
-        }
-        m_output = ret;
-        return ret;
-    }
-    double cur_output()
-    {
-        return m_output;
-    }
-    double cur_state()
-    {
-        return m_work_state;
-    }
-};
 class state_machine_imp;
+enum al_action_prompt{
+    AL_ACTION_FORWARD,
+    AL_ACTION_REVERSE,
+    AL_ACTION_STOP
+};
+struct pid_output_producer{
+    double m_output_rate = 0;
+    al_action_prompt m_cur_action = AL_ACTION_STOP;
+    pid_output_producer(double _output_rate, al_action_prompt _action):m_output_rate(_output_rate), m_cur_action(_action){}
+};
 struct al_sm_state
 {
     enum al_sm_event
@@ -68,9 +37,7 @@ struct al_sm_state
         AL_SM_EVENT_LOAD_ACHIEVED,
         AL_SM_EVENT_LOAD_CLEAR,
         AL_SM_EVENT_REACH_FULL,
-        AL_SM_EVENT_BACK_TO_EMPTY,
         AL_SM_EVENT_LC_READY,
-        AL_SM_EVENT_LACK_LOAD,
     };
     state_machine_imp *m_sm = nullptr;
     std::string m_name;
@@ -78,6 +45,8 @@ struct al_sm_state
     virtual void before_exit() = 0;
     virtual std::unique_ptr<al_sm_state> handle_event(al_sm_event event) = 0;
     static std::string state_name(al_sm_event _event);
+    virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec);
+    pid_output_producer get_output(int _index);
 };
 
 struct al_sm_state_working : public al_sm_state
@@ -86,6 +55,7 @@ struct al_sm_state_working : public al_sm_state
     void after_enter() override;
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
+    virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec) override;
 };
 
 struct al_sm_state_judge : public al_sm_state
@@ -113,14 +83,7 @@ struct al_sm_state_ending : public al_sm_state
     void after_enter() override;
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
-};
-
-struct al_sm_state_pause : public al_sm_state
-{
-    al_sm_state_pause();
-    void after_enter() override;
-    void before_exit() override;
-    std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
+    virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec) override;
 };
 
 struct al_sm_state_init : public al_sm_state
@@ -164,6 +127,16 @@ struct al_sm_state_begin : public al_sm_state
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
 };
 
+struct al_sm_state_first_heap:public al_sm_state{
+    al_sm_state_first_heap();
+    void after_enter() override;
+    void before_exit() override;
+    std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
+    virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec) override;
+};
+
+
+
 class state_machine_imp : public state_machine_serviceIf
 {
     std::unique_ptr<al_sm_state> m_state;
@@ -182,19 +155,13 @@ class state_machine_imp : public state_machine_serviceIf
     std::vector<AD_EVENT_SC_TCP_DATA_NODE_PTR> m_data_nodes;
     double m_side_z = 0.0;
     double m_detect_side_z = 0.0;
-    double m_load_increase_speed = 0.0;
     long long m_last_load_check_time = al_utils::get_current_us_stamp();
-    AD_EVENT_SC_TIMER_NODE_PTR m_load_increase_calc_timer;
-    double m_expect_load_increase_speed = 0.0;
-    std::unique_ptr<pid_control::DiscretePID> m_load_increase_pid;
+    AD_EVENT_SC_TIMER_NODE_PTR m_so_pid_timer;
     std::unique_ptr<pid_control::DiscretePID> m_stuff_offset_pid;
     std::unique_ptr<pid_control::SmithPredictor> m_smith;
-    std::unique_ptr<ButtonSim> m_bs;
     std::string m_ann_content;
     int m_ann_gap;
     pid_control::FixedWindowRateCalculator m_fwrc;
-    bool m_is_stable = false;
-    int m_stable_count = 0;
 public:
     state_machine_imp();
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
@@ -207,7 +174,8 @@ public:
     }
     ~state_machine_imp();
     void deliver_msg();
-    void sm_set_current_load(double load) {
+    void sm_set_current_load(double load)
+    {
         m_current_load = load;
         deliver_msg();
     }
@@ -223,8 +191,6 @@ public:
     {
         return {m_ann_content, m_ann_gap};
     }
-    void sm_start_ls_pid();
-    void sm_stop_ls_pid();
     void sm_start_so_pid();
     void sm_stop_so_pid();
     double sm_get_current_load() { return m_current_load; }
@@ -273,16 +239,13 @@ public:
     virtual void push_vehicle_tail_position(const double tail_x);
     virtual bool set_basic_config(const sm_basic_config &config);
     virtual void get_basic_config(sm_basic_config &_return);
-    void drop_stuff_control(bool _is_open);
-    void drop_stuff_control();
     int lc_drop_revoke_control(bool _is_drop);
+    void close_all_stuff_drop();
     virtual bool set_default_kit(const std::string &kit_name);
     virtual void get_default_kit(std::string &_return);
     virtual void push_side_z(const double side_y);
-    void set_expect_load_increase_speed(double speed);
-    double get_expect_load_increase_speed() { return m_expect_load_increase_speed; }
-    double get_load_increase_speed() { return m_load_increase_speed; }
     virtual void cast_info_update(const std::string &prompt, const std::string &ann_content, const int32_t ann_gap);
+    void prompt_ann_while_running(al_action_prompt _fs);
 };
 
 #endif // _STATE_MACHINE_IMP_H_

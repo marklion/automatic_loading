@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>状态机转移汇总</title>
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --card: #ffffff;
+      --text: #1f2328;
+      --muted: #57606a;
+      --line: #d0d7de;
+      --head: #f3f4f6;
+      --accent: #0969da;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 24px auto;
+      padding: 0 16px 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    h1, h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+    h2 { font-size: 18px; }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+      background: #fff;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 10px 12px;
+      font-size: 14px;
+      vertical-align: top;
+      text-align: left;
+      white-space: pre-wrap;
+    }
+    th:last-child, td:last-child { border-right: none; }
+    th {
+      background: var(--head);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:last-child td { border-bottom: none; }
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    select, input {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--text);
+    }
+    .badge {
+      color: #fff;
+      background: var(--accent);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 12px;
+    }
+    .abbr {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 8px 12px;
+      font-size: 14px;
+    }
+    .abbr code {
+      background: #f0f3f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #d8dee4;
+    }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>自动装车状态机：状态转移汇总</h1>
+      <div class="sub">数据来源：src/state_machine/daemon/state_machine_imp.cpp（按当前分支代码梳理）</div>
+      <div class="table-wrap">
+        <table id="allTable">
+          <thead>
+            <tr>
+              <th>当前状态</th>
+              <th>目标状态</th>
+              <th>触发事件</th>
+              <th>事件成立条件</th>
+              <th>转移动作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>按事件维度反查</h2>
+      <div class="sub">选择一个事件，查看该事件会从哪些状态跳到哪些状态。</div>
+      <div class="controls">
+        <label for="eventSelect">事件：</label>
+        <select id="eventSelect"></select>
+        <label for="fromKeyword">源状态包含：</label>
+        <input id="fromKeyword" type="text" placeholder="例如：首堆 / 工作中" />
+        <span class="badge" id="resultCount">0 条</span>
+      </div>
+      <div class="table-wrap">
+        <table id="reverseTable">
+          <thead>
+            <tr>
+              <th>触发事件</th>
+              <th>当前状态</th>
+              <th>目标状态</th>
+              <th>事件成立条件</th>
+              <th>转移动作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>缩写说明</h2>
+      <div class="abbr">
+        <div><code>G</code></div><div>通用切换动作：before_exit → 切换状态对象 → after_enter；保存 ply；记录状态变更日志；HTTP 推送 from/to/event</div>
+        <div><code>EN_空闲</code></div><div>清提示/清播报/清视频/清车型；停止 PID；关闭所有下料；关雷达；关闸门</div>
+        <div><code>EN_就绪</code></div><div>应用排队车辆信息；开雷达；开闸门；提示“请缓慢往前开”</div>
+        <div><code>EN_判定</code></div><div>启动 125ms 判定定时器；根据前车位置播报前进/后退/停车</div>
+        <div><code>EN_即将开始</code></div><div>提示“停车到位”；触发溜槽下发动作；启动一次性定时器，超时后发 LC_READY</div>
+        <div><code>EN_首堆</code></div><div>启动 PID 下料控制定时器</div>
+        <div><code>EN_工作中</code></div><div>启动 PID 下料控制定时器</div>
+        <div><code>EN_收尾</code></div><div>启动 PID 下料控制定时器</div>
+        <div><code>EN_清理</code></div><div>提示“装车结束,请驶离”；撤销下料控制；关闭所有下料</div>
+        <div><code>EN_急停</code></div><div>提示“请停车”；播报“停车停车”；关闭所有下料</div>
+        <div><code>EN_手动</code></div><div>提示“人工装车”；关闭所有下料</div>
+        <div><code>EX_判定</code></div><div>停止判定定时器</div>
+        <div><code>EX_即将开始</code></div><div>停止动作定时器；固化 side_z（sm_fix_side_z）</div>
+        <div><code>EX_首堆</code></div><div>停止 PID 定时器</div>
+        <div><code>EX_工作中</code></div><div>停止 PID 定时器</div>
+        <div><code>EX_收尾</code></div><div>停止 PID 定时器</div>
+      </div>
+      <div class="sub" style="margin-top: 12px;">注：仅展示“发生状态变化”的路径；未列出的事件表示该状态下不会触发状态跳转。</div>
+    </div>
+  </div>
+
+  <script>
+    const transitions = [
+      { from: '空闲', to: '急停', event: '急停', condition: '调用 emergency_shutdown', action: 'G + EN_急停' },
+      { from: '空闲', to: '手动', event: '切手动', condition: '调用 switch_to_manual_mode', action: 'G + EN_手动' },
+      { from: '空闲', to: '就绪', event: '触发就绪', condition: 'trigger_sm 且 apply_config_kit 成功', action: 'G + EN_就绪' },
+
+      { from: '就绪', to: '急停', event: '急停', condition: '调用 emergency_shutdown', action: 'G + EN_急停' },
+      { from: '就绪', to: '手动', event: '切手动', condition: '调用 switch_to_manual_mode', action: 'G + EN_手动' },
+      { from: '就绪', to: '判定', event: '车辆到达', condition: 'push_vehicle_front_position 且 front_x ∈ [front_min_x, front_max_x]', action: 'G + EN_判定' },
+
+      { from: '判定', to: '急停', event: '急停', condition: '调用 emergency_shutdown', action: 'EX_判定 + G + EN_急停' },
+      { from: '判定', to: '手动', event: '切手动', condition: '调用 switch_to_manual_mode', action: 'EX_判定 + G + EN_手动' },
+      { from: '判定', to: '即将开始', event: '车辆停留', condition: '判定定时器内 stable_count >= 40（约 5 秒）', action: 'EX_判定 + G + EN_即将开始' },
+
+      { from: '即将开始', to: '急停', event: '急停', condition: '调用 emergency_shutdown', action: 'EX_即将开始 + G + EN_急停' },
+      { from: '即将开始', to: '急停', event: '车辆消失', condition: 'push_vehicle_tail_position 且 tail_x > tail_max_x', action: 'EX_即将开始 + G + EN_急停' },
+      { from: '即将开始', to: '手动', event: '切手动', condition: '调用 switch_to_manual_mode', action: 'EX_即将开始 + G + EN_手动' },
+      { from: '即将开始', to: '首堆', event: '溜槽就绪', condition: '进入即将开始后 stay_second 到时，自动触发 LC_READY', action: 'EX_即将开始 + G + EN_首堆' },
+
+      { from: '首堆', to: '急停', event: '急停', condition: '调用 emergency_shutdown', action: 'EX_首堆 + G + EN_急停' },
+      { from: '首堆', to: '急停', event: '车辆消失', condition: 'push_vehicle_tail_position 且 tail_x > tail_max_x', action: 'EX_首堆 + G + EN_急停' },
+      { from: '首堆', to: '手动', event: '切手动', condition: '调用 switch_to_manual_mode', action: 'EX_首堆 + G + EN_手动' },
+      { from: '首堆', to: '收尾', event: '车辆离开', condition: 'push_vehicle_tail_position 且 tail_x ∈ [tail_min_x, tail_max_x]', action: 'EX_首堆 + G + EN_收尾' },
+      { from: '首堆', to: '清理', event: '达到装载量', condition: 'push_cur_load 且 cur_load >= max_load', action: 'EX_首堆 + G + EN_清理' },
+      { from: '首堆', to: '工作中', event: '达到满料位', condition: 'PID 分段输出 sf_output 为 0 或 1（触发 REACH_FULL）', action: 'EX_首堆 + G + EN_工作中' },
+
+      { from: '工作中', to: '急停', event: '急停', condition: '调用 emergency_shutdown', action: 'EX_工作中 + G + EN_急停' },
+      { from: '工作中', to: '急停', event: '车辆消失', condition: 'push_vehicle_tail_position 且 tail_x > tail_max_x', action: 'EX_工作中 + G + EN_急停' },
+      { from: '工作中', to: '手动', event: '切手动', condition: '调用 switch_to_manual_mode', action: 'EX_工作中 + G + EN_手动' },
+      { from: '工作中', to: '收尾', event: '车辆离开', condition: 'push_vehicle_tail_position 且 tail_x ∈ [tail_min_x, tail_max_x]', action: 'EX_工作中 + G + EN_收尾' },
+      { from: '工作中', to: '清理', event: '达到装载量', condition: 'push_cur_load 且 cur_load >= max_load', action: 'EX_工作中 + G + EN_清理' },
+
+      { from: '收尾', to: '急停', event: '急停', condition: '调用 emergency_shutdown', action: 'EX_收尾 + G + EN_急停' },
+      { from: '收尾', to: '急停', event: '车辆消失', condition: 'push_vehicle_tail_position 且 tail_x > tail_max_x', action: 'EX_收尾 + G + EN_急停' },
+      { from: '收尾', to: '手动', event: '切手动', condition: '调用 switch_to_manual_mode', action: 'EX_收尾 + G + EN_手动' },
+      { from: '收尾', to: '手动', event: '达到装载量', condition: 'LOAD_ACHIEVED 且 current_load < max_load', action: 'EX_收尾 + G + EN_手动' },
+      { from: '收尾', to: '清理', event: '达到装载量', condition: 'LOAD_ACHIEVED 且 current_load >= max_load', action: 'EX_收尾 + G + EN_清理' },
+
+      { from: '清理', to: '急停', event: '急停', condition: '调用 emergency_shutdown', action: 'G + EN_急停' },
+      { from: '清理', to: '手动', event: '切手动', condition: '调用 switch_to_manual_mode', action: 'G + EN_手动' },
+      { from: '清理', to: '空闲', event: '装载量清零', condition: 'push_cur_load 且 cur_load == 0', action: 'G + EN_空闲' },
+
+      { from: '急停', to: '空闲', event: '重置到初始', condition: '调用 reset_to_init', action: 'G + EN_空闲' },
+      { from: '手动', to: '空闲', event: '重置到初始', condition: '调用 reset_to_init', action: 'G + EN_空闲' }
+    ];
+
+    const allTbody = document.querySelector('#allTable tbody');
+    const reverseTbody = document.querySelector('#reverseTable tbody');
+    const eventSelect = document.getElementById('eventSelect');
+    const fromKeyword = document.getElementById('fromKeyword');
+    const resultCount = document.getElementById('resultCount');
+
+    function rowHtml(cols) {
+      return `<tr>${cols.map(c => `<td>${c}</td>`).join('')}</tr>`;
+    }
+
+    function renderAllTable() {
+      allTbody.innerHTML = transitions
+        .map(t => rowHtml([t.from, t.to, t.event, t.condition, t.action]))
+        .join('');
+    }
+
+    function initEventSelect() {
+      const events = [...new Set(transitions.map(t => t.event))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+      eventSelect.innerHTML = ['<option value="__ALL__">全部事件</option>']
+        .concat(events.map(e => `<option value="${e}">${e}</option>`))
+        .join('');
+    }
+
+    function renderReverseTable() {
+      const selectedEvent = eventSelect.value;
+      const keyword = fromKeyword.value.trim();
+      const list = transitions.filter(t => {
+        const eventOk = selectedEvent === '__ALL__' || t.event === selectedEvent;
+        const fromOk = !keyword || t.from.includes(keyword);
+        return eventOk && fromOk;
+      });
+
+      reverseTbody.innerHTML = list
+        .map(t => rowHtml([t.event, t.from, t.to, t.condition, t.action]))
+        .join('') || rowHtml(['-', '-', '-', '无匹配结果', '-']);
+
+      resultCount.textContent = `${list.length} 条`;
+    }
+
+    renderAllTable();
+    initEventSelect();
+    renderReverseTable();
+
+    eventSelect.addEventListener('change', renderReverseTable);
+    fromKeyword.addEventListener('input', renderReverseTable);
+  </script>
+</body>
+</html>

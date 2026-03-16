@@ -240,7 +240,9 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
     check_resp += common_cli::check_params(_params, 4, "车尾位置最小值:");
     check_resp += common_cli::check_params(_params, 5, "车尾位置最大值:");
     check_resp += common_cli::check_params(_params, 6, "通道名称:");
-    check_resp += common_cli::check_params(_params, 7, "最大卸载速度:");
+    check_resp += common_cli::check_params(_params, 7, "料空偏移:");
+    check_resp += common_cli::check_params(_params, 8, "料缺偏移:");
+    check_resp += common_cli::check_params(_params, 9, "近满载偏移:");
     if (check_resp.empty())
     {
         sm_basic_config config;
@@ -253,7 +255,9 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
             config.tail_min_x = std::stod(_params[4]);
             config.tail_max_x = std::stod(_params[5]);
             config.channel_name = _params[6];
-            config.max_drop_speed = std::stod(_params[7]);
+            config.empty_offset = std::stod(_params[7]);
+            config.lack_offset = std::stod(_params[8]);
+            config.almost_full_offset = std::stod(_params[9]);
         }
         catch (...)
         {
@@ -409,7 +413,9 @@ std::string state_machine_cli::make_bdr()
                     std::to_string(bc.tail_min_x) + " " +
                     std::to_string(bc.tail_max_x) + " \"" +
                     bc.channel_name + "\" " +
-                    std::to_string(bc.max_drop_speed) + "\n";
+                    std::to_string(bc.empty_offset) + " " +
+                    std::to_string(bc.lack_offset) + " " +
+                    std::to_string(bc.almost_full_offset) + "\n";
             }
             std::string default_kit;
             client.get_default_kit(default_kit);

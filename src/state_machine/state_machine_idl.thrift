@@ -20,7 +20,9 @@ struct sm_basic_config{
     5: double tail_min_x,
     6: double tail_max_x,
     7: string channel_name,
-    8: double max_drop_speed,
+    8: double empty_offset,
+    9: double lack_offset,
+    10: double almost_full_offset,
 }
 struct state_machine_status{
     1: string status,
