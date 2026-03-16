@@ -1014,11 +1014,11 @@ std::string al_sm_state::state_name(al_sm_event _event)
     case AL_SM_EVENT_LOAD_ACHIEVED:
         ret = "达到装载量";
         break;
+    case AL_SM_EVENT_REACH_FULL:
+        ret = "料位达满";
+        break;
     case AL_SM_EVENT_LOAD_CLEAR:
         ret = "装载量清零";
-        break;
-    case AL_SM_EVENT_BACK_TO_EMPTY:
-        ret = "回到空载偏移";
         break;
     case AL_SM_EVENT_LC_READY:
         ret = "溜槽就绪";

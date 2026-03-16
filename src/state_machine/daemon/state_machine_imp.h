@@ -37,7 +37,6 @@ struct al_sm_state
         AL_SM_EVENT_LOAD_ACHIEVED,
         AL_SM_EVENT_LOAD_CLEAR,
         AL_SM_EVENT_REACH_FULL,
-        AL_SM_EVENT_BACK_TO_EMPTY,
         AL_SM_EVENT_LC_READY,
     };
     state_machine_imp *m_sm = nullptr;
