@@ -260,7 +260,9 @@ int main(int argc, char const *argv[])
 {
     auto sc = AD_RPC_SC::get_instance();
     sc->enable_rpc_server(AD_RPC_MODBUS_IO_SERVER_PORT);
-    sc->add_rpc_server(std::make_shared<modbus_io_serviceProcessor>(std::make_shared<modbus_io_service_imp>()));
+    auto mii = std::make_shared<modbus_io_service_imp>();
+    mii->active_switch(true);
+    sc->add_rpc_server(std::make_shared<modbus_io_serviceProcessor>(mii));
     al_utils::start_server_notify_started("modbus_io");
     return 0;
 }
