@@ -311,6 +311,12 @@ void lidar_driver_info::tail_get_distance(myPointCloud::Ptr _cloud)
             max_x = itr.x;
         }
     }
+    lidar_params params;
+    m_parent->get_lidar_params(params);
+    if (max_x > params.first_range_x_max || max_x < params.first_range_x_min)
+    {
+        max_x = -100;
+    }
     update_distance(static_cast<double>(max_x));
     put_cloud(pc_after_split_ret.content);
     put_cloud(pc_after_split_ret.legal_side);

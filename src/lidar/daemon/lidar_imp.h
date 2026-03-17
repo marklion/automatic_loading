@@ -170,7 +170,7 @@ class lidar_driver_info
     void insert_several_points(myPointCloud::Ptr _cloud, const myPoint &p1, const myPoint &p2, bool _is_red = false);
 
 public:
-    lidar_driver_info(int _msop_port, int _difop_port) : m_msop_port(_msop_port), m_difop_port(_difop_port), m_lp_filter(0.13) {};
+    lidar_driver_info(int _msop_port, int _difop_port) : m_msop_port(_msop_port), m_difop_port(_difop_port), m_lp_filter(0.274) {};
     void process_one_frame(myPointCloud::Ptr _cloud);
     void update_distance(double _dist);
     void update_side_z(double _z);
