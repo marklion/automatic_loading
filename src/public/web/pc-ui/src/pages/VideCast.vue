@@ -69,6 +69,7 @@ const speech = new Speech();
 // 播报方法
 const speak = async (text) => {
     if (speech.hasBrowserSupport()) {
+        await speech.cancel();
         await speech.speak({
             text: text,
         });
@@ -138,7 +139,7 @@ client.watchData((key, value) => {
     align-items: center;
     justify-content: center;
     background: #ffffff;
-    border: 1px solid #e0e0e0;
+    border: 2px solid #093fe2;
     border-radius: 8px;
     font-size: 40px;
     font-weight: 700;
@@ -152,7 +153,7 @@ client.watchData((key, value) => {
     align-items: center;
     justify-content: center;
     background: #ffffff;
-    border: 1px solid #e0e0e0;
+    border: 2px solid #093fe2;
     border-radius: 8px;
     font-size: 90px;
     letter-spacing: 0.08em;
@@ -171,7 +172,7 @@ client.watchData((key, value) => {
     align-items: center;
     justify-content: center;
     background: #ffffff;
-    border: 1px solid #e0e0e0;
+    border: 2px solid #093fe2;
     border-radius: 8px;
     font-size: 100px;
     font-weight: 700;

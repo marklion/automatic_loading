@@ -8,6 +8,8 @@
 #include "../../public/lib/al_utils.h"
 #include "../../modbus_io/lib/modbus_io_lib.h"
 #include "../../pid_control/lib/pid_control_lib.h"
+#include "../../public/lib/al_utils.h"
+#include <fstream>
 
 struct ds_param_runtime
 {
@@ -32,6 +34,7 @@ struct ds_logger : public modbus_logger
 };
 
 std::vector<std::shared_ptr<ds_param_runtime>> g_devices;
+std::recursive_mutex g_devices_mutex;
 struct ds_io_runtime
 {
     std::string m_input_device_name;
@@ -55,6 +58,7 @@ class ds_service_imp : public drop_system_serviceIf
 
     std::shared_ptr<ds_param_runtime> find_param_by_name(const std::string &device_name)
     {
+        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
         for (const auto &param_ptr : g_devices)
         {
             if (param_ptr->m_param_info.device_name == device_name)
@@ -65,15 +69,13 @@ class ds_service_imp : public drop_system_serviceIf
         return nullptr;
     }
 
-    pid_control::DiscretePID m_pid;
-    double m_expect_rate = 0;
-
 public:
-    ds_service_imp() : m_logger(al_log::log_tool(al_log::LOG_DROP_SYSTEM)), m_pid(1, 0, 0, 0.05, 10, 0.08)
+    ds_service_imp() : m_logger(al_log::log_tool(al_log::LOG_DROP_SYSTEM))
     {
     }
-    void refresh_driver()
+    void refresh_driver(bool _force = false)
     {
+        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
         for (auto &one_dev : g_devices)
         {
             bool should_refresh = false;
@@ -85,7 +87,7 @@ public:
             {
                 should_refresh = true;
             }
-            if (should_refresh)
+            if (should_refresh || _force)
             {
                 one_dev->m_driver.reset();
                 one_dev->m_driver = std::make_unique<modbus_driver>(one_dev->m_param_info.ip, one_dev->m_param_info.port, one_dev->m_param_info.slave_id, new ds_logger(m_logger));
@@ -102,6 +104,7 @@ public:
             {
                 auto new_one = std::make_shared<ds_param_runtime>();
                 new_one->m_param_info = param_info;
+                std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
                 g_devices.push_back(new_one);
             }
             else
@@ -121,6 +124,7 @@ public:
         auto exist_device = find_param_by_name(device_name);
         if (exist_device)
         {
+            std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
             g_devices.erase(
                 std::remove_if(
                     g_devices.begin(), g_devices.end(),
@@ -132,6 +136,7 @@ public:
     }
     virtual void get_all_params(std::vector<ds_param_info> &_return)
     {
+        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
         for (const auto &param_ptr : g_devices)
         {
             _return.push_back(param_ptr->m_param_info);
@@ -140,27 +145,30 @@ public:
     virtual void readout(ds_readout &_return, const std::string &device_name)
     {
         auto exist_device = find_param_by_name(device_name);
-        auto range = exist_device->m_param_info.max_value - exist_device->m_param_info.min_value;
-        if (exist_device && exist_device->m_driver)
+        if (exist_device)
         {
-            auto value = exist_device->m_driver->read_u16("distance");
-            auto rate = (value - exist_device->m_param_info.min_value) / range;
-            if (rate > 1)
+            auto range = exist_device->m_param_info.max_value - exist_device->m_param_info.min_value;
+            if (exist_device && exist_device->m_driver)
             {
-                rate = 1;
+                auto value = exist_device->m_driver->read_u16("distance");
+                auto rate = (value - exist_device->m_param_info.min_value) / range;
+                if (rate > 1)
+                {
+                    rate = 1;
+                }
+                else if (rate < 0)
+                {
+                    rate = 0;
+                }
+                _return.value = value;
+                _return.rate = rate;
             }
-            else if (rate < 0)
+            if (_return.value > (exist_device->m_param_info.max_value + range * 0.1) ||
+                _return.value < (exist_device->m_param_info.min_value - range * 0.1))
             {
-                rate = 0;
+                m_logger.log_print(al_log::LOG_LEVEL_ERROR, "readout value %f of device %s is out of range", _return.value, device_name.c_str());
+                _return.rate = 1;
             }
-            _return.value = value;
-            _return.rate = rate;
-        }
-        if (_return.value > (exist_device->m_param_info.max_value + range * 0.1) ||
-            _return.value < (exist_device->m_param_info.min_value - range * 0.1))
-        {
-            m_logger.log_print(al_log::LOG_LEVEL_ERROR, "readout value %f of device %s is out of range", _return.value, device_name.c_str());
-            _return.rate = 1;
         }
     }
 
@@ -168,6 +176,7 @@ public:
     {
         if (input_device_name.length() > 0)
         {
+            std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
             g_output_match_map[input_device_name] = ds_io_runtime(input_device_name, output_match.output_on_device_name, output_match.output_off_device_name);
         }
 
@@ -175,6 +184,7 @@ public:
     }
     virtual void del_output_match(const std::string &input_device_name)
     {
+        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
         auto iter = g_output_match_map.find(input_device_name);
         if (iter != g_output_match_map.end())
         {
@@ -184,6 +194,7 @@ public:
 
     virtual void get_all_output_match(std::vector<ds_input_output> &_return)
     {
+        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
         for (auto &itr : g_output_match_map)
         {
             ds_input_output tmp;
@@ -196,6 +207,7 @@ public:
 
     virtual void set_output(const double expect_rate, const std::string &input_device_name)
     {
+        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
         auto iter = g_output_match_map.find(input_device_name);
         if (iter != g_output_match_map.end())
         {
@@ -206,6 +218,7 @@ public:
     {
         auto &ci = config::root_config::get_instance();
         ci[CONFIG_ITEM_DS_PID_ON] = on ? "1" : "0";
+        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
         for (auto &itr : g_output_match_map)
         {
             itr.second.m_pid.reset();
@@ -225,6 +238,7 @@ public:
 
     virtual bool is_moved_by_pid(const std::string &input_device_name)
     {
+        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
         auto iter = g_output_match_map.find(input_device_name);
         if (iter != g_output_match_map.end())
         {
@@ -246,25 +260,29 @@ int main(int argc, char const *argv[])
         [&]
         {
             bool need_refresh = false;
-            for (auto &itr : g_devices)
             {
-                if (itr->m_driver && itr->m_driver->exception_happened())
+                std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+                for (auto &itr : g_devices)
                 {
-                    need_refresh = true;
-                    al_utils::record_self_health(itr->m_param_info.device_name + " modbus driver exception");
-                }
-                else
-                {
-                    al_utils::record_self_health("");
+                    if (itr->m_driver && itr->m_driver->exception_happened())
+                    {
+                        need_refresh = true;
+                        al_utils::record_self_health(itr->m_param_info.device_name + " modbus driver exception");
+                    }
+                    else
+                    {
+                        al_utils::record_self_health("");
+                    }
                 }
             }
-
             if (need_refresh)
             {
-                dssi->refresh_driver();
+                dssi->refresh_driver(true);
             }
             if (dssi->is_turned_on())
             {
+                std::string one_record = al_utils::ad_utils_date_time().m_datetime_ms;
+                std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
                 for (auto &dev : g_output_match_map)
                 {
                     auto input_dev_name = dev.second.m_input_device_name;
@@ -278,22 +296,25 @@ int main(int argc, char const *argv[])
                     if (pid_output > 0)
                     {
                         dev.second.m_is_moving = true;
-                        modbus_io::set_one_io(output_off_dev_name, false);
-                        modbus_io::set_one_io(output_on_dev_name, true);
+                        modbus_io::set_one_io(output_off_dev_name, false, "ds_pid_>0");
+                        modbus_io::set_one_io(output_on_dev_name, true, "ds_pid_>0");
                     }
                     else if (pid_output == 0)
                     {
                         dev.second.m_is_moving = false;
-                        modbus_io::set_one_io(output_on_dev_name, false);
-                        modbus_io::set_one_io(output_off_dev_name, false);
+                        modbus_io::set_one_io(output_on_dev_name, false, "ds_pid=0");
+                        modbus_io::set_one_io(output_off_dev_name, false, "ds_pid=0");
                     }
                     else
                     {
                         dev.second.m_is_moving = true;
-                        modbus_io::set_one_io(output_on_dev_name, false);
-                        modbus_io::set_one_io(output_off_dev_name, true);
+                        modbus_io::set_one_io(output_on_dev_name, false, "ds_pid_<0");
+                        modbus_io::set_one_io(output_off_dev_name, true, "ds_pid_<0");
                     }
+                    one_record += "," + input_dev_name + "," + std::to_string(measure_value) + "," + std::to_string(expect_rate) + "," + std::to_string(pid_output);
                 }
+                std::ofstream ofs("/database/ds_pid_info.csv", std::ios::app);
+                ofs << one_record << std::endl;
             }
         });
     al_utils::start_server_notify_started("drop_system");

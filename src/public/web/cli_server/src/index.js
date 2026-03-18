@@ -215,6 +215,6 @@ async function update_status_info() {
 app.listen(PORT, async () => {
     console.log(`CLI server is running on http://localhost:${PORT}`);
     // 初始化TCP客户端
-    initTcpClient();
+    setTimeout(initTcpClient, 6000);
     await update_status_info();
 });

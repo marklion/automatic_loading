@@ -43,6 +43,10 @@ void modbus_driver::batch_bits_set(std::map<std::string, coil_addr_pair> _coil_w
             write_buf[itr.second.addr - base_addr] = itr.second.value ? 1 : 0;
         }
         auto modbus_ret = modbus_write_bits(m_ctx, base_addr, reg_num, write_buf);
+        if (modbus_ret != reg_num)
+        {
+            exception_occurred = true;
+        }
         free(write_buf);
     }
 }
@@ -68,6 +72,10 @@ void modbus_driver::batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_
             {
                 itr.second.value = (read_buf[itr.second.addr - base_addr] != 0);
             }
+        }
+        else
+        {
+            exception_occurred = true;
         }
         free(read_buf);
     }
@@ -96,6 +104,10 @@ void modbus_driver::batch_float32_abcd_get(std::map<std::string, float_addr_pair
                 itr.second.value = convertRegistersToFloat(read_buf[offset], read_buf[offset + 1]);
             }
         }
+        else
+        {
+            exception_occurred = true;
+        }
         free(read_buf);
     }
 }
@@ -122,6 +134,10 @@ void modbus_driver::batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_met
                 int offset = itr.second.addr - base_addr;
                 itr.second.value = read_buf[offset];
             }
+        }
+        else
+        {
+            exception_occurred = true;
         }
         free(read_buf);
     }

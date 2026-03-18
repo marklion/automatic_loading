@@ -417,14 +417,14 @@ int state_machine_imp::lc_drop_revoke_control(bool _is_drop)
         }
         if (!io_name.empty())
         {
-            modbus_io::set_one_io(another_io_name, false);
-            modbus_io::set_one_io(io_name, true);
+            modbus_io::set_one_io(another_io_name, false, "sm");
+            modbus_io::set_one_io(io_name, true, "sm");
             m_logger.log_print(al_log::LOG_LEVEL_INFO, "按下 [%s]", io_name.c_str());
             AD_RPC_SC::get_instance()->start_one_time_timer(
                 stay_second,
                 [io_name, this]()
                 {
-                    modbus_io::set_one_io(io_name, false);
+                    modbus_io::set_one_io(io_name, false, "sm");
                     m_logger.log_print(al_log::LOG_LEVEL_INFO, "松开 [%s]", io_name.c_str());
                 });
         }
@@ -658,6 +658,7 @@ void state_machine_imp::sm_start_so_pid()
         {
             // 1. 获取测量值
             auto measured_offset = sm_get_stuff_full_offset();
+            measured_offset += m_state->output_offset();
             std::string one_record;
             one_record =
                 al_utils::ad_utils_date_time().m_datetime_ms + "," +
@@ -886,7 +887,7 @@ std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event
 void al_sm_state_working::make_output_matrix(std::vector<pid_output_producer> &output_vec)
 {
     output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
-    output_vec.push_back(pid_output_producer(0.5, AL_ACTION_FORWARD));
+    output_vec.push_back(pid_output_producer(0.75, AL_ACTION_FORWARD));
     output_vec.push_back(pid_output_producer(1, AL_ACTION_STOP));
     output_vec.push_back(pid_output_producer(0, AL_ACTION_REVERSE));
 }
@@ -958,6 +959,16 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
     case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
         new_state = std::make_unique<al_sm_state_manual>();
         break;
+    case AL_SM_EVENT_REACH_FULL:
+        if (m_sm->sm_get_current_load() < max_load)
+        {
+            new_state = std::make_unique<al_sm_state_manual>();
+        }
+        else
+        {
+            new_state = std::make_unique<al_sm_state_cleanup>();
+        }
+        break;
     case AL_SM_EVENT_LOAD_ACHIEVED:
         if (m_sm->sm_get_current_load() < max_load)
         {
@@ -977,9 +988,14 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
 void al_sm_state_ending::make_output_matrix(std::vector<pid_output_producer> &output_vec)
 {
     output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
-    output_vec.push_back(pid_output_producer(0.5, AL_ACTION_STOP));
-    output_vec.push_back(pid_output_producer(0.5, AL_ACTION_STOP));
+    output_vec.push_back(pid_output_producer(0.75, AL_ACTION_STOP));
+    output_vec.push_back(pid_output_producer(0.75, AL_ACTION_STOP));
     output_vec.push_back(pid_output_producer(0, AL_ACTION_REVERSE));
+}
+
+double al_sm_state_ending::output_offset()
+{
+    return -0.15;
 }
 
 std::string al_sm_state::state_name(al_sm_event _event)
@@ -1118,25 +1134,33 @@ void al_sm_state_judge::after_enter()
             sm_basic_config basic_config;
             m_sm->get_basic_config(basic_config);
             std::string ann_content;
-            if (curr_hp > basic_config.front_min_x && curr_hp < basic_config.front_max_x)
+            double gap = 0;
+            if (m_is_enter)
+            {
+                gap = 0.05;
+            }
+            if (curr_hp > basic_config.front_min_x - gap && curr_hp < basic_config.front_max_x + gap)
             {
                 m_sm->sm_set_current_prompt("请停车等待");
                 m_stable_count++;
                 ann_content = "停车停车";
+                m_is_enter = true;
             }
-            else if (curr_hp < basic_config.front_min_x)
+            else if (curr_hp < basic_config.front_min_x - gap)
             {
-                auto distance = basic_config.front_min_x - curr_hp;
+                auto distance = basic_config.front_min_x + (basic_config.front_max_x - basic_config.front_min_x) / 2 - curr_hp;
                 m_sm->sm_set_current_prompt("请前进 " + al_utils::double2string(distance) + " 米");
                 m_stable_count = 0;
                 ann_content = "前进前进";
+                m_is_enter = false;
             }
-            else if (curr_hp > basic_config.front_max_x)
+            else if (curr_hp > basic_config.front_max_x + gap)
             {
-                auto distance = curr_hp - basic_config.front_max_x;
+                auto distance = curr_hp - basic_config.front_max_x + (basic_config.front_max_x - basic_config.front_min_x) / 2;
                 m_sm->sm_set_current_prompt("请后退 " + al_utils::double2string(distance) + " 米");
                 m_stable_count = 0;
                 ann_content = "后退后退";
+                m_is_enter = false;
             }
             if (m_stable_count >= 40)
             {
@@ -1221,7 +1245,7 @@ std::unique_ptr<al_sm_state> al_sm_state_first_heap::handle_event(al_sm_event ev
 void al_sm_state_first_heap::make_output_matrix(std::vector<pid_output_producer> &output_vec)
 {
     output_vec.push_back(pid_output_producer(0, AL_ACTION_FORWARD));
-    output_vec.push_back(pid_output_producer(0.5, AL_ACTION_FORWARD));
+    output_vec.push_back(pid_output_producer(0.75, AL_ACTION_FORWARD));
     output_vec.push_back(pid_output_producer(1, AL_ACTION_STOP));
     output_vec.push_back(pid_output_producer(1, AL_ACTION_STOP));
 }
