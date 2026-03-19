@@ -44,11 +44,7 @@ void al_sm_state_init::after_enter()
         {
             client.turn_on_off_lidar(false);
         });
-    plate_gate_call_remote(
-        [](plate_gate_serviceClient &client)
-        {
-            client.control_gate(false);
-        });
+
 }
 
 void al_sm_state_init::before_exit()
@@ -632,7 +628,7 @@ void state_machine_imp::deliver_msg()
     neb::CJsonObject output;
     output.Add("url", sm_get_current_video_url());
     output.Add("prompt", sm_get_current_prompt());
-    output.Add("plate", sm_get_vehicle_info().plate + "|" + sm_get_vehicle_info().stuff_name);
+    output.Add("plate", sm_get_vehicle_info().plate + "\n" + sm_get_vehicle_info().stuff_name);
     output.Add("weight", al_utils::double2string(sm_get_current_load()) + " 吨");
     neb::CJsonObject ann_obj;
     auto ann_info = sm_get_current_ann();
@@ -903,6 +899,11 @@ void al_sm_state_cleanup::after_enter()
     m_sm->sm_set_current_ann("请驶离", -1);
     m_sm->lc_drop_revoke_control(false);
     m_sm->close_all_stuff_drop();
+    plate_gate_call_remote(
+        [](plate_gate_serviceClient &client)
+        {
+            client.control_gate(false);
+        });
 }
 
 void al_sm_state_cleanup::before_exit()
