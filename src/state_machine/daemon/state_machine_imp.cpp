@@ -1140,7 +1140,7 @@ void al_sm_state_judge::after_enter()
             {
                 gap = 0.05;
             }
-            if (curr_hp > basic_config.front_min_x - gap && curr_hp < basic_config.front_max_x + gap)
+            if (curr_hp > basic_config.front_min_x - gap && curr_hp < basic_config.front_max_x +  2 * gap)
             {
                 m_sm->sm_set_current_prompt("请停车等待");
                 m_stable_count++;
@@ -1155,7 +1155,7 @@ void al_sm_state_judge::after_enter()
                 ann_content = "前进前进";
                 m_is_enter = false;
             }
-            else if (curr_hp > basic_config.front_max_x + gap)
+            else if (curr_hp > basic_config.front_max_x + 2 * gap)
             {
                 auto distance = curr_hp - basic_config.front_max_x + (basic_config.front_max_x - basic_config.front_min_x) / 2;
                 m_sm->sm_set_current_prompt("请后退 " + al_utils::double2string(distance) + " 米");
