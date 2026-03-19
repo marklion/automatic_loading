@@ -47,7 +47,7 @@ onMounted(async () => {
     await speech.init({
         volume: 1, // 音量
         lang: 'zh-CN', // 语言，设置为中文
-        rate: 1, // 语速
+        rate: 1.2, // 语速
         pitch: 1, // 音调,
         voice:"Google 普通话（中国大陆）",
     });

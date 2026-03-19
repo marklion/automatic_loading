@@ -174,6 +174,24 @@ static void show_status(std::ostream &out, std::vector<std::string> _params)
         });
 }
 
+static void one_time_drop(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请拉绳传感器设备名称:");
+    if (check_resp.empty())
+    {
+        std::string input_name = _params[0];
+        drop_system::call_remote_ds(
+            [&](drop_system_serviceClient &client)
+            {
+                client.open_one_time(input_name);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> ds_menu(new cli::Menu("drop_system"));
@@ -185,6 +203,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     ds_menu->Insert(CLI_MENU_ITEM(set_expect), "设置期望值", {"<input_device_name>", "<expect_rate>"});
     ds_menu->Insert(CLI_MENU_ITEM(turn_on_off), "开关控制", {"<on|off>"});
     ds_menu->Insert(CLI_MENU_ITEM(show_status), "显示状态", {});
+    ds_menu->Insert(CLI_MENU_ITEM(one_time_drop), "一次性放料", {"<input_device_name>"});
     return ds_menu;
 }
 ds_cli::ds_cli() : common_cli(make_menu(), "drop_system")
@@ -203,12 +222,12 @@ std::string ds_cli::make_bdr()
             for (const auto &param_info : param_infos)
             {
                 ret += "add_device \"" +
-                    param_info.device_name + "\" \"" +
-                    param_info.ip + "\" " +
-                    std::to_string(param_info.port) + " " +
-                    std::to_string(param_info.slave_id) + " " +
-                    std::to_string(param_info.min_value) + " " +
-                    std::to_string(param_info.max_value) + "\n";
+                       param_info.device_name + "\" \"" +
+                       param_info.ip + "\" " +
+                       std::to_string(param_info.port) + " " +
+                       std::to_string(param_info.slave_id) + " " +
+                       std::to_string(param_info.min_value) + " " +
+                       std::to_string(param_info.max_value) + "\n";
             }
             std::vector<ds_input_output> output_matches;
             client.get_all_output_match(output_matches);

@@ -55,7 +55,7 @@ std::map<std::string, ds_io_runtime> g_output_match_map;
 class ds_service_imp : public drop_system_serviceIf
 {
     al_log::log_tool m_logger;
-
+    AD_EVENT_SC_TIMER_NODE_PTR m_one_time_timer;
     std::shared_ptr<ds_param_runtime> find_param_by_name(const std::string &device_name)
     {
         std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
@@ -245,6 +245,32 @@ public:
             return iter->second.m_is_moving;
         }
         return false;
+    }
+    virtual void open_one_time(const std::string &input_device_name)
+    {
+        if (!m_one_time_timer)
+        {
+            set_output(0.8, input_device_name);
+            auto start_time = time(nullptr);
+            m_one_time_timer = AD_RPC_SC::get_instance()->startTimer(
+                0,
+                300,
+                [this, input_device_name, start_time]()
+                {
+                    ds_readout tmp;
+                    readout(tmp, input_device_name);
+                    auto now_time = time(nullptr);
+                    if (tmp.rate >= 0.7 || now_time - start_time > 6)
+                    {
+                        set_output(0, input_device_name);
+                        if (m_one_time_timer)
+                        {
+                            AD_RPC_SC::get_instance()->stopTimer(m_one_time_timer);
+                            m_one_time_timer.reset();
+                        }
+                    }
+                });
+        }
     }
 };
 

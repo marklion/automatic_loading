@@ -34,4 +34,5 @@ service drop_system_service{
     void turn_on_off(1:bool on) throws (1: drop_system_gen_exp msg),
     bool is_turned_on() throws (1: drop_system_gen_exp msg),
     bool is_moved_by_pid(1:string input_device_name) throws (1: drop_system_gen_exp msg),
+    oneway void open_one_time(1:string input_device_name),
 }
