@@ -76,12 +76,31 @@ static void run_against_file(std::ostream &out, std::vector<std::string> _params
     }
 }
 
+static void single_mode(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请指定是否单雷达模式(on/off)");
+    if (check_resp.empty())
+    {
+        bool is_single = (_params[0] == "on");
+        ad_lidar::call_sm_remote(
+            [&](lidar_serviceClient &client)
+            {
+                client.set_single_lidar_mode(is_single);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> lidar_menu(new cli::Menu("lidar"));
     lidar_menu->Insert(CLI_MENU_ITEM(cap_ply), "捕获当前点云", {});
     lidar_menu->Insert(CLI_MENU_ITEM(turn_on_off), "手动开关雷达", {"on/off", "[kit_name]"});
     lidar_menu->Insert(CLI_MENU_ITEM(run_against_file), "基于文件运行算法", {"<file>", "<lidar_number>"});
+    lidar_menu->Insert(CLI_MENU_ITEM(single_mode), "设置单雷达模式", {"on/off"});
     return lidar_menu;
 }
 
@@ -91,9 +110,21 @@ lidar_cli::lidar_cli() : common_cli(make_menu(), "lidar")
 
 std::string lidar_cli::make_bdr()
 {
-    return std::string();
+    std::string ret;
+    ad_lidar::call_sm_remote(
+        [&](lidar_serviceClient &client)
+        {
+            bool is_single = client.is_single_lidar_mode();
+            ret += std::string("single_mode ") + (is_single ? "on" : "off");
+        });
+    return ret;
 }
 
 void lidar_cli::clear()
 {
+    ad_lidar::call_sm_remote(
+        [&](lidar_serviceClient &client)
+        {
+            client.set_single_lidar_mode(false);
+        });
 }

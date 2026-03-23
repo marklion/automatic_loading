@@ -70,4 +70,6 @@ service lidar_service{
     bool turn_on_off_lidar(1: bool is_on) throws (1: ad_lidar_gen_exp lidar_exp),
     ply_file_info cap_current_ply(1:string ply_tag) throws (1: ad_lidar_gen_exp lidar_exp),
     run_result run_against_file(1:string ply_file, 2:i32 lidar_num) throws (1: ad_lidar_gen_exp lidar_exp),
+    bool set_single_lidar_mode(1: bool is_single) throws (1: ad_lidar_gen_exp lidar_exp),
+    bool is_single_lidar_mode() throws (1: ad_lidar_gen_exp lidar_exp),
 }
