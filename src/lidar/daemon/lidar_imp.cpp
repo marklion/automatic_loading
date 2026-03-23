@@ -65,13 +65,20 @@ lidar_imp::LIDAR_INDEX lidar_imp::get_lidar_index_by_type(LIDAR_POS_TYPE _type)
     }
     else
     {
-        if (params.is_front_dropping)
+        if (is_single_lidar_mode())
         {
-            index = LIDAR_1;
+            index = LIDAR_2;
         }
         else
         {
-            index = LIDAR_2;
+            if (params.is_front_dropping)
+            {
+                index = LIDAR_1;
+            }
+            else
+            {
+                index = LIDAR_2;
+            }
         }
     }
 
@@ -155,8 +162,18 @@ static std::unique_ptr<robosense::lidar::RSDriverParam> init_rs_param(int msop_p
 
 void lidar_imp::start_all_lidar_threads()
 {
+    if (m_has_launched)
+    {
+        return;
+    }
+    m_has_launched = true;
+    auto is_single = is_single_lidar_mode();
     for (int i = 0; i < LIDAR_COUNT; ++i)
     {
+        if (is_single && i == LIDAR_1)
+        {
+            continue;
+        }
         m_lidar_result[i]->start_driver(i);
         m_lidar_result[i]->m_parent = this;
     }
@@ -190,6 +207,21 @@ void lidar_imp::start_all_lidar_threads()
                 drop_lidar->serial_pc();
             }
         });
+}
+
+bool lidar_imp::set_single_lidar_mode(const bool is_single)
+{
+    auto &ci = config::root_config::get_instance();
+    ci.set_child(CONFIG_ITEM_LIDAR_MODE, is_single ? "single" : "dual");
+    start_all_lidar_threads();
+    return true;
+}
+
+bool lidar_imp::is_single_lidar_mode()
+{
+    auto &ci = config::root_config::get_instance();
+    auto mode_str = ci[CONFIG_ITEM_LIDAR_MODE]();
+    return mode_str == "single";
 }
 
 myPointCloud::Ptr lidar_driver_info::pc_transform(myPointCloud::Ptr cloud)

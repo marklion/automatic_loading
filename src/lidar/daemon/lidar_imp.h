@@ -186,6 +186,7 @@ public:
 
 class lidar_imp : public lidar_serviceIf
 {
+    bool m_has_launched = false;
     enum LIDAR_INDEX
     {
         LIDAR_1 = 0,
@@ -210,6 +211,8 @@ public:
     virtual void cap_current_ply(ply_file_info &_return, const std::string &ply_tag);
     virtual void run_against_file(run_result &_return, const std::string &ply_file, const int32_t lidar_num);
     void start_all_lidar_threads();
+    virtual bool set_single_lidar_mode(const bool is_single);
+    virtual bool is_single_lidar_mode();
 };
 
 #endif // _LIDAR_IMP_H_
