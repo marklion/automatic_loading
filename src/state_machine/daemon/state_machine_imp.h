@@ -186,7 +186,14 @@ public:
     {
         sm_basic_config tmp_info;
         get_basic_config(tmp_info);
-        m_ann_content = tmp_info.channel_name + "," + content;
+        if (!content.empty())
+        {
+            m_ann_content = tmp_info.channel_name + "," + content;
+        }
+        else
+        {
+            m_ann_content = "";
+        }
         m_ann_gap = gap;
         deliver_msg();
     }
