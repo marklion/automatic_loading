@@ -159,6 +159,7 @@ al_sm_state_manual::al_sm_state_manual()
 void al_sm_state_manual::after_enter()
 {
     m_sm->sm_set_current_prompt("人工装车");
+    m_sm->sm_set_current_ann("请等待人工装车", -1);
     m_sm->close_all_stuff_drop();
 }
 
