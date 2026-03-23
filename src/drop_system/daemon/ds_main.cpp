@@ -34,7 +34,7 @@ struct ds_logger : public modbus_logger
 };
 
 std::vector<std::shared_ptr<ds_param_runtime>> g_devices;
-std::recursive_mutex g_devices_mutex;
+static std::unique_ptr<AD_CO_MUTEX> g_mutex = AD_RPC_SC::get_instance()->create_co_mutex();
 struct ds_io_runtime
 {
     std::string m_input_device_name;
@@ -58,7 +58,7 @@ class ds_service_imp : public drop_system_serviceIf
     AD_EVENT_SC_TIMER_NODE_PTR m_one_time_timer;
     std::shared_ptr<ds_param_runtime> find_param_by_name(const std::string &device_name)
     {
-        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         for (const auto &param_ptr : g_devices)
         {
             if (param_ptr->m_param_info.device_name == device_name)
@@ -75,7 +75,7 @@ public:
     }
     void refresh_driver(bool _force = false)
     {
-        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         for (auto &one_dev : g_devices)
         {
             bool should_refresh = false;
@@ -104,7 +104,7 @@ public:
             {
                 auto new_one = std::make_shared<ds_param_runtime>();
                 new_one->m_param_info = param_info;
-                std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+                AD_CO_LOCK_GUARD lock(*g_mutex);
                 g_devices.push_back(new_one);
             }
             else
@@ -124,7 +124,7 @@ public:
         auto exist_device = find_param_by_name(device_name);
         if (exist_device)
         {
-            std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+            AD_CO_LOCK_GUARD lock(*g_mutex);
             g_devices.erase(
                 std::remove_if(
                     g_devices.begin(), g_devices.end(),
@@ -136,7 +136,7 @@ public:
     }
     virtual void get_all_params(std::vector<ds_param_info> &_return)
     {
-        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         for (const auto &param_ptr : g_devices)
         {
             _return.push_back(param_ptr->m_param_info);
@@ -176,7 +176,7 @@ public:
     {
         if (input_device_name.length() > 0)
         {
-            std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+            AD_CO_LOCK_GUARD lock(*g_mutex);
             g_output_match_map[input_device_name] = ds_io_runtime(input_device_name, output_match.output_on_device_name, output_match.output_off_device_name);
         }
 
@@ -184,7 +184,7 @@ public:
     }
     virtual void del_output_match(const std::string &input_device_name)
     {
-        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         auto iter = g_output_match_map.find(input_device_name);
         if (iter != g_output_match_map.end())
         {
@@ -194,7 +194,7 @@ public:
 
     virtual void get_all_output_match(std::vector<ds_input_output> &_return)
     {
-        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         for (auto &itr : g_output_match_map)
         {
             ds_input_output tmp;
@@ -207,7 +207,7 @@ public:
 
     virtual void set_output(const double expect_rate, const std::string &input_device_name)
     {
-        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         auto iter = g_output_match_map.find(input_device_name);
         if (iter != g_output_match_map.end())
         {
@@ -218,7 +218,7 @@ public:
     {
         auto &ci = config::root_config::get_instance();
         ci[CONFIG_ITEM_DS_PID_ON] = on ? "1" : "0";
-        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         for (auto &itr : g_output_match_map)
         {
             itr.second.m_pid.reset();
@@ -238,7 +238,7 @@ public:
 
     virtual bool is_moved_by_pid(const std::string &input_device_name)
     {
-        std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+        AD_CO_LOCK_GUARD lock(*g_mutex);
         auto iter = g_output_match_map.find(input_device_name);
         if (iter != g_output_match_map.end())
         {
@@ -287,7 +287,7 @@ int main(int argc, char const *argv[])
         {
             bool need_refresh = false;
             {
-                std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+                AD_CO_LOCK_GUARD lock(*g_mutex);
                 for (auto &itr : g_devices)
                 {
                     if (itr->m_driver && itr->m_driver->exception_happened())
@@ -308,7 +308,7 @@ int main(int argc, char const *argv[])
             if (dssi->is_turned_on())
             {
                 std::string one_record = al_utils::ad_utils_date_time().m_datetime_ms;
-                std::lock_guard<std::recursive_mutex> lock(g_devices_mutex);
+                AD_CO_LOCK_GUARD lock(*g_mutex);
                 for (auto &dev : g_output_match_map)
                 {
                     auto input_dev_name = dev.second.m_input_device_name;

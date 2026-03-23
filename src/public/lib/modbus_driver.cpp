@@ -143,7 +143,7 @@ void modbus_driver::batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_met
     }
 }
 
-modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger) : m_logger(_logger), m_ip(_ip), m_port(_port), m_slave_id(_slave_id)
+modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger) : m_logger(_logger), m_ip(_ip), m_port(_port), m_slave_id(_slave_id),m_is_working(false)
 {
     auto ret = modbus_new_tcp(_ip.c_str(), _port);
     if (ret)
@@ -204,18 +204,18 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
 
 modbus_driver::~modbus_driver()
 {
-    if (m_ctx)
-    {
-        modbus_close(m_ctx);
-        modbus_free(m_ctx);
-        m_ctx = nullptr;
-    }
     m_is_working = false;
     if (m_work_thread)
     {
         m_work_thread->join();
         delete m_work_thread;
         m_work_thread = nullptr;
+    }
+    if (m_ctx)
+    {
+        modbus_close(m_ctx);
+        modbus_free(m_ctx);
+        m_ctx = nullptr;
     }
 }
 

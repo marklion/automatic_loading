@@ -92,7 +92,7 @@ void al_sm_state_ready::after_enter()
         });
 
     m_sm->sm_set_current_prompt("请缓慢往前开");
-    m_sm->sm_set_current_ann("请缓慢前进", -1);
+    m_sm->sm_set_current_ann("请缓慢前进", 6);
 }
 
 void al_sm_state_ready::before_exit()

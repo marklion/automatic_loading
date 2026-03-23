@@ -6,6 +6,7 @@
 #include <thread>
 #include <mutex>
 #include "ad_rpc.h"
+#include <atomic>
 struct float_addr_pair{
     int addr;
     float value;
@@ -27,7 +28,7 @@ class modbus_driver {
     std::map<std::string, coil_addr_pair> m_coil_write_meta;
     std::map<std::string, coil_addr_pair> m_coil_read_meta;
     modbus_t *m_ctx;
-    bool m_is_working = false;
+    std::atomic<bool> m_is_working;
     bool exception_occurred = false;
     std::mutex m_mutex;
     std::unique_ptr<modbus_logger> m_logger;

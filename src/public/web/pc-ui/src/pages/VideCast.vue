@@ -14,7 +14,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { DataSyncClient } from "../ws_sync_client";
-import Speech from 'speak-tts';
+import axios from 'axios';
 const client = new DataSyncClient('/ws/');
 const text1 = ref("");
 const text2 = ref("欢迎");
@@ -44,13 +44,6 @@ onMounted(async () => {
             ann_gap_counter = 0;
         }
     }, 200);
-    await speech.init({
-        volume: 1, // 音量
-        lang: 'zh-CN', // 语言，设置为中文
-        rate: 1.2, // 语速
-        pitch: 1, // 音调,
-        voice:"Google 普通话（中国大陆）",
-    });
 });
 
 onBeforeUnmount(() => {
@@ -63,21 +56,14 @@ onBeforeUnmount(() => {
         ann_timer = null;
     }
 });
-const speech = new Speech();
 
 
-// 播报方法
-const speak = async (text) => {
-    if (speech.hasBrowserSupport()) {
-        await speech.cancel();
-        await speech.speak({
-            text: text,
-        });
-    }
-};
 async function do_ann(content) {
     if (content && content.trim() !== '') {
-        await speak(content);
+        let host_name = window.location.hostname;
+        axios.get(`http://${host_name}:5000/cast?content=${encodeURIComponent(content)}`).catch((error) => {
+            console.error('调用公告接口失败:', error);
+        });
     }
 }
 
