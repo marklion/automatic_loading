@@ -84,7 +84,10 @@ void AD_EVENT_SC::start_one_time_timer(int _timeout, int _micro_sec, std::functi
 
 void AD_EVENT_SC::stopTimer(AD_EVENT_SC_TIMER_NODE_PTR _timer)
 {
-    unregisterNode(_timer);
+    if (_timer)
+    {
+        unregisterNode(_timer);
+    }
 }
 
 class AD_CO_EVENT_NODE : public AD_EVENT_SC_NODE
@@ -268,7 +271,7 @@ void AD_EVENT_SC::non_block_system(const std::string &_cmd)
     }
 }
 
- http_req_resp AD_EVENT_SC::req_http_post(const std::string &_url, const std::string &_body)
+http_req_resp AD_EVENT_SC::req_http_post(const std::string &_url, const std::string &_body)
 {
     AD_CO_LOCK_GUARD lock(*m_mutex);
     std::string resp_file_name = "/tmp/req_http_post_response_" + std::to_string(syscall(SYS_gettid)) + ".json";
@@ -357,7 +360,7 @@ AD_EVENT_SC_TCP_DATA_NODE::~AD_EVENT_SC_TCP_DATA_NODE()
 
 void AD_EVENT_SC_TCP_DATA_NODE::handleEvent()
 {
-    unsigned char buf[6*1024] = {0};
+    unsigned char buf[6 * 1024] = {0};
     auto recv_len = recv(m_fd, buf, sizeof(buf), SOCK_NONBLOCK);
     if (recv_len > 0)
     {

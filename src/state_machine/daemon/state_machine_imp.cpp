@@ -698,7 +698,10 @@ void state_machine_imp::sm_start_so_pid()
 
 void state_machine_imp::sm_stop_so_pid()
 {
-    AD_RPC_SC::get_instance()->stopTimer(m_so_pid_timer);
+    if (m_so_pid_timer)
+    {
+        AD_RPC_SC::get_instance()->stopTimer(m_so_pid_timer);
+    }
     m_stuff_offset_pid.reset();
 }
 
@@ -1141,7 +1144,7 @@ void al_sm_state_judge::after_enter()
             {
                 gap = 0.05;
             }
-            if (curr_hp > basic_config.front_min_x - gap && curr_hp < basic_config.front_max_x +  2 * gap)
+            if (curr_hp > basic_config.front_min_x - gap && curr_hp < basic_config.front_max_x + 2 * gap)
             {
                 m_sm->sm_set_current_prompt("请停车等待");
                 m_stable_count++;
