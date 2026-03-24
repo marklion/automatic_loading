@@ -80,6 +80,7 @@ al_sm_state_ready::al_sm_state_ready()
 void al_sm_state_ready::after_enter()
 {
     m_sm->sm_set_vehicle_info(m_sm->sm_get_queueed_vehicle_info());
+    m_sm->apply_config_kit(m_sm->sm_get_queueed_vehicle_info().stuff_name);
     lidar_call_remote(
         [this](lidar_serviceClient &client)
         {
@@ -127,6 +128,7 @@ al_sm_state_emergency::al_sm_state_emergency()
 
 void al_sm_state_emergency::after_enter()
 {
+    m_sm->lc_drop_revoke_control(false);
     m_sm->sm_set_current_prompt("请停车");
     m_sm->sm_set_current_ann("停车停车", -1);
     m_sm->close_all_stuff_drop();
@@ -158,6 +160,7 @@ al_sm_state_manual::al_sm_state_manual()
 
 void al_sm_state_manual::after_enter()
 {
+    m_sm->lc_drop_revoke_control(false);
     m_sm->sm_set_current_prompt("人工装车");
     m_sm->sm_set_current_ann("请等待人工装车", -1);
     m_sm->close_all_stuff_drop();
@@ -286,10 +289,7 @@ void state_machine_imp::push_stuff_full_offset(const double offset)
 void state_machine_imp::trigger_sm(const vehicle_info &v_info)
 {
     sm_set_queueed_vehicle_info(v_info);
-    if (apply_config_kit(v_info.stuff_name))
-    {
-        sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
-    }
+    sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
 }
 
 void state_machine_imp::push_vehicle_front_position(const double front_x)
@@ -1144,6 +1144,7 @@ void al_sm_state_judge::after_enter()
             {
                 gap = 0.05;
             }
+            double ann_gap = -1;
             if (curr_hp > basic_config.front_min_x - gap && curr_hp < basic_config.front_max_x + 2 * gap)
             {
                 m_sm->sm_set_current_prompt("请停车等待");
@@ -1158,6 +1159,7 @@ void al_sm_state_judge::after_enter()
                 m_stable_count = 0;
                 ann_content = "前进前进";
                 m_is_enter = false;
+                ann_gap = 5;
             }
             else if (curr_hp > basic_config.front_max_x + 2 * gap)
             {
@@ -1166,6 +1168,7 @@ void al_sm_state_judge::after_enter()
                 m_stable_count = 0;
                 ann_content = "后退后退";
                 m_is_enter = false;
+                ann_gap = 5;
             }
             if (m_stable_count >= 40)
             {
@@ -1174,7 +1177,7 @@ void al_sm_state_judge::after_enter()
             }
             else if (ann_content != m_last_ann_content)
             {
-                m_sm->sm_set_current_ann(ann_content, 25);
+                m_sm->sm_set_current_ann(ann_content, ann_gap);
             }
             m_last_ann_content = ann_content;
         });
