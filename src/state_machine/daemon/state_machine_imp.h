@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include "../../pid_control/lib/pid_control_lib.h"
+#include "../../record/lib/record_lib.h"
 class state_machine_imp;
 enum al_action_prompt{
     AL_ACTION_FORWARD,
@@ -165,8 +166,12 @@ class state_machine_imp : public state_machine_serviceIf
     std::string m_ann_content;
     int m_ann_gap;
     pid_control::FixedWindowRateCalculator m_fwrc;
+    al_record::vehicle_pass_record m_vp;
 public:
     state_machine_imp();
+    void clear_vp();
+    void start_vp();
+    void stop_vp();
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
     {
         auto itr = std::find(m_data_nodes.begin(), m_data_nodes.end(), _node);

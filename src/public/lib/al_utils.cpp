@@ -199,4 +199,20 @@ namespace al_utils
 
         return ret;
     }
+    std::string ad_utils_date_time::date_plus_day(const std::string &_date, int _day)
+    {
+        std::string ret;
+
+        struct tm tstruct;
+        strptime(_date.c_str(), "%Y-%m-%d", &tstruct);
+        time_t time = mktime(&tstruct);
+        time += _day * 24 * 3600;
+        struct tm new_tstruct;
+        localtime_r(&time, &new_tstruct);
+        char buf[80];
+        strftime(buf, sizeof(buf), "%Y-%m-%d", &new_tstruct);
+        ret = std::string(buf);
+
+        return ret;
+    }
 }

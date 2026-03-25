@@ -49,6 +49,7 @@ namespace al_utils
             m_date = m_datetime.substr(0, 10);
             m_time = m_datetime.substr(11, 8);
         }
+        static std::string date_plus_day(const std::string &_date, int _day);
     };
     class URLCodec
     {
