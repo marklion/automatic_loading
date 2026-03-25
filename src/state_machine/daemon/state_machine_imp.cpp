@@ -1182,7 +1182,7 @@ void al_sm_state_judge::after_enter()
                 m_stable_count = 0;
                 ann_content = "前进前进";
                 m_is_enter = false;
-                ann_gap = 5;
+                ann_gap = 8;
             }
             else if (curr_hp > basic_config.front_max_x + 2 * gap)
             {
@@ -1191,7 +1191,7 @@ void al_sm_state_judge::after_enter()
                 m_stable_count = 0;
                 ann_content = "后退后退";
                 m_is_enter = false;
-                ann_gap = 5;
+                ann_gap = 8;
             }
             if (m_stable_count >= 40)
             {
