@@ -29,6 +29,8 @@ al_sm_state_init::al_sm_state_init()
 
 void al_sm_state_init::after_enter()
 {
+    m_sm->stop_vp();
+    m_sm->clear_vp();
     m_sm->sm_set_current_prompt("自动装车");
     m_sm->sm_set_current_ann("", -1);
     m_sm->sm_set_current_video_url("");
@@ -44,7 +46,6 @@ void al_sm_state_init::after_enter()
         {
             client.turn_on_off_lidar(false);
         });
-
 }
 
 void al_sm_state_init::before_exit()
@@ -487,7 +488,7 @@ void state_machine_imp::prompt_ann_while_running(al_action_prompt _fs)
     default:
         break;
     }
-    sm_set_current_ann(content, -1);
+    sm_set_current_ann(content, 8);
     sm_set_current_prompt(content);
 }
 
@@ -569,13 +570,13 @@ public:
 };
 class SegFunction
 {
-    std::map<int, double> m_output_map;
+    std::map<double, double> m_output_map;
     double m_min = 0;
     double m_cur_value = 0;
 
 public:
     SegFunction(double _min) : m_min(_min) {}
-    void add_seg(int _input, double _output)
+    void add_seg(double _input, double _output)
     {
         m_output_map[_input] = _output;
     }
@@ -619,6 +620,27 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
     AD_RPC_SC::get_instance()->registerNode(m_listen_node);
 }
 
+void state_machine_imp::clear_vp()
+{
+    m_vp.m_begin_time = "";
+    m_vp.m_end_time = "";
+    m_vp.m_plate = "";
+    m_vp.m_dev_name = "";
+}
+void state_machine_imp::start_vp()
+{
+    m_vp.m_begin_time = al_utils::ad_utils_date_time().m_datetime_ms;
+    m_vp.m_plate = sm_get_vehicle_info().plate;
+    m_vp.m_dev_name = sm_get_current_kit();
+}
+void state_machine_imp::stop_vp()
+{
+    m_vp.m_end_time = al_utils::ad_utils_date_time().m_datetime_ms;
+    if (!m_vp.m_plate.empty())
+    {
+        al_record::record_vehicle_pass(m_vp);
+    }
+}
 state_machine_imp::~state_machine_imp()
 {
     AD_RPC_SC::get_instance()->unregisterNode(m_listen_node);
@@ -1131,6 +1153,7 @@ al_sm_state_judge::al_sm_state_judge()
 
 void al_sm_state_judge::after_enter()
 {
+    m_sm->start_vp();
     m_judge_timer = AD_RPC_SC::get_instance()->startTimer(
         0, 125,
         [&]()

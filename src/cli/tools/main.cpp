@@ -17,6 +17,7 @@
 #include "../../plate_gate/lib/plate_gate_cli.h"
 #include "../../scale/lib/scale_cli.h"
 #include "../../drop_system/lib/ds_cli.h"
+#include "../../record/lib/record_cli.h"
 
 #define CLI_DEFAULT_CONFIG_FILE "/database/init.txt"
 
@@ -34,6 +35,7 @@ int un_safe_main(int argc, char const *argv[])
         new plate_gate_cli(),
         new scale_cli(),
         new ds_cli(),
+        new record_cli(),
     };
     auto root_menu = std::unique_ptr<cli::Menu>(new cli::Menu("ad"));
     for (auto &itr : sub_c)
