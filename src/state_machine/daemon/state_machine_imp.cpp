@@ -393,23 +393,22 @@ void state_machine_imp::get_basic_config(sm_basic_config &_return)
 
 int state_machine_imp::lc_drop_revoke_control(bool _is_drop)
 {
-    if (_is_drop && !sm_need_drop_lc())
-    {
-        return 0;
-    }
     auto &ci = config::root_config::get_instance();
     auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
     int ret = 0;
+
     if (cur_kit.get_key() == sm_get_current_kit())
     {
         std::string io_name;
         std::string another_io_name;
         int stay_second = 2;
+        bool should_opt_lc = true;
         if (_is_drop)
         {
             io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DROP_LC);
             another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_REVOKE_LC);
             stay_second = atoi(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DROP_LC_STAY).c_str());
+            should_opt_lc = sm_need_drop_lc();
         }
         else
         {
@@ -417,7 +416,8 @@ int state_machine_imp::lc_drop_revoke_control(bool _is_drop)
             another_io_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DROP_LC);
             stay_second = atoi(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_REVOKE_LC_STAY).c_str());
         }
-        if (!io_name.empty())
+
+        if (!io_name.empty() && should_opt_lc)
         {
             modbus_io::set_one_io(another_io_name, false, "sm");
             modbus_io::set_one_io(io_name, true, "sm");
@@ -478,6 +478,7 @@ void state_machine_imp::cast_info_update(const std::string &prompt, const std::s
 void state_machine_imp::prompt_ann_while_running(al_action_prompt _fs)
 {
     std::string content = "";
+    auto ann_gap = 8;
     switch (_fs)
     {
     case AL_ACTION_FORWARD:
@@ -488,11 +489,12 @@ void state_machine_imp::prompt_ann_while_running(al_action_prompt _fs)
         break;
     case AL_ACTION_STOP:
         content = "停车停车";
+        ann_gap = 20;
         break;
     default:
         break;
     }
-    sm_set_current_ann(content, 8);
+    sm_set_current_ann(content, ann_gap);
     sm_set_current_prompt(content);
 }
 
@@ -1137,7 +1139,6 @@ void al_sm_state_begin::before_exit()
         AD_RPC_SC::get_instance()->stopTimer(m_action_timer);
         m_action_timer.reset();
     }
-    m_sm->sm_fix_side_z();
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_begin::handle_event(al_sm_event event)
@@ -1224,6 +1225,7 @@ void al_sm_state_judge::after_enter()
 void al_sm_state_judge::before_exit()
 {
     AD_RPC_SC::get_instance()->stopTimer(m_judge_timer);
+    m_sm->sm_fix_side_z();
 }
 
 std::unique_ptr<al_sm_state> al_sm_state_judge::handle_event(al_sm_event event)
@@ -1294,4 +1296,9 @@ void al_sm_state_first_heap::make_output_matrix(std::vector<pid_output_producer>
     output_vec.push_back(pid_output_producer(0.75, AL_ACTION_FORWARD));
     output_vec.push_back(pid_output_producer(1, AL_ACTION_STOP));
     output_vec.push_back(pid_output_producer(1, AL_ACTION_STOP));
+}
+
+double al_sm_state_first_heap::output_offset()
+{
+    return -0.05;
 }

@@ -137,6 +137,7 @@ struct al_sm_state_first_heap:public al_sm_state{
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
     virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec) override;
+    virtual double output_offset() override;
 };
 
 
