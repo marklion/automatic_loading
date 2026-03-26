@@ -223,6 +223,7 @@ public:
     double sm_get_vehicle_tail_x() { return m_vehicle_tail_x; }
     void sm_fix_side_z() { m_side_z = m_detect_side_z; }
     double sm_get_side_z() { return m_side_z; }
+    bool sm_need_drop_lc();
     void sm_set_current_prompt(const std::string &prompt)
     {
         m_current_prompt = prompt;

@@ -393,6 +393,10 @@ void state_machine_imp::get_basic_config(sm_basic_config &_return)
 
 int state_machine_imp::lc_drop_revoke_control(bool _is_drop)
 {
+    if (_is_drop && !sm_need_drop_lc())
+    {
+        return 0;
+    }
     auto &ci = config::root_config::get_instance();
     auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
     int ret = 0;
@@ -725,6 +729,17 @@ void state_machine_imp::sm_stop_so_pid()
         AD_RPC_SC::get_instance()->stopTimer(m_so_pid_timer);
     }
     m_stuff_offset_pid.reset();
+}
+
+bool state_machine_imp::sm_need_drop_lc()
+{
+    bool ret = true;
+    if (sm_get_side_z() > -0.6)
+    {
+        ret = false;
+    }
+
+    return ret;
 }
 
 void state_machine_imp::save_cur_ply(const std::string &_ply_tag)
