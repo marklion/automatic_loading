@@ -712,7 +712,7 @@ std::pair<myPoint, myPoint> lidar_driver_info::get_key_seg(myPointCloud::Ptr _cl
         auto tmp_point = itr;
         tmp_point.y = max_z_point->y;
         auto ptd = pointToLineDistance(tmp_point.getVector3fMap(), max_z_point->getVector3fMap(), key_line_dir);
-        if (ptd < line_distance_threshold)
+        if (ptd < line_distance_threshold * 3)
         {
             line_points.push_back(itr);
         }
@@ -734,7 +734,7 @@ std::pair<myPoint, myPoint> lidar_driver_info::get_key_seg(myPointCloud::Ptr _cl
     // 找出刚才找到的点集中距离较大的两个点作为直线的两点并返回
     for (auto &itr : line_points)
     {
-        if (itr.x - tmp_x < line_distance_threshold)
+        if (itr.x - tmp_x < line_distance_threshold * 3)
         {
             tmp_x = itr.x;
             end = itr;
