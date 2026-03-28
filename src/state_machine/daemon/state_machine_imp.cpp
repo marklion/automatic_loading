@@ -676,6 +676,8 @@ void state_machine_imp::deliver_msg()
 void state_machine_imp::sm_start_so_pid()
 {
     m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(1, 0, 0, 0, 10, 0.08);
+    m_last_offset = sm_get_stuff_full_offset();
+    m_offset_change_speed = 0;
     m_so_pid_timer = AD_RPC_SC::get_instance()->startTimer(
         0,
         80,
@@ -684,10 +686,13 @@ void state_machine_imp::sm_start_so_pid()
             // 1. 获取测量值
             auto measured_offset = sm_get_stuff_full_offset();
             measured_offset += m_state->output_offset();
+            m_offset_change_speed = (measured_offset - m_last_offset) / 0.08;
+            m_last_offset = measured_offset;
             std::string one_record;
             one_record =
                 al_utils::ad_utils_date_time().m_datetime_ms + "," +
-                std::to_string(measured_offset);
+                std::to_string(measured_offset) + "," +
+                std::to_string(m_offset_change_speed);
             sm_basic_config basic_config;
             get_basic_config(basic_config);
 
@@ -703,6 +708,10 @@ void state_machine_imp::sm_start_so_pid()
             if (sf_output == 0 || sf_output == 1)
             {
                 sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
+            }
+            else if (sf_output == 3 && m_offset_change_speed < -12)
+            {
+                sm_handle_event(al_sm_state::AL_SM_EVENT_EXCEPTION_EMPTY);
             }
 
             // 4. 用当前状态的输出处理矩阵处理上步分段
@@ -917,6 +926,9 @@ std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event
     case AL_SM_EVENT_LOAD_ACHIEVED:
         new_state = std::make_unique<al_sm_state_cleanup>();
         break;
+    case AL_SM_EVENT_EXCEPTION_EMPTY:
+        new_state = std::make_unique<al_sm_state_first_heap>();
+        break;
     default:
         break;
     }
@@ -1082,6 +1094,9 @@ std::string al_sm_state::state_name(al_sm_event _event)
         break;
     case AL_SM_EVENT_LC_READY:
         ret = "溜槽就绪";
+        break;
+    case AL_SM_EVENT_EXCEPTION_EMPTY:
+        ret = "异常空车";
         break;
     default:
         ret = "未知事件";
