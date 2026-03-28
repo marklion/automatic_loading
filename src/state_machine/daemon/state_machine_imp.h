@@ -39,6 +39,7 @@ struct al_sm_state
         AL_SM_EVENT_LOAD_CLEAR,
         AL_SM_EVENT_REACH_FULL,
         AL_SM_EVENT_LC_READY,
+        AL_SM_EVENT_EXCEPTION_EMPTY,
     };
     state_machine_imp *m_sm = nullptr;
     std::string m_name;
@@ -168,6 +169,8 @@ class state_machine_imp : public state_machine_serviceIf
     int m_ann_gap;
     pid_control::FixedWindowRateCalculator m_fwrc;
     al_record::vehicle_pass_record m_vp;
+    double m_offset_change_speed = 0;
+    double m_last_offset = 0;
 public:
     state_machine_imp();
     void clear_vp();
