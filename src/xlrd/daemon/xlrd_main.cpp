@@ -65,6 +65,7 @@ public:
         this->get_config_params(tail_params, false);
         if (front_params.ip.length() > 0)
         {
+            m_front_driver.reset();
             m_front_driver = std::make_unique<modbus_driver>(
                 front_params.ip,
                 static_cast<unsigned short>(front_params.port),
@@ -75,6 +76,7 @@ public:
 
         if (tail_params.ip.length() > 0)
         {
+            m_tail_driver.reset();
             m_tail_driver = std::make_unique<modbus_driver>(
                 tail_params.ip,
                 static_cast<unsigned short>(tail_params.port),
@@ -127,11 +129,12 @@ public:
         if (driver_ptr)
         {
             ret = static_cast<double>(driver_ptr->read_float32_abcd("distance"));
-            if (driver_ptr->exception_happened())
+            auto modbus_exception = driver_ptr->exception_info();
+            if (modbus_exception.length() > 0)
             {
-                m_logger.log_print(al_log::LOG_LEVEL_ERROR, "modbus exception happened when reading distance");
+                m_logger.log_print(al_log::LOG_LEVEL_ERROR, "modbus exception happened when reading distance: %s", modbus_exception.c_str());
                 apply_driver_config();
-                al_utils::record_self_health("xlrd modbus error");
+                al_utils::record_self_health("xlrd modbus error: " + modbus_exception);
             }
             else
             {

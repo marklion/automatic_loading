@@ -290,10 +290,11 @@ int main(int argc, char const *argv[])
                 AD_CO_LOCK_GUARD lock(*g_mutex);
                 for (auto &itr : g_devices)
                 {
-                    if (itr->m_driver && itr->m_driver->exception_happened())
+                    auto modbus_exception = itr->m_driver ? itr->m_driver->exception_info() : "";
+                    if (modbus_exception.length() > 0)
                     {
                         need_refresh = true;
-                        al_utils::record_self_health(itr->m_param_info.device_name + " modbus driver exception");
+                        al_utils::record_self_health(itr->m_param_info.device_name + " modbus driver exception: " + modbus_exception);
                     }
                     else
                     {

@@ -31,30 +31,28 @@ class modbus_io_service_imp : public modbus_io_serviceIf
     std::shared_ptr<modbus_driver> m_driver;
     std::shared_ptr<modbus_driver> get_driver()
     {
-        if (!m_driver)
-        {
-            auto &ci = config::root_config::get_instance();
-            auto host_name = ci(CONFIG_ITEM_MODBUS_IO_HOST_NAME);
-            auto port = atoi(ci(CONFIG_ITEM_MODBUS_IO_PORT).c_str());
-            auto device_id = atoi(ci(CONFIG_ITEM_MODBUS_IO_DEVICE_ID).c_str());
-            if (host_name.length() > 0 && port > 0)
-            {
-                m_driver = std::make_shared<modbus_driver>(host_name, port, device_id, new modbus_io_logger(m_logger));
-            }
-        }
+        std::string modbus_exception;
         if (!m_driver)
         {
             m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Modbus driver is not configured properly");
         }
-        if (m_driver && m_driver->exception_happened())
+        else
         {
-            m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Modbus exception happened, recreating driver");
+            modbus_exception = m_driver->exception_info();
+        }
+        if (modbus_exception.length() > 0)
+        {
+            m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Modbus exception happened, recreating driver: %s", modbus_exception.c_str());
             m_driver.reset();
-            al_utils::record_self_health("io modbus error");
+            al_utils::record_self_health("io modbus error: " + modbus_exception);
         }
         else
         {
             al_utils::record_self_health("");
+        }
+        if (!m_driver)
+        {
+            refresh_driver();
         }
         return m_driver;
     }
@@ -211,14 +209,18 @@ public:
         return ret;
     }
 
-    virtual bool set_modbus_tcp(const modbus_tcp_config &_config)
+    void refresh_driver()
     {
-        auto &ci = config::root_config::get_instance();
-        ci.set_child(CONFIG_ITEM_MODBUS_IO_HOST_NAME, _config.host_name);
-        ci.set_child(CONFIG_ITEM_MODBUS_IO_PORT, std::to_string(_config.port));
-        ci.set_child(CONFIG_ITEM_MODBUS_IO_DEVICE_ID, std::to_string(_config.device_id));
         m_driver.reset();
-        auto new_driver = get_driver();
+        auto &ci = config::root_config::get_instance();
+        auto host_name = ci(CONFIG_ITEM_MODBUS_IO_HOST_NAME);
+        auto port = atoi(ci(CONFIG_ITEM_MODBUS_IO_PORT).c_str());
+        auto device_id = atoi(ci(CONFIG_ITEM_MODBUS_IO_DEVICE_ID).c_str());
+        if (host_name.length() > 0 && port > 0)
+        {
+            m_driver = std::make_shared<modbus_driver>(host_name, port, device_id, new modbus_io_logger(m_logger));
+        }
+        auto new_driver = m_driver;
         if (new_driver)
         {
             for (const auto &device_ptr : g_devices)
@@ -233,6 +235,15 @@ public:
                 }
             }
         }
+    }
+
+    virtual bool set_modbus_tcp(const modbus_tcp_config &_config)
+    {
+        auto &ci = config::root_config::get_instance();
+        ci.set_child(CONFIG_ITEM_MODBUS_IO_HOST_NAME, _config.host_name);
+        ci.set_child(CONFIG_ITEM_MODBUS_IO_PORT, std::to_string(_config.port));
+        ci.set_child(CONFIG_ITEM_MODBUS_IO_DEVICE_ID, std::to_string(_config.device_id));
+        refresh_driver();
         return true;
     }
     virtual void get_modbus_tcp(modbus_tcp_config &_return)

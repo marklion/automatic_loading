@@ -45,7 +45,7 @@ void modbus_driver::batch_bits_set(std::map<std::string, coil_addr_pair> _coil_w
         auto modbus_ret = modbus_write_bits(m_ctx, base_addr, reg_num, write_buf);
         if (modbus_ret != reg_num)
         {
-            exception_occurred = true;
+            m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
         }
         free(write_buf);
     }
@@ -75,7 +75,7 @@ void modbus_driver::batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_
         }
         else
         {
-            exception_occurred = true;
+            m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
         }
         free(read_buf);
     }
@@ -106,7 +106,7 @@ void modbus_driver::batch_float32_abcd_get(std::map<std::string, float_addr_pair
         }
         else
         {
-            exception_occurred = true;
+            m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
         }
         free(read_buf);
     }
@@ -137,7 +137,7 @@ void modbus_driver::batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_met
         }
         else
         {
-            exception_occurred = true;
+            m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
         }
         free(read_buf);
     }
@@ -198,7 +198,7 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
     else
     {
         m_logger->log("modbus context is null");
-        exception_occurred = true;
+        m_exception_info = std::string("open :") + modbus_strerror(errno);
     }
 }
 

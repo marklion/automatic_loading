@@ -489,7 +489,7 @@ void state_machine_imp::prompt_ann_while_running(al_action_prompt _fs)
         break;
     case AL_ACTION_STOP:
         content = "停车停车";
-        ann_gap = 20;
+        ann_gap = 40;
         break;
     default:
         break;

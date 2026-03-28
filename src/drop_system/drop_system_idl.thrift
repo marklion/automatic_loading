@@ -30,7 +30,7 @@ service drop_system_service{
     bool add_output_match(1:string input_device_name, 2:ds_input_output output_match) throws (1: drop_system_gen_exp msg),
     void del_output_match(1:string input_device_name) throws (1: drop_system_gen_exp msg),
     list<ds_input_output> get_all_output_match() throws (1: drop_system_gen_exp msg),
-    void set_output(1:double expect_rate, 2:string input_device_name) throws (1: drop_system_gen_exp msg),
+    oneway void set_output(1:double expect_rate, 2:string input_device_name),
     void turn_on_off(1:bool on) throws (1: drop_system_gen_exp msg),
     bool is_turned_on() throws (1: drop_system_gen_exp msg),
     bool is_moved_by_pid(1:string input_device_name) throws (1: drop_system_gen_exp msg),

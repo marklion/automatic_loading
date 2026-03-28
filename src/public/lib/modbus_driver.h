@@ -29,7 +29,7 @@ class modbus_driver {
     std::map<std::string, coil_addr_pair> m_coil_read_meta;
     modbus_t *m_ctx;
     std::atomic<bool> m_is_working;
-    bool exception_occurred = false;
+    std::string m_exception_info;
     std::mutex m_mutex;
     std::unique_ptr<modbus_logger> m_logger;
     std::thread *m_work_thread = nullptr;
@@ -54,9 +54,9 @@ public:
     bool read_coil(const std::string &_name);
     bool params_changed(const std::string &_ip, unsigned short _port, int _slave_id);
     unsigned short read_u16(const std::string &_name);
-    bool exception_happened()
+    std::string exception_info()
     {
-        return exception_occurred;
+        return m_exception_info;
     }
 };
 
