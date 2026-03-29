@@ -678,11 +678,19 @@ void state_machine_imp::sm_start_so_pid()
     m_stuff_offset_pid = std::make_unique<pid_control::DiscretePID>(1, 0, 0, 0, 10, 0.08);
     m_last_offset = sm_get_stuff_full_offset();
     m_offset_change_speed = 0;
+    m_weight_stay_count = 0;
+    m_last_weight = sm_get_current_load();
     m_so_pid_timer = AD_RPC_SC::get_instance()->startTimer(
         0,
         80,
         [this]()
         {
+            bool stay_count_need_increase = false;
+            if (std::abs(sm_get_current_load() - m_last_weight) < 0.1)
+            {
+                stay_count_need_increase = true;
+            }
+            m_last_weight = sm_get_current_load();
             // 1. 获取测量值
             auto measured_offset = sm_get_stuff_full_offset();
             measured_offset += m_state->output_offset();
@@ -720,6 +728,18 @@ void state_machine_imp::sm_start_so_pid()
             auto &ci = config::root_config::get_instance();
             auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
             auto ds_input_dev = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_DS_INPUT_DEV);
+            if (state_pid_output.m_output_rate > 0 && stay_count_need_increase)
+            {
+                m_weight_stay_count++;
+            }
+            else
+            {
+                m_weight_stay_count = 0;
+            }
+            if (m_weight_stay_count > 37)
+            {
+                sm_handle_event(al_sm_state::AL_SM_EVENT_NO_STUFF);
+            }
 
             drop_system::call_remote_ds(
                 [&](drop_system_serviceClient &client)
@@ -918,6 +938,7 @@ std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event
         new_state = std::make_unique<al_sm_state_emergency>();
         break;
     case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+    case AL_SM_EVENT_NO_STUFF:
         new_state = std::make_unique<al_sm_state_manual>();
         break;
     case AL_SM_EVENT_VEHICLE_LEAVE:
@@ -1013,6 +1034,7 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
         new_state = std::make_unique<al_sm_state_emergency>();
         break;
     case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+    case AL_SM_EVENT_NO_STUFF:
         new_state = std::make_unique<al_sm_state_manual>();
         break;
     case AL_SM_EVENT_REACH_FULL:
@@ -1097,6 +1119,9 @@ std::string al_sm_state::state_name(al_sm_event _event)
         break;
     case AL_SM_EVENT_EXCEPTION_EMPTY:
         ret = "异常空车";
+        break;
+    case AL_SM_EVENT_NO_STUFF:
+        ret = "无货";
         break;
     default:
         ret = "未知事件";
@@ -1288,6 +1313,7 @@ std::unique_ptr<al_sm_state> al_sm_state_first_heap::handle_event(al_sm_event ev
         new_state = std::make_unique<al_sm_state_emergency>();
         break;
     case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+    case AL_SM_EVENT_NO_STUFF:
         new_state = std::make_unique<al_sm_state_manual>();
         break;
     case AL_SM_EVENT_VEHICLE_LEAVE:
