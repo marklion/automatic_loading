@@ -149,8 +149,10 @@ class lidar_driver_info
     myPointCloud::Ptr pc_vox_filter(myPointCloud::Ptr cloud);
     void tail_get_distance(myPointCloud::Ptr _cloud);
     pc_after_split split_cloud_to_side_and_content(myPointCloud::Ptr _cloud, bool _x_plane = false);
+    pc_after_pickup pickup_shape_from_side(myPointCloud::Ptr _cloud);
     std::unique_ptr<pc_after_pickup> pickup_pc_from_spec_range(myPointCloud::Ptr _orig_pc, bool _x_plane = false);
     void split_cloud_by_pt(myPointCloud::Ptr _cloud, const std::string &_field, float _min, float _max, myPointCloud::Ptr &_cloud_filtered, myPointCloud::Ptr &_cloud_last);
+    void split_cloud_by_pt(myPointCloud::Ptr _cloud, const std::string &_field, float _min, float _max, myPointCloud::Ptr &_cloud_filtered);
     pc_after_pickup find_points_on_plane(myPointCloud::Ptr _cloud, const Eigen::Vector3f &_ax_vec, float _distance_threshold, float _angle_threshold, pcl::ModelCoefficients::Ptr &_coe, float _cluster_distance_threshold, int _cluster_require_points);
     pc_after_pickup find_max_cluster(myPointCloud::Ptr _cloud, float _cluster_distance_threshold, int _cluster_require_points);
     std::vector<myPointCloud::Ptr> cluster_plane_points(

@@ -203,11 +203,11 @@ namespace al_utils
     {
         std::string ret;
 
-        struct tm tstruct;
+        struct tm tstruct = {0};
         strptime(_date.c_str(), "%Y-%m-%d", &tstruct);
         time_t time = mktime(&tstruct);
         time += _day * 24 * 3600;
-        struct tm new_tstruct;
+        struct tm new_tstruct = {0};
         localtime_r(&time, &new_tstruct);
         char buf[80];
         strftime(buf, sizeof(buf), "%Y-%m-%d", &new_tstruct);
