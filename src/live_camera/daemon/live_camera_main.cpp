@@ -68,7 +68,7 @@ public:
             config_file_content += "  " + camera.name + ":\n    ";
             auto username = al_utils::URLCodec::encode(camera.username, false);
             auto password = al_utils::URLCodec::encode(camera.password, false);
-            config_file_content += "source: \"rtsp://" + username + ":" + password + "@" + camera.ip + ":554/" + camera.channel + "\"\n    ";
+            config_file_content += "source: \"rtsp://" + username + ":" + password + "@" + camera.ip + ":554/Streaming/Channels/" + camera.channel + "\"\n    ";
             config_file_content += "sourceProtocol: tcp\n    sourceOnDemand: yes\n";
         }
         std::ofstream ofs("/conf/mediamtx.yml", std::ios::trunc);

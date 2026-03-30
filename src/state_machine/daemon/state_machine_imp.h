@@ -51,6 +51,7 @@ struct al_sm_state
     virtual void make_output_matrix(std::vector<pid_output_producer> &output_vec);
     pid_output_producer get_output(int _index);
     virtual double output_offset() { return 0; }
+    virtual bool pre_process_stuff(const std::string &_stuff_name) { return false; }
 };
 
 struct al_sm_state_working : public al_sm_state
@@ -98,6 +99,7 @@ struct al_sm_state_init : public al_sm_state
     void after_enter() override;
     void before_exit() override;
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
+    virtual bool pre_process_stuff(const std::string &_stuff_name) override;
 };
 
 struct al_sm_state_ready : public al_sm_state
