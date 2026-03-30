@@ -470,7 +470,7 @@ pc_after_pickup lidar_driver_info::pickup_shape_from_side(myPointCloud::Ptr _clo
         myPointCloud::Ptr tmp_filtered(new myPointCloud);
         myPointCloud::Ptr tmp_last(new myPointCloud);
         split_cloud_by_pt(need_calc, "x", cur_x_min, cur_x_max, tmp_filtered, tmp_last);
-        pcl::copyPointCloud(*tmp_last, *need_calc);
+        need_calc = tmp_last;
         float total_z = 0;
         for (const auto &point : tmp_filtered->points)
         {
@@ -482,15 +482,16 @@ pc_after_pickup lidar_driver_info::pickup_shape_from_side(myPointCloud::Ptr _clo
         }
     }
     auto peak_indices = findPeakIndices(ava_z_array, SIDE_TOTAL_SEG_NUM);
+    pcl::copyPointCloud(*_cloud, *(ret.picked));
     for (const auto &index : peak_indices)
     {
         float cur_x_min = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * index;
         float cur_x_max = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * (index + 1);
         myPointCloud::Ptr tmp_filtered(new myPointCloud);
         myPointCloud::Ptr tmp_last(new myPointCloud);
-        split_cloud_by_pt(_cloud, "x", cur_x_min, cur_x_max, tmp_filtered, tmp_last);
-        *ret.picked += *tmp_last;
+        split_cloud_by_pt(ret.picked, "x", cur_x_min, cur_x_max, tmp_filtered, tmp_last);
         *ret.last += *tmp_filtered;
+        ret.picked = tmp_last;
     }
     color_cloud(0, 255, 0, ret.picked);
 
