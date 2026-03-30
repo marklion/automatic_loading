@@ -686,7 +686,7 @@ void state_machine_imp::sm_start_so_pid()
         [this]()
         {
             bool stay_count_need_increase = false;
-            if (std::abs(sm_get_current_load() - m_last_weight) < 0.1)
+            if (sm_get_current_load() - m_last_weight < 0.02)
             {
                 stay_count_need_increase = true;
             }
@@ -736,7 +736,7 @@ void state_machine_imp::sm_start_so_pid()
             {
                 m_weight_stay_count = 0;
             }
-            if (m_weight_stay_count > 37)
+            if (m_weight_stay_count > 140)
             {
                 sm_handle_event(al_sm_state::AL_SM_EVENT_NO_STUFF);
             }
