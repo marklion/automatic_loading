@@ -658,6 +658,7 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
             AD_RPC_SC::get_instance())
             .release());
     AD_RPC_SC::get_instance()->registerNode(m_listen_node);
+    m_state->m_sm = this;
 }
 
 void state_machine_imp::clear_vp()
