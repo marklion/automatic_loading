@@ -401,6 +401,102 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
     return ret;
 }
 
+static std::vector<int> findPeakIndices(float ava_z_array[], int size) {
+    std::vector<int> peakIndices;
+
+    // 计算数组平均值
+    float sum = 0.0f;
+    for (int i = 0; i < size; i++) {
+        sum += ava_z_array[i];
+    }
+    float mean = sum / size;
+
+    // 计算标准差
+    float variance = 0.0f;
+    for (int i = 0; i < size; i++) {
+        variance += std::pow(ava_z_array[i] - mean, 2);
+    }
+    float stdDev = std::sqrt(variance / size);
+
+    // 设置阈值：平均值加上1.5倍标准差
+    float threshold = mean + 1.5f * stdDev;
+
+    // 找出大于阈值的索引
+    for (int i = 0; i < size; i++) {
+        if (ava_z_array[i] > threshold) {
+            peakIndices.push_back(i);
+        }
+    }
+
+    // 如果没有找到任何峰值，尝试降低阈值
+    if (peakIndices.empty()) {
+        threshold = mean + 1.0f * stdDev;
+        for (int i = 0; i < size; i++) {
+            if (ava_z_array[i] > threshold) {
+                peakIndices.push_back(i);
+            }
+        }
+    }
+
+    return peakIndices;
+}
+
+pc_after_pickup lidar_driver_info::pickup_shape_from_side(myPointCloud::Ptr _cloud)
+{
+    pc_after_pickup ret;
+    #define SIDE_TOTAL_SEG_NUM 50
+    float ava_z_array[SIDE_TOTAL_SEG_NUM] = {0};
+
+    float x_min = std::numeric_limits<float>::max();
+    float x_max = std::numeric_limits<float>::lowest();
+    // 遍历点云找到 最小x,最大x
+    for (const auto &point : _cloud->points)
+    {
+        if (point.x < x_min)
+        {
+            x_min = point.x;
+        }
+        if (point.x > x_max)
+        {
+            x_max = point.x;
+        }
+    }
+    myPointCloud::Ptr need_calc(new myPointCloud);
+    pcl::copyPointCloud(*_cloud, *need_calc);
+    for (auto i = 0; i < SIDE_TOTAL_SEG_NUM; i++)
+    {
+        float cur_x_min = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * i;
+        float cur_x_max = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * (i + 1);
+        myPointCloud::Ptr tmp_filtered(new myPointCloud);
+        myPointCloud::Ptr tmp_last(new myPointCloud);
+        split_cloud_by_pt(need_calc, "x", cur_x_min, cur_x_max, tmp_filtered, tmp_last);
+        pcl::copyPointCloud(*tmp_last, *need_calc);
+        float total_z = 0;
+        for (const auto &point : tmp_filtered->points)
+        {
+            total_z += point.z;
+        }
+        if (tmp_filtered->points.size() > 0)
+        {
+            ava_z_array[i] = total_z / tmp_filtered->points.size();
+        }
+    }
+    auto peak_indices = findPeakIndices(ava_z_array, SIDE_TOTAL_SEG_NUM);
+    for (const auto &index : peak_indices)
+    {
+        float cur_x_min = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * index;
+        float cur_x_max = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * (index + 1);
+        myPointCloud::Ptr tmp_filtered(new myPointCloud);
+        myPointCloud::Ptr tmp_last(new myPointCloud);
+        split_cloud_by_pt(_cloud, "x", cur_x_min, cur_x_max, tmp_filtered, tmp_last);
+        *ret.picked += *tmp_last;
+        *ret.last += *tmp_filtered;
+    }
+    color_cloud(0, 255, 0, ret.picked);
+
+    return ret;
+}
+
 std::unique_ptr<pc_after_pickup> lidar_driver_info::pickup_pc_from_spec_range(myPointCloud::Ptr _orig_pc, bool _x_plane)
 {
     const std::string config_sec = "get_state";
@@ -453,6 +549,17 @@ void lidar_driver_info::split_cloud_by_pt(myPointCloud::Ptr _cloud, const std::s
     pass.filter(*_cloud_filtered);
     pass.setFilterLimitsNegative(true);
     pass.filter(*_cloud_last);
+}
+
+void lidar_driver_info::split_cloud_by_pt(myPointCloud::Ptr _cloud, const std::string &_field, float _min, float _max, myPointCloud::Ptr &_cloud_filtered)
+{
+    pcl::PassThrough<myPoint> pass;
+    myPointCloud::Ptr tmp(new myPointCloud);
+    pcl::copyPointCloud(*_cloud, *tmp);
+    pass.setFilterFieldName(_field);
+    pass.setFilterLimits(_min, _max);
+    pass.setInputCloud(tmp);
+    pass.filter(*_cloud_filtered);
 }
 
 pc_after_pickup lidar_driver_info::find_points_on_plane(myPointCloud::Ptr _cloud, const Eigen::Vector3f &_ax_vec, float _distance_threshold, float _angle_threshold, pcl::ModelCoefficients::Ptr &_coe, float _cluster_distance_threshold, int _cluster_require_points)
@@ -567,8 +674,11 @@ void lidar_driver_info::head_get_distance(myPointCloud::Ptr _cloud)
     m_parent->get_lidar_params(params);
     auto line_DistanceThreshold = params.plane_distance_threshold;
 
-    auto key_seg = get_key_seg(pc_after_split_ret.legal_side, line_DistanceThreshold, 0);
-    insert_several_points(pc_after_split_ret.legal_side, key_seg.first, key_seg.second);
+    auto pic_resp = pickup_shape_from_side(pc_after_split_ret.legal_side);
+    auto shape = pic_resp.picked;
+
+    auto key_seg = get_key_seg(shape, line_DistanceThreshold, 0);
+    insert_several_points(shape, key_seg.first, key_seg.second);
 
     if (key_seg.second.x - key_seg.first.x > params.seg_length_req)
     {
@@ -581,7 +691,8 @@ void lidar_driver_info::head_get_distance(myPointCloud::Ptr _cloud)
         update_side_z(0);
     }
     put_cloud(pc_after_split_ret.content);
-    put_cloud(pc_after_split_ret.legal_side);
+    put_cloud(shape);
+    put_cloud(pic_resp.last);
     put_cloud(pc_after_split_ret.illegal_side);
     update_cur_cloud();
 }
