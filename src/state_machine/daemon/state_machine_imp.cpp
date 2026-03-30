@@ -72,6 +72,37 @@ std::unique_ptr<al_sm_state> al_sm_state_init::handle_event(al_sm_event event)
     return new_state;
 }
 
+bool al_sm_state_init::pre_process_stuff(const std::string &_stuff_name)
+{
+    bool ret = false;
+    std::string default_kit;
+    m_sm->get_default_kit(default_kit);
+    if (default_kit.empty())
+    {
+        std::vector<config_kit> all_kits;
+        m_sm->get_all_config_kits(all_kits);
+        for (auto &kit : all_kits)
+        {
+            auto stuff_name = kit.config_items[CONFIG_ITEM_SM_CONFIG_KIT_STUFF_NAME];
+            if (stuff_name == _stuff_name)
+            {
+                ret = true;
+                break;
+            }
+        }
+    }
+    else
+    {
+        ret = true;
+    }
+    if (!ret)
+    {
+        m_sm->sm_set_current_prompt("物料不匹配");
+        m_sm->sm_set_current_ann("物料不匹配", 16);
+    }
+    return ret;
+}
+
 // al_sm_state_ready 实现
 al_sm_state_ready::al_sm_state_ready()
 {
@@ -290,7 +321,10 @@ void state_machine_imp::push_stuff_full_offset(const double offset)
 void state_machine_imp::trigger_sm(const vehicle_info &v_info)
 {
     sm_set_queueed_vehicle_info(v_info);
-    sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
+    if (m_state->pre_process_stuff(v_info.stuff_name))
+    {
+        sm_handle_event(al_sm_state::AL_SM_EVENT_GET_READY);
+    }
 }
 
 void state_machine_imp::push_vehicle_front_position(const double front_x)
