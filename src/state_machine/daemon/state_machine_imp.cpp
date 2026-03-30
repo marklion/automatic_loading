@@ -659,6 +659,7 @@ state_machine_imp::state_machine_imp() : m_state(std::make_unique<al_sm_state_in
             .release());
     AD_RPC_SC::get_instance()->registerNode(m_listen_node);
     m_state->m_sm = this;
+    m_state->after_enter();
 }
 
 void state_machine_imp::clear_vp()
@@ -875,7 +876,7 @@ bool state_machine_imp::apply_config_kit(const std::string &_stuff_name)
         auto video_name = cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_VIDEO_NAME);
         if (video_name.length() > 0)
         {
-            sm_set_current_video_url("/live/" + video_name);
+            sm_set_current_video_url("/live_rtc/" + video_name);
         }
     }
     else
