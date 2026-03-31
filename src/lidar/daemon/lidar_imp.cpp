@@ -485,8 +485,17 @@ pc_after_pickup lidar_driver_info::pickup_shape_from_side(myPointCloud::Ptr _clo
     pcl::copyPointCloud(*_cloud, *(ret.picked));
     for (const auto &index : peak_indices)
     {
+        bool is_last_one = false;
+        if (index == SIDE_TOTAL_SEG_NUM - 1)
+        {
+            is_last_one = true;
+        }
         float cur_x_min = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * index;
         float cur_x_max = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * (index + 1);
+        if (is_last_one)
+        {
+            cur_x_max = x_max + 1;
+        }
         myPointCloud::Ptr tmp_filtered(new myPointCloud);
         myPointCloud::Ptr tmp_last(new myPointCloud);
         split_cloud_by_pt(ret.picked, "x", cur_x_min, cur_x_max, tmp_filtered, tmp_last);
