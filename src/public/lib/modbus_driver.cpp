@@ -112,7 +112,7 @@ void modbus_driver::batch_float32_abcd_get(std::map<std::string, float_addr_pair
     }
 }
 
-void modbus_driver::batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_meta)
+void modbus_driver::batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_meta, bool _is_retry)
 {
     if (_u16_meta.size() > 0)
     {
@@ -137,13 +137,21 @@ void modbus_driver::batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_met
         }
         else
         {
-            m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
+            if (_is_retry)
+            {
+                m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
+            }
+            else
+            {
+                m_logger->log("modbus read u16 failed, retrying once, error: %s", modbus_strerror(errno));
+                batch_u16_get(_u16_meta, true);
+            }
         }
         free(read_buf);
     }
 }
 
-modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger) : m_logger(_logger), m_ip(_ip), m_port(_port), m_slave_id(_slave_id),m_is_working(false)
+modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger) : m_logger(_logger), m_ip(_ip), m_port(_port), m_slave_id(_slave_id), m_is_working(false)
 {
     auto ret = modbus_new_tcp(_ip.c_str(), _port);
     if (ret)

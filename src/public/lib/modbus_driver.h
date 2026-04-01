@@ -36,7 +36,7 @@ class modbus_driver {
     void batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta);
     void batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_read_meta);
     void batch_float32_abcd_get(std::map<std::string, float_addr_pair> &_float32_abcd_meta);
-    void batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_meta);
+    void batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_meta, bool _is_retry = false);
     std::string m_ip;
     unsigned short m_port;
     int m_slave_id = 0;
