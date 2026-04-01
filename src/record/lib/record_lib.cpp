@@ -52,7 +52,7 @@ static void search_file_list(std::vector<std::string> &file_list, const std::str
     end_date = al_utils::ad_utils_date_time::date_plus_day(end_date, 1);
     if (begin_date.length() > 0 && end_date.length() > 0)
     {
-        for (auto itr_date = begin_date; itr_date != end_date; itr_date = al_utils::ad_utils_date_time::date_plus_day(itr_date, 1))
+        for (auto itr_date = begin_date; al_utils::ad_utils_date_time::is_before(itr_date, end_date); itr_date = al_utils::ad_utils_date_time::date_plus_day(itr_date, 1))
         {
             auto file_name = RECORD_FILE_PATH_PREFIX + itr_date + ".csv";
             file_list.push_back(file_name);

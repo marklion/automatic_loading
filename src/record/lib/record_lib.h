@@ -11,6 +11,7 @@ namespace al_record
         std::string m_begin_time;
         std::string m_end_time;
         std::string m_dev_name;
+        bool m_is_json = false;
         vehicle_pass_record(const std::string &plate, const std::string &begin_time, const std::string &end_time, const std::string &dev_name) : m_plate(plate), m_begin_time(begin_time), m_end_time(end_time), m_dev_name(dev_name)
         {
         }

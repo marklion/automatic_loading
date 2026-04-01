@@ -98,7 +98,7 @@ bool al_sm_state_init::pre_process_stuff(const std::string &_stuff_name)
     if (!ret)
     {
         m_sm->sm_set_current_prompt("物料不匹配");
-        m_sm->sm_set_current_ann("物料不匹配", 16);
+        m_sm->sm_set_current_ann("物料不匹配", -1);
     }
     return ret;
 }

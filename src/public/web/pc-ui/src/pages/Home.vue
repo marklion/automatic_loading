@@ -8,6 +8,7 @@
           </el-menu-item>
           <el-menu-item index="1">配置工具</el-menu-item>
           <el-menu-item index="2">更新</el-menu-item>
+          <el-menu-item index="3">历史</el-menu-item>
         </el-menu>
       </el-col>
       <el-col :span="8" v-if="current_nav_index == '0'">
@@ -37,6 +38,9 @@
         <el-button type="primary">上传更新包</el-button>
       </el-upload>
     </div>
+    <div v-else-if="current_nav_index == '3'">
+      <Record></Record>
+    </div>
   </div>
 </template>
 
@@ -49,6 +53,7 @@ import LiveCamera from "../../../../../live_camera/web/live_camera.vue";
 import DropSystem from "../../../../../drop_system/web/drop_system.vue";
 //import PcdShow from "@/components/PcdShow.vue";
 import Scale from "../../../../../scale/web/scale.vue";
+import Record from "../../../../../record/web/record.vue";
 import { ref, computed, onMounted, getCurrentInstance } from "vue";
 import { useRemoteHostName } from "@/stores/remote_name";
 import { GridLayout, GridItem } from 'vue3-grid-layout-next';

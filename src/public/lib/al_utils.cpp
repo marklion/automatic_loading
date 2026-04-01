@@ -215,4 +215,34 @@ namespace al_utils
 
         return ret;
     }
+    bool ad_utils_date_time::is_before(const std::string &datetime1, const std::string &datetime2)
+    {
+        bool ret = false;
+
+        struct tm tstruct1 = {0};
+        struct tm tstruct2 = {0};
+        strptime(datetime1.c_str(), "%Y-%m-%d %H:%M:%S", &tstruct1);
+        strptime(datetime2.c_str(), "%Y-%m-%d %H:%M:%S", &tstruct2);
+        time_t time1 = mktime(&tstruct1);
+        time_t time2 = mktime(&tstruct2);
+        if (difftime(time1, time2) < 0)
+        {
+            ret = true;
+        }
+
+        return ret;
+    }
+    std::string ad_utils_date_time::make_utc_time(const std::string &datetime)
+    {
+        std::string ret;
+
+        char buf[80];
+        struct tm tstruct = {0};
+        strptime(datetime.c_str(), "%Y-%m-%d %H:%M:%S", &tstruct);
+
+        strftime(buf, sizeof(buf), "%Y%m%dT%H%M%SZ", &tstruct);
+        ret = std::string(buf);
+
+        return ret;
+    }
 }

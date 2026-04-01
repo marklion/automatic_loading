@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import ElementPlus from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn' // 引入中文语言包
 import 'element-plus/dist/index.css'
 import { createPinia } from 'pinia'
 import { useRemoteHostName } from "@/stores/remote_name";
@@ -16,7 +17,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.use(pinia)
-app.use(ElementPlus)
+app.use(ElementPlus, {
+    locale: zhCn, // 设置中文语言包
+})
 app.use(router)
 app.mount('#app')
 const hostname_store = useRemoteHostName();
