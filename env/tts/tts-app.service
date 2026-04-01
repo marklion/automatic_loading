@@ -1,0 +1,17 @@
+# cat ~/.config/systemd/user/tts-app.service
+[Unit]
+Description=TTS Application Service
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/zczh/tts
+ExecStart=/home/zczh/tts/tts_env/bin/python /home/zczh/tts/app.py
+Restart=always
+RestartSec=10
+Environment="DISPLAY=:0"
+Environment="PULSE_SERVER=unix:/run/user/%U/pulse/native"
+Environment="XAUTHORITY=/home/zczh/.Xauthority"
+
+[Install]
+WantedBy=default.target

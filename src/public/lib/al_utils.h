@@ -50,6 +50,8 @@ namespace al_utils
             m_time = m_datetime.substr(11, 8);
         }
         static std::string date_plus_day(const std::string &_date, int _day);
+        static bool is_before(const std::string &datetime1, const std::string &datetime2);
+        static std::string make_utc_time(const std::string &datetime);
     };
     class URLCodec
     {

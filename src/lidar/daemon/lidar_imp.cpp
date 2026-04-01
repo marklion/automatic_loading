@@ -384,17 +384,18 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
     auto start_us_stamp = al_utils::get_current_us_stamp();
     pc_after_split ret;
     auto pickup_resp = pickup_pc_from_spec_range(_cloud, _x_plane);
+    color_cloud(255,0, 0, pickup_resp->picked);
 
     // 在范围内点云中拟合垂直y轴的平面,范围内点云染蓝色，平面染黄色
     pcl::ModelCoefficients::Ptr coe_side(new pcl::ModelCoefficients);
     Eigen::Vector3f plane_normal = _x_plane ? Eigen::Vector3f(1, 0, 0) : Eigen::Vector3f(0, 1, 0);
     auto fpop_ret = find_points_on_plane(pickup_resp->picked, plane_normal, plane_DistanceThreshold, AngleThreshold, coe_side, cluster_DistanceThreshold, cluster_require_points);
+    color_cloud(0, 0, 255, fpop_ret.picked);
     auto clst_ret = find_max_cluster(fpop_ret.picked, cluster_DistanceThreshold, cluster_require_points);
+    color_cloud(255, 255, 0, clst_ret.picked);
     ret.content = pickup_resp->last;
     *ret.content += *fpop_ret.last;
-    color_cloud(90, 23, 255, ret.content);
     ret.legal_side = clst_ret.picked;
-    color_cloud(255, 255, 0, ret.legal_side);
     ret.illegal_side = clst_ret.last;
 
     auto end_us_stamp = al_utils::get_current_us_stamp();
@@ -485,22 +486,16 @@ pc_after_pickup lidar_driver_info::pickup_shape_from_side(myPointCloud::Ptr _clo
     pcl::copyPointCloud(*_cloud, *(ret.picked));
     for (const auto &index : peak_indices)
     {
-        bool is_last_one = false;
-        if (index == SIDE_TOTAL_SEG_NUM - 1)
-        {
-            is_last_one = true;
-        }
         float cur_x_min = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * index;
-        float cur_x_max = x_min + (x_max - x_min) / SIDE_TOTAL_SEG_NUM * (index + 1);
-        if (is_last_one)
+        if (cur_x_min > 0)
         {
-            cur_x_max = x_max + 1;
+            myPointCloud::Ptr tmp_filtered(new myPointCloud);
+            myPointCloud::Ptr tmp_last(new myPointCloud);
+            split_cloud_by_pt(ret.picked, "x", cur_x_min, x_max + 1, tmp_filtered, tmp_last);
+            *ret.last += *tmp_filtered;
+            ret.picked = tmp_last;
+            break;
         }
-        myPointCloud::Ptr tmp_filtered(new myPointCloud);
-        myPointCloud::Ptr tmp_last(new myPointCloud);
-        split_cloud_by_pt(ret.picked, "x", cur_x_min, cur_x_max, tmp_filtered, tmp_last);
-        *ret.last += *tmp_filtered;
-        ret.picked = tmp_last;
     }
     color_cloud(0, 255, 0, ret.picked);
 

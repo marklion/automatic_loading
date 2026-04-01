@@ -60,7 +60,11 @@ public:
     }
     void prepare_config_file()
     {
-        std::string config_file_content = "paths:\n";
+        std::string config_file_content = "hlsAlwaysRemux: true\n";
+        config_file_content += "hlsSegmentCount:  7\n";
+        config_file_content += "hlsSegmentDuration: 1s \n";
+
+        config_file_content += "paths:\n";
         std::vector<live_stream_config> cameras;
         get_all_live_cameras(cameras);
         for (const auto &camera : cameras)
@@ -69,6 +73,12 @@ public:
             auto username = al_utils::URLCodec::encode(camera.username, false);
             auto password = al_utils::URLCodec::encode(camera.password, false);
             config_file_content += "source: \"rtsp://" + username + ":" + password + "@" + camera.ip + ":554/Streaming/Channels/" + camera.channel + "\"\n    ";
+            config_file_content += "sourceProtocol: tcp\n    sourceOnDemand: yes\n";
+
+            auto replay_channel = camera.channel;
+            replay_channel[replay_channel.size() - 1] = '1';
+            config_file_content += "  ~" + camera.name + "_replay_start_(\\d{8}T\\d{6}Z)_end_(\\d{8}T\\d{6}Z):\n    ";
+            config_file_content += "source: \"rtsp://" + username + ":" + password + "@" + camera.ip + ":554/Streaming/tracks/" + replay_channel + "?starttime=$G1&endtime=$G2\"\n    ";
             config_file_content += "sourceProtocol: tcp\n    sourceOnDemand: yes\n";
         }
         std::ofstream ofs("/conf/mediamtx.yml", std::ios::trunc);

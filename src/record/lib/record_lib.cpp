@@ -9,7 +9,12 @@
 
 static std::string make_one_line_record(const al_record::vehicle_pass_record &record)
 {
-    return record.m_plate + "," + record.m_begin_time + "," + record.m_end_time + "," + record.m_dev_name;
+    return
+        record.m_plate + "," +
+        record.m_begin_time + "," +
+        record.m_end_time + "," +
+        record.m_dev_name + "," +
+        al_utils::double2string(record.m_load);
 }
 
 static std::unique_ptr<al_record::vehicle_pass_record> parse_one_line_record(const std::string &line)
@@ -29,11 +34,19 @@ static std::unique_ptr<al_record::vehicle_pass_record> parse_one_line_record(con
     {
         return nullptr;
     }
+    size_t pos4 = line.find(",", pos3 + 1);
     std::string plate = line.substr(0, pos1);
     std::string begin_time = line.substr(pos1 + 1, pos2 - pos1 - 1);
     std::string end_time = line.substr(pos2 + 1, pos3 - pos2 - 1);
     std::string dev_name = line.substr(pos3 + 1);
-    return std::make_unique<al_record::vehicle_pass_record>(plate, begin_time, end_time, dev_name);
+    double load = 0;
+    if (pos4 != std::string::npos)
+    {
+        dev_name = line.substr(pos3 + 1, pos4 - pos3 - 1);
+        load = atof(line.substr(pos4 + 1).c_str());
+    }
+
+    return std::make_unique<al_record::vehicle_pass_record>(plate, begin_time, end_time, dev_name, load);
 }
 
 void al_record::record_vehicle_pass(const vehicle_pass_record &record)
@@ -52,7 +65,7 @@ static void search_file_list(std::vector<std::string> &file_list, const std::str
     end_date = al_utils::ad_utils_date_time::date_plus_day(end_date, 1);
     if (begin_date.length() > 0 && end_date.length() > 0)
     {
-        for (auto itr_date = begin_date; itr_date != end_date; itr_date = al_utils::ad_utils_date_time::date_plus_day(itr_date, 1))
+        for (auto itr_date = begin_date; al_utils::ad_utils_date_time::is_before(itr_date, end_date); itr_date = al_utils::ad_utils_date_time::date_plus_day(itr_date, 1))
         {
             auto file_name = RECORD_FILE_PATH_PREFIX + itr_date + ".csv";
             file_list.push_back(file_name);

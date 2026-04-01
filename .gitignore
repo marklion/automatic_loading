@@ -8,3 +8,4 @@ build/
 **/gen_code/
 **/lidar_gen_code/
 **/plate_gate_gen_code/
+**/sm_gen_code/
