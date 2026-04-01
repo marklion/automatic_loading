@@ -82,6 +82,7 @@ static void list_record(std::ostream &out, std::vector<std::string> _params)
             json_record.Add("begin_time", record.m_begin_time);
             json_record.Add("end_time", record.m_end_time);
             json_record.Add("dev_name", record.m_dev_name);
+            json_record.Add("load", record.m_load);
             json_record.Add(
                 "url",
                 stuff_dev_map[record.m_dev_name] +
@@ -97,10 +98,10 @@ static void list_record(std::ostream &out, std::vector<std::string> _params)
     else
     {
         tabulate::Table table;
-        table.add_row({"开始时间", "结束时间", "车牌号", "设备名称"});
+        table.add_row({"开始时间", "结束时间", "车牌号", "设备名称", "载重"});
         for (const auto &itr : record_list)
         {
-            table.add_row({itr.m_begin_time, itr.m_end_time, itr.m_plate, itr.m_dev_name});
+            table.add_row({itr.m_begin_time, itr.m_end_time, itr.m_plate, itr.m_dev_name, al_utils::double2string(itr.m_load)});
         }
         table.format().multi_byte_characters(true);
         out << table << std::endl;

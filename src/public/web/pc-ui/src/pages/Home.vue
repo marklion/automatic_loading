@@ -3,12 +3,10 @@
     <el-row>
       <el-col :span="8">
         <el-menu default-active="0" mode="horizontal" :ellipsis="false" @select="handleSelect">
-          <el-menu-item index="0">
-            操作中心
-          </el-menu-item>
-          <el-menu-item index="1">配置工具</el-menu-item>
-          <el-menu-item index="2">更新</el-menu-item>
-          <el-menu-item index="3">历史</el-menu-item>
+          <el-menu-item index="0">操作</el-menu-item>
+          <el-menu-item index="1">配置</el-menu-item>
+          <el-menu-item index="2">维护</el-menu-item>
+          <el-menu-item index="3">记录</el-menu-item>
         </el-menu>
       </el-col>
       <el-col :span="8" v-if="current_nav_index == '0'">

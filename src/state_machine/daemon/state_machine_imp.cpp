@@ -668,6 +668,7 @@ void state_machine_imp::clear_vp()
     m_vp.m_end_time = "";
     m_vp.m_plate = "";
     m_vp.m_dev_name = "";
+    m_vp.m_load = 0;
 }
 void state_machine_imp::start_vp()
 {
@@ -682,6 +683,10 @@ void state_machine_imp::stop_vp()
     {
         al_record::record_vehicle_pass(m_vp);
     }
+}
+void state_machine_imp::update_load2vp()
+{
+    m_vp.m_load = sm_get_current_load();
 }
 state_machine_imp::~state_machine_imp()
 {
@@ -796,6 +801,7 @@ void state_machine_imp::sm_stop_so_pid()
         AD_RPC_SC::get_instance()->stopTimer(m_so_pid_timer);
     }
     m_stuff_offset_pid.reset();
+    update_load2vp();
 }
 
 bool state_machine_imp::sm_need_drop_lc()
