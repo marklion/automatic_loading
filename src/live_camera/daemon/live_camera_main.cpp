@@ -61,8 +61,8 @@ public:
     void prepare_config_file()
     {
         std::string config_file_content = "hlsAlwaysRemux: true\n";
-        config_file_content += "hlsSegmentCount: 14 \n";
-        config_file_content += "hlsSegmentDuration: 2s \n";
+        config_file_content += "hlsSegmentCount:  7\n";
+        config_file_content += "hlsSegmentDuration: 1s \n";
 
         config_file_content += "paths:\n";
         std::vector<live_stream_config> cameras;
