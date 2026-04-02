@@ -68,7 +68,7 @@ public:
         auto reply = ot->getBufferAsString();
         if (!reply.empty())
         {
-            send(getFd(), reply.c_str(), reply.size(), SOCK_NONBLOCK);
+            send(getFd(), reply.c_str(), reply.size(), MSG_DONTWAIT);
         }
     }
     void add_processor(const std::string &service_name, std::shared_ptr<apache::thrift::TProcessor> processor)

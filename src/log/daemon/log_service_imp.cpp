@@ -322,6 +322,6 @@ void log_service_imp::dispatch_log_message(const std::string &log_msg)
 {
     for (auto &node : m_data_nodes)
     {
-        send(node->getFd(), log_msg.c_str(), log_msg.size(), SOCK_NONBLOCK);
+        send(node->getFd(), log_msg.c_str(), log_msg.size(), MSG_DONTWAIT);
     }
 }

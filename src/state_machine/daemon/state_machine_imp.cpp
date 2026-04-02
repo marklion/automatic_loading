@@ -295,6 +295,7 @@ void state_machine_imp::push_cur_load(const double cur_load)
     {
         sm_handle_event(al_sm_state::AL_SM_EVENT_LOAD_CLEAR);
     }
+    update_load2vp();
 }
 
 void state_machine_imp::push_stuff_full_offset(const double offset)
@@ -686,7 +687,11 @@ void state_machine_imp::stop_vp()
 }
 void state_machine_imp::update_load2vp()
 {
-    m_vp.m_load = sm_get_current_load();
+    auto current_load = sm_get_current_load();
+    if (current_load > m_vp.m_load)
+    {
+        m_vp.m_load = current_load;
+    }
 }
 state_machine_imp::~state_machine_imp()
 {
@@ -710,7 +715,7 @@ void state_machine_imp::deliver_msg()
     content += "\n";
     for (auto &node : m_data_nodes)
     {
-        send(node->getFd(), content.c_str(), content.size(), SOCK_NONBLOCK);
+        send(node->getFd(), content.c_str(), content.size(), MSG_DONTWAIT);
     }
 }
 
@@ -801,7 +806,6 @@ void state_machine_imp::sm_stop_so_pid()
         AD_RPC_SC::get_instance()->stopTimer(m_so_pid_timer);
     }
     m_stuff_offset_pid.reset();
-    update_load2vp();
 }
 
 bool state_machine_imp::sm_need_drop_lc()
