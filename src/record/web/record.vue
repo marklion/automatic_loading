@@ -12,6 +12,9 @@
             <el-table-column :label="'共' + all_record.length + '条记录'">
                 <template #default="scope">
                     <el-button @click="play_record(scope.row.url)" type="success" size="small">查看视频</el-button>
+                    <el-button @click="download_video(scope.$index)" type="primary" size="small">生成视频</el-button>
+                    <a v-if="scope.row.video_file_name && scope.row.video_download_progress == 100"
+                        :href="'/video/' + scope.row.video_file_name" download>下载</a>
                 </template>
             </el-table-column>
         </el-table>
@@ -64,6 +67,14 @@ async function refresh() {
 }
 function play_record(url) {
     window.open(url, '_blank');
+}
+async function download_video(index) {
+    let begin_date = moment(dateRange.value[0]).format("YYYY-MM-DD");
+    let end_date = moment(dateRange.value[1]).format("YYYY-MM-DD");
+    await instance.appContext.config.globalProperties.$call_remote_cli(
+        `record make_video ${index} * * ${begin_date} ${end_date}`
+    );
+    await refresh();
 }
 onMounted(async () => {
     dateRange.value = [moment().toDate(), moment().toDate()];

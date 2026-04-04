@@ -35,7 +35,7 @@ hn_hht:log
 plate_gate:state_machine hn_hht
 cli:log modbus_io state_machine lidar xlrd live_camera hn_hht plate_gate scale
 scale:state_machine
-record:log config
+record:log config live_camera
 
 clean:
 	rm -rf $(DELIVER_PATH)
