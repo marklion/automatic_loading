@@ -69,12 +69,69 @@ static void show_cameras(std::ostream &out, std::vector<std::string> _params)
     out << camera_json.ToString() << std::endl;
 }
 
+static void generate_video(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请指定摄像头名称");
+    check_resp += common_cli::check_params(_params, 1, "请指定录像开始时间，格式为2026-01-23 16:33:03");
+    check_resp += common_cli::check_params(_params, 2, "请指定录像结束时间，格式为2026-01-23 16:33:03");
+    if (check_resp.empty())
+    {
+        std::string name = _params[0];
+        std::string begin_time = _params[1];
+        std::string end_time = _params[2];
+        live_camera::call_live_camera_remote(
+            [&](live_camera_serviceClient &client)
+            {
+                client.generate_video(name, begin_time, end_time);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
+static void list_video(std::ostream &out, std::vector<std::string> _params)
+{
+    std::vector<video_download_progress> progress_list;
+    live_camera::call_live_camera_remote(
+        [&](live_camera_serviceClient &client)
+        {
+            client.get_video_download_progress(progress_list);
+        });
+    if (_params.size() > 0 && _params[0] == "json")
+    {
+        neb::CJsonObject progress_json("[]");
+        for (const auto &progress : progress_list)
+        {
+            neb::CJsonObject single_progress;
+            single_progress.Add("name", progress.name);
+            single_progress.Add("progress", progress.progress);
+            progress_json.Add(single_progress);
+        }
+        out << progress_json.ToString() << std::endl;
+    }
+    else
+    {
+        tabulate::Table table;
+        table.add_row({"文件", "进度"});
+        for (const auto &itr : progress_list)
+        {
+            table.add_row({itr.name, std::to_string(itr.progress) + "%"});
+        }
+        table.format().multi_byte_characters(true);
+        out << table << std::endl;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> live_camera_menu(new cli::Menu("live_camera"));
     live_camera_menu->Insert(CLI_MENU_ITEM(add_camera), "添加网络摄像头", {"name", "ip", "username", "password", "channel"});
     live_camera_menu->Insert(CLI_MENU_ITEM(del_camera), "删除网络摄像头", {"name"});
     live_camera_menu->Insert(CLI_MENU_ITEM(show_cameras), "显示所有网络摄像头", {});
+    live_camera_menu->Insert(CLI_MENU_ITEM(generate_video), "生成录像文件", {"name", "begin_time", "end_time"});
+    live_camera_menu->Insert(CLI_MENU_ITEM(list_video), "列出录像生成进度", {"[json]"});
     return live_camera_menu;
 }
 

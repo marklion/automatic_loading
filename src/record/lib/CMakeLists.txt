@@ -9,6 +9,7 @@ aux_source_directory(./ LIB_SRC)
 aux_source_directory(../sm_gen_code/cpp GEN_SRC)
 
 find_library(AL_UTILS_LIB libal_utils.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
+find_library(LIVE_CAMERA_LIB liblive_camera_lib.so ${PRJ_INTERNAL_BUILD}/lib ${CUR_BUILD_PATH}/lib)
 
 add_library(record_lib SHARED ${LIB_SRC} ${GEN_SRC})
-target_link_libraries(record_lib ${AL_UTILS_LIB} thrift)
+target_link_libraries(record_lib ${AL_UTILS_LIB} ${LIVE_CAMERA_LIB} thrift)

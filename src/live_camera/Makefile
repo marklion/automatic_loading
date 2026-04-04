@@ -5,7 +5,7 @@ OUT_CODE_PATH=$(SRC_DIR)/gen_code
 IDL_FILE=$(SRC_DIR)/live_camera_idl.thrift
 CMAKE_TMP_DIR=$(SRC_DIR)/cmake_tmp_dir
 
-all:$(OUT_CODE_PATH) lib daemon
+all:$(OUT_CODE_PATH) lib daemon tools
 	cp -a $(DELIVER_PATH)/* $(OUTBOUND_DELIVER_PATH)/
 
 $(OUT_CODE_PATH):$(OUT_CODE_PATH)/cpp
@@ -22,6 +22,9 @@ $(OUT_CODE_PATH)/cpp:$(IDL_FILE) $(DELIVER_PATH)
 lib:$(DELIVER_PATH)
 	[ -d $(CMAKE_TMP_DIR)/$@ ] || mkdir -p $(CMAKE_TMP_DIR)/$@
 	pushd $(CMAKE_TMP_DIR)/$@;[ -f Makefile ] || cmake -D PRJ_INTERNAL_BUILD=$(OUTBOUND_DELIVER_PATH) -D CUR_BUILD_PATH=$(DELIVER_PATH) $(SRC_DIR)/$@; $(MAKE)
+tools:$(DELIVER_PATH)
+	[ -d $(CMAKE_TMP_DIR)/$@ ] || mkdir -p $(CMAKE_TMP_DIR)/$@
+	pushd $(CMAKE_TMP_DIR)/$@;[ -f Makefile ] || cmake -D PRJ_INTERNAL_BUILD=$(OUTBOUND_DELIVER_PATH) -D CUR_BUILD_PATH=$(DELIVER_PATH) $(SRC_DIR)/$@; $(MAKE)
 daemon:$(DELIVER_PATH)
 	[ -d $(CMAKE_TMP_DIR)/$@ ] || mkdir -p $(CMAKE_TMP_DIR)/$@
 	pushd $(CMAKE_TMP_DIR)/$@;[ -f Makefile ] || cmake -D PRJ_INTERNAL_BUILD=$(OUTBOUND_DELIVER_PATH) -D CUR_BUILD_PATH=$(DELIVER_PATH) $(SRC_DIR)/$@; $(MAKE)
@@ -32,4 +35,4 @@ clean:
 	rm -rf $(DELIVER_PATH)
 	rm -rf $(CMAKE_TMP_DIR)
 
-.PHONY: all clean $(OUT_CODE_PATH) $(DELIVER_PATH) lib daemon
+.PHONY: all clean $(OUT_CODE_PATH) $(DELIVER_PATH) lib daemon tools

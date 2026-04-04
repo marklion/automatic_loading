@@ -169,8 +169,8 @@ async function confirm_update(response, file, fileList) {
       type: 'warning',
     }).then(async () => {
       await axios.post("/api/update_system", {});
-      ElMessageBox.alert('系统将重启以应用更新。', '提示', {
-        confirmButtonText: '确定',
+      ElMessageBox.alert('系统重启以应用更新。', '提示', {
+        confirmButtonText: '重启',
         callback: () => {
           window.location.reload();
         }

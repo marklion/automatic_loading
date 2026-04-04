@@ -3,6 +3,7 @@
 #include "../../public/lib/ad_rpc.h"
 #include "../../config/lib/config_lib.h"
 #include "../../public/lib/al_utils.h"
+#include "../../log/lib/log_lib.h"
 #include <fstream>
 #include <sys/syscall.h>
 #include <sys/wait.h>
@@ -40,7 +41,20 @@ static void refresh_live_server()
 
 class live_camera_imp : public live_camera_serviceIf
 {
+    al_log::log_tool m_logger;
+    std::map<std::string, video_download_progress> m_video_download_progress;
+    AD_CO_MUTEX m_video_download_progress_mutex;
+    void put_video_progress(const std::string &_file_name, int _progress)
+    {
+        AD_CO_LOCK_GUARD lock(m_video_download_progress_mutex);
+        video_download_progress tmp;
+        tmp.name = _file_name;
+        tmp.progress = _progress;
+        m_video_download_progress[_file_name] = tmp;
+    }
+
 public:
+    live_camera_imp() : m_logger(al_log::LOG_LIVE_CAMERA), m_video_download_progress_mutex(AD_RPC_SC::get_instance()) {};
     virtual void get_all_live_cameras(std::vector<live_stream_config> &_return)
     {
         auto &ci = config::root_config::get_instance();
@@ -112,17 +126,91 @@ public:
         }
         return true;
     }
+
+    virtual void generate_video(const std::string &name, const std::string &begin_time, const std::string &end_time)
+    {
+        std::vector<live_stream_config> cameras;
+        get_all_live_cameras(cameras);
+        for (const auto &camera : cameras)
+        {
+            if (camera.name == name)
+            {
+                auto first_0_pos = camera.channel.find_first_of('0');
+                auto real_channel = atoi((camera.channel.substr(0, first_0_pos)).c_str()) - 1;
+                std::string file_name = camera.ip + "_" + camera.channel + "_" + al_utils::ad_utils_date_time::make_utc_time(al_utils::ad_utils_date_time().m_datetime) + ".mp4";
+                char video_cmd[512] = {0};
+                snprintf(
+                    video_cmd,
+                    sizeof(video_cmd),
+                    "/bin/hk_tool '%s' '%s' '%s' '%d' '%s' '%s' '%s'",
+                    camera.ip.c_str(),
+                    camera.username.c_str(),
+                    camera.password.c_str(),
+                    real_channel, begin_time.c_str(), end_time.c_str(),
+                    file_name.c_str());
+                AD_RPC_SC::get_instance()->non_block_system(video_cmd);
+                std::ifstream ifs("/database/video/" + file_name);
+                if (ifs.good())
+                {
+                    put_video_progress(file_name, 100);
+                }
+                else
+                {
+                    put_video_progress(file_name, -1);
+                }
+                break;
+            }
+        }
+    }
+
+    virtual void get_video_download_progress(std::vector<video_download_progress> &_return)
+    {
+        std::vector<std::string> need_delete;
+        {
+            AD_CO_LOCK_GUARD lock(m_video_download_progress_mutex);
+            for (const auto &item : m_video_download_progress)
+            {
+                auto date_pos = item.second.name.find_last_of('_');
+                auto create_date = item.second.name.substr(date_pos + 1, 8);
+                auto now_date = al_utils::ad_utils_date_time().make_utc_time(al_utils::ad_utils_date_time().m_datetime).substr(0, 8);
+                if (create_date != now_date && item.second.progress >= 100)
+                {
+                    need_delete.push_back(item.first);
+                }
+                else
+                {
+
+                    _return.push_back(item.second);
+                }
+            }
+            for (auto &itr : need_delete)
+            {
+                m_video_download_progress.erase(itr);
+            }
+        }
+
+        for (auto &itr : need_delete)
+        {
+            std::string file_path = "/database/video/" + itr;
+            if (remove(file_path.c_str()) != 0)
+            {
+                m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Failed to delete file: %s\n", file_path.c_str());
+            }
+        }
+    }
 };
 
 int main(int argc, char const *argv[])
 {
     auto sc = AD_RPC_SC::get_instance();
+    auto lci = std::make_shared<live_camera_imp>();
     sc->enable_rpc_server(AD_RPC_LIVE_STREAM_SERVER_PORT);
-    sc->add_rpc_server(std::make_shared<live_camera_serviceProcessor>(std::make_shared<live_camera_imp>()));
+    sc->add_rpc_server(std::make_shared<live_camera_serviceProcessor>(lci));
     al_utils::start_server_notify_started("live_camera");
     if (g_server_pid > 0)
     {
         kill(g_server_pid, SIGKILL);
     }
+
     return 0;
 }
