@@ -759,6 +759,10 @@ void state_machine_imp::sm_start_so_pid()
             sf.add_seg(basic_config.lack_offset, 2);
             sf.add_seg(basic_config.empty_offset, 3);
             auto sf_output = (int)sf.update(output);
+            if (sf_output == 2 && (basic_config.max_load - sm_get_current_load()) < 1)
+            {
+                sf_output = 1;
+            }
             if (sf_output == 0 || sf_output == 1)
             {
                 sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
