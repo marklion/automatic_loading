@@ -18,6 +18,10 @@ export default defineConfig({
         target: 'https://ayx.d8sis.cn',
         changeOrigin: true,
         ws:true,
+      },
+      '/logo':{
+        target: 'https://ayx.d8sis.cn',
+        changeOrigin: true,
       }
     },
   },

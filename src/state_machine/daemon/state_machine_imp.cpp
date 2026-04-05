@@ -41,6 +41,11 @@ void al_sm_state_init::after_enter()
     m_sm->sm_set_vehicle_tail_x(100);
     m_sm->sm_stop_so_pid();
     m_sm->close_all_stuff_drop();
+    plate_gate_call_remote(
+        [](plate_gate_serviceClient &client)
+        {
+            client.control_gate(false);
+        });
     lidar_call_remote(
         [](lidar_serviceClient &client)
         {
@@ -703,7 +708,7 @@ void state_machine_imp::deliver_msg()
     neb::CJsonObject output;
     output.Add("url", sm_get_current_video_url());
     output.Add("prompt", sm_get_current_prompt());
-    output.Add("plate", sm_get_vehicle_info().plate + "\n" + sm_get_vehicle_info().stuff_name);
+    output.Add("plate", sm_get_vehicle_info().plate + "|" + sm_get_vehicle_info().stuff_name);
     output.Add("weight", al_utils::double2string(sm_get_current_load()) + " 吨");
     neb::CJsonObject ann_obj;
     auto ann_info = sm_get_current_ann();
@@ -763,13 +768,16 @@ void state_machine_imp::sm_start_so_pid()
             {
                 sf_output = 1;
             }
-            if (sf_output == 0 || sf_output == 1)
+            else
             {
-                sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
-            }
-            else if (sf_output == 3 && m_offset_change_speed < -12)
-            {
-                sm_handle_event(al_sm_state::AL_SM_EVENT_EXCEPTION_EMPTY);
+                if (sf_output == 0 || sf_output == 1)
+                {
+                    sm_handle_event(al_sm_state::AL_SM_EVENT_REACH_FULL);
+                }
+                else if (sf_output == 3 && m_offset_change_speed < -12)
+                {
+                    sm_handle_event(al_sm_state::AL_SM_EVENT_EXCEPTION_EMPTY);
+                }
             }
 
             // 4. 用当前状态的输出处理矩阵处理上步分段

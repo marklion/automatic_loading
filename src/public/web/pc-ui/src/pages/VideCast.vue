@@ -1,10 +1,14 @@
 <template>
     <div class="container">
-        <div class="iframe-section">
-            <iframe :key="iframeKey" :src="video_cast_url + '/'"></iframe>
+        <div  class="iframe-section">
+            <iframe v-if="video_cast_url" :key="iframeKey" :src="video_cast_url + '/'"></iframe>
+            <el-image v-else src="/logo/logo.jpg" fit="contain" />
         </div>
         <div class="text-section">
-            <div class="text-block1">{{ text1 }}</div>
+            <div class="text-block1">
+                <div>车牌:{{ plate_number }}</div>
+                <div>物料:{{ stuff_name }}</div>
+            </div>
             <div :class="['text-block2', { 'text-block2-stop': text2.includes('停车') }]">{{ text2 }}</div>
             <div class="text-block3">{{ text3 }}</div>
         </div>
@@ -12,7 +16,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { DataSyncClient } from "../ws_sync_client";
 import axios from 'axios';
 const client = new DataSyncClient('/ws/');
@@ -23,7 +27,14 @@ const iframeKey = ref(0);
 const video_cast_url = ref('');
 let refreshTimer = null;
 let ann_timer = null;
-
+let plate_number = computed(() => {
+    let parts = text1.value.split('|');
+    return parts.length > 0 ? parts[0] : '';
+});
+let stuff_name = computed(() => {
+    let parts = text1.value.split('|');
+    return parts.length > 1 ? parts[1] : '';
+});
 let ann_content = '';
 let ann_gap = -1;
 let ann_should_refresh = false;
@@ -77,9 +88,6 @@ client.watchData((key, value) => {
         if (video_cast_url.value != orig_url) {
             iframeKey.value += 1;  // 强制刷新 iframe
         }
-        if (video_cast_url.value === '') {
-            video_cast_url.value = 'about:blank';
-        }
         if (ann_content != value.ann.content || ann_gap != value.ann.gap) {
             ann_content = value.ann.content;
             ann_gap = value.ann.gap;
@@ -94,14 +102,17 @@ client.watchData((key, value) => {
 .container {
     display: flex;
     flex-direction: column;
-    width: 100vw;
-    height: 100vh;
+    width: 99vw;
+    height: 98vh;
     background: #f7f8fa;
 }
 
 .iframe-section {
     flex: 4 1 20%;
     min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .iframe-section iframe {
@@ -109,6 +120,17 @@ client.watchData((key, value) => {
     height: 100%;
     border: none;
     display: block;
+}
+
+.iframe-section :deep(.el-image) {
+    width: 100%;
+    height: 100%;
+}
+
+.iframe-section :deep(.el-image img) {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .text-section {
@@ -122,12 +144,13 @@ client.watchData((key, value) => {
 .text-block1 {
     flex: 1;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items:normal;
     justify-content: center;
     background: #ffffff;
     border: 2px solid #093fe2;
     border-radius: 8px;
-    font-size: 90px;
+    font-size: 60px;
     font-weight: 700;
     font-family: "SimHei", "黑体", sans-serif;
     color: #333333;
