@@ -49,6 +49,7 @@ struct lidar_params{
     44: double second_range_z_min,
     45: double second_range_z_max,
     46: double tail_cluster_distance_threshold,
+    47: double shape_filter_req,
 }
 
 struct ply_file_info{

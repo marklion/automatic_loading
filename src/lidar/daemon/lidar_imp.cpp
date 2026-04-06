@@ -402,9 +402,8 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
     return ret;
 }
 
-static std::vector<int> findPeakIndices(float ava_z_array[], int size) {
+static std::vector<int> findPeakIndices(float ava_z_array[], int size, float _shape_filter_req) {
     std::vector<int> peakIndices;
-
     // 计算数组平均值
     float sum = 0.0f;
     for (int i = 0; i < size; i++) {
@@ -419,23 +418,10 @@ static std::vector<int> findPeakIndices(float ava_z_array[], int size) {
     }
     float stdDev = std::sqrt(variance / size);
 
-    // 设置阈值：平均值加上1.5倍标准差
-    float threshold = mean + 1.5f * stdDev;
-
-    // 找出大于阈值的索引
+    float threshold = mean + _shape_filter_req * stdDev;
     for (int i = 0; i < size; i++) {
         if (ava_z_array[i] > threshold) {
             peakIndices.push_back(i);
-        }
-    }
-
-    // 如果没有找到任何峰值，尝试降低阈值
-    if (peakIndices.empty()) {
-        threshold = mean + 1.0f * stdDev;
-        for (int i = 0; i < size; i++) {
-            if (ava_z_array[i] > threshold) {
-                peakIndices.push_back(i);
-            }
         }
     }
 
@@ -482,7 +468,10 @@ pc_after_pickup lidar_driver_info::pickup_shape_from_side(myPointCloud::Ptr _clo
             ava_z_array[i] = total_z / tmp_filtered->points.size();
         }
     }
-    auto peak_indices = findPeakIndices(ava_z_array, SIDE_TOTAL_SEG_NUM);
+
+    lidar_params params;
+    m_parent->get_lidar_params(params);
+    auto peak_indices = findPeakIndices(ava_z_array, SIDE_TOTAL_SEG_NUM, params.shape_filter_req);
     pcl::copyPointCloud(*_cloud, *(ret.picked));
     for (const auto &index : peak_indices)
     {

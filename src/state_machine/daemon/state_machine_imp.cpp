@@ -590,6 +590,7 @@ lidar_params state_machine_imp::make_params_from_kit()
     ret.second_range_y_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Y_MIN]().c_str());
     ret.second_range_z_min = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Z_MIN]().c_str());
     ret.second_range_z_max = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SECOND_RANGE_Z_MAX]().c_str());
+    ret.shape_filter_req = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_SHAPE_FILTER_REQ]().c_str());
 
     return ret;
 }
