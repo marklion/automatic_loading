@@ -14,6 +14,10 @@ export default defineConfig({
         target: 'https://ayx.d8sis.cn',
         changeOrigin: true,
       },
+      '/live': {
+        target: 'https://ayx.d8sis.cn',
+        changeOrigin: true,
+      },
       '/ws':{
         target: 'https://ayx.d8sis.cn',
         changeOrigin: true,
