@@ -2,6 +2,8 @@
     <div v-if="should_show">
         <el-descriptions title="运行状态" :column="3" border>
             <template #extra>
+                <el-button v-if="!isRecording" type="success" @click="startAudioStreaming">广播</el-button>
+                <el-button v-else type="danger" @click="stopAudioProcessing">停止</el-button>
                 <el-button type="warning" @click="enter_manual">手动</el-button>
                 <el-button type="danger" @click="emergencyStop">急停</el-button>
                 <el-button type="primary" @click="resetStateMachine">重置</el-button>
@@ -25,7 +27,7 @@
                 {{ sm_status.applied_kit }}
             </el-descriptions-item>
             <el-descriptions-item label="期望放料速度">
-                {{ sm_status.expect_load_increase_speed}}
+                {{ sm_status.expect_load_increase_speed }}
             </el-descriptions-item>
             <el-descriptions-item label="实际放料速度">
                 {{ sm_status.current_load_increase_speed }}
@@ -75,10 +77,114 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance } from "vue";
+import { computed, getCurrentInstance, ref, onMounted } from "vue";
 import { useStatusInfo } from "@/stores/status_info";
 const instance = getCurrentInstance();
+const isRecording = ref(false)
+let ws = null;
+let audioContext = null;
+let audioWorkletNode = null;
+let audioStream = null;
 
+async function startAudioStreaming() {
+    isRecording.value = true;
+    try {
+        // 1. 获取麦克风权限
+        audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                sampleRate: 16000,
+                channelCount: 1,
+                echoCancellation: true,
+                noiseSuppression: true
+            }
+        });
+
+        // 2. 创建WebSocket连接
+        ws = new WebSocket(`/audio-stream/`);
+        ws.binaryType = 'arraybuffer'
+        console.log(ws.readyState);
+        ws.onopen = () => {
+            console.log('WebSocket连接已建立');
+            startAudioProcessing();
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket连接已关闭');
+            stopAudioProcessing();
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket错误:', error);
+        };
+
+    } catch (error) {
+        console.error('启动音频流失败:', error);
+    }
+}
+
+async function startAudioProcessing() {
+    try {
+        // 3. 创建AudioContext
+        audioContext = new AudioContext({
+            sampleRate: 16000,
+            latencyHint: 'interactive'
+        });
+
+        // 4. 等待AudioContext就绪
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+
+        // 5. 添加AudioWorklet处理器模块
+        await audioContext.audioWorklet.addModule('/pcm-processor.js');
+
+        // 6. 创建音频节点
+        const source = audioContext.createMediaStreamSource(audioStream);
+        audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+
+        // 7. 接收PCM数据并发送
+        audioWorkletNode.port.onmessage = (event) => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // 发送Int16Array的buffer
+                ws.send(event.data.buffer);
+            }
+        };
+
+        // 8. 连接音频节点
+        source.connect(audioWorkletNode);
+        audioWorkletNode.connect(audioContext.destination); // 可选：监听自己的声音
+
+        console.log('音频处理已启动');
+
+    } catch (error) {
+        console.error('音频处理启动失败:', error);
+    }
+}
+
+function stopAudioProcessing() {
+    isRecording.value = false;
+    if (audioWorkletNode) {
+        audioWorkletNode.disconnect();
+        audioWorkletNode = null;
+    }
+
+    if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close();
+        audioContext = null;
+    }
+
+    if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
+    }
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+    }
+}
+
+onMounted(() => {
+})
 function make_range_by_max(max_value, min_value = 0) {
     let ret = {
         min: min_value,
