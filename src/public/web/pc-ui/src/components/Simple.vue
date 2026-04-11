@@ -735,4 +735,102 @@ onUnmounted(() => {
         opacity: 0.3;
     }
 }
+
+@media (max-width: 768px) {
+    .loading-system {
+        width: 100vw;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .status-bar {
+        padding: 10px 12px;
+    }
+
+    .status-text {
+        font-size: 14px;
+        letter-spacing: 0;
+    }
+
+    .status-clock {
+        font-size: 16px;
+        letter-spacing: 1px;
+        margin-left: 10px;
+    }
+
+    .main-container {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        overflow-y: auto;
+    }
+
+    .center-column {
+        order: 1;
+    }
+
+    .left-panel {
+        min-height: 220px;
+    }
+
+    .right-panel {
+        order: 2;
+        width: 100%;
+    }
+
+    .control-panel {
+        padding: 12px;
+    }
+
+    .control-main-layout {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .control-info-column {
+        flex: 1 1 auto;
+        width: 100%;
+    }
+
+    .system-info {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .info-label,
+    .info-value,
+    .progress-header,
+    .progress-percentage,
+    .button-label {
+        font-size: 14px;
+    }
+
+    .control-buttons {
+        width: 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .control-button {
+        width: min(120px, 100%);
+    }
+
+    .button-icon {
+        font-size: 26px;
+    }
+
+    .right-panel .truck-diagram {
+        height: 150px;
+        margin-bottom: 12px;
+    }
+
+    .data-grid {
+        gap: 8px;
+        margin-bottom: 0;
+    }
+
+    .data-value {
+        font-size: 16px;
+    }
+}
 </style>
