@@ -2,8 +2,9 @@
   <div>
     <el-row>
       <el-col :span="8">
-        <el-menu default-active="0" mode="horizontal" :ellipsis="false" @select="handleSelect">
-          <el-menu-item index="0">操作</el-menu-item>
+        <el-menu default-active="4" mode="horizontal" :ellipsis="false" @select="handleSelect">
+          <el-menu-item index="4">快捷</el-menu-item>
+          <el-menu-item index="0">专家</el-menu-item>
           <el-menu-item index="1">配置</el-menu-item>
           <el-menu-item index="2">维护</el-menu-item>
           <el-menu-item index="3">记录</el-menu-item>
@@ -39,6 +40,9 @@
     <div v-else-if="current_nav_index == '3'">
       <Record></Record>
     </div>
+    <div v-else-if="current_nav_index == '4'">
+      <Simple></Simple>
+    </div>
   </div>
 </template>
 
@@ -57,9 +61,10 @@ import { useRemoteHostName } from "@/stores/remote_name";
 import { GridLayout, GridItem } from 'vue3-grid-layout-next';
 import { ElMessageBox } from 'element-plus'
 import axios from "axios";
+import Simple from "@/components/Simple.vue";
 const layout = ref([])
 const health_record = ref([]);
-const current_nav_index = ref('0');
+const current_nav_index = ref('4');
 const resize_switch = ref(false);
 const my_components = {
   '0': IoPanel,
