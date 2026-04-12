@@ -159,10 +159,10 @@ const statusText = computed(() => {
 
 // 数据定义
 const material = computed(() => {
-    return sm_status.value.stuff_name || '未知物料'
+    return sm_status.value.vehicle_info?.stuff_name || '未知物料'
 })
 const licensePlate = computed(() => {
-    return sm_status.value.plate_number || '未知车牌'
+    return sm_status.value.vehicle_info?.plate || '未知车牌'
 })
 const loadedWeight = computed(() => {
     return sm_status.value.current_load || 0
@@ -342,11 +342,11 @@ onUnmounted(() => {
 }
 
 .status-indicator.stopped {
-    background-color: #F44336;
+    background-color: #36a2e1;
 }
 
 .status-indicator.error {
-    background-color: #9C27B0;
+    background-color: #f31313;
     animation: blink 1s infinite;
 }
 
@@ -397,7 +397,6 @@ onUnmounted(() => {
 }
 
 .left-panel {
-    width: 100%;
     flex: 1;
     min-height: 300px;
 }

@@ -182,6 +182,7 @@ public:
     void start_vp();
     void stop_vp();
     void update_load2vp();
+    void mark_as_justified();
     void remove_data_node(AD_EVENT_SC_TCP_DATA_NODE_PTR _node)
     {
         auto itr = std::find(m_data_nodes.begin(), m_data_nodes.end(), _node);
