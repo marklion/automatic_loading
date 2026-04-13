@@ -23,7 +23,13 @@
             <el-descriptions-item label="货厢边沿z坐标">
                 {{ sm_status.side_z }}
             </el-descriptions-item>
-            <el-descriptions-item label="应用配置套件">
+            <el-descriptions-item>
+                <template #label>
+                    <span>
+                        应用配置套件
+                    </span>
+                    <el-button type="primary" size="mini" @click="show_kit_detail = true">详细</el-button>
+                </template>
                 {{ sm_status.applied_kit }}
             </el-descriptions-item>
             <el-descriptions-item label="期望放料速度">
@@ -73,6 +79,9 @@
                 </el-progress>
             </el-col>
         </el-row>
+        <el-dialog :append-to-body="true" v-model="show_kit_detail" :show-close="true" width="500">
+            <kit-stuff></kit-stuff>
+        </el-dialog>
     </div>
 </template>
 
@@ -80,8 +89,10 @@
 import { computed, getCurrentInstance, ref, onMounted } from "vue";
 import { useStatusInfo } from "@/stores/status_info";
 import { startAudioStreaming, stopAudioProcessing } from "@/broadcast";
+import KitStuff from "./kit_stuff.vue";
 const instance = getCurrentInstance();
 const isRecording = ref(false)
+const show_kit_detail = ref(false);
 
 async function my_startAudioStreaming() {
     isRecording.value = true;
