@@ -16,7 +16,20 @@ namespace al_record
         int m_video_download_progress = 0;
         double m_load = 0;
         bool m_is_json = false;
-        vehicle_pass_record(const std::string &plate, const std::string &begin_time, const std::string &end_time, const std::string &dev_name, double _load) : m_plate(plate), m_begin_time(begin_time), m_end_time(end_time), m_dev_name(dev_name),m_load(_load)
+        bool m_justified = false;
+        vehicle_pass_record(
+            const std::string &plate,
+            const std::string &begin_time,
+            const std::string &end_time,
+            const std::string &dev_name,
+            double _load,
+            bool _justified):
+            m_plate(plate),
+            m_begin_time(begin_time),
+            m_end_time(end_time),
+            m_dev_name(dev_name),
+            m_load(_load),
+            m_justified(_justified)
         {
         }
         vehicle_pass_record() {}

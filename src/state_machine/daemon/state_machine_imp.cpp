@@ -169,6 +169,7 @@ void al_sm_state_emergency::after_enter()
     m_sm->sm_set_current_prompt("请停车");
     m_sm->sm_set_current_ann("停车停车", -1);
     m_sm->close_all_stuff_drop();
+    m_sm->mark_as_justified();
 }
 
 void al_sm_state_emergency::before_exit()
@@ -201,6 +202,7 @@ void al_sm_state_manual::after_enter()
     m_sm->sm_set_current_prompt("人工装车");
     m_sm->sm_set_current_ann("请等待人工装车", -1);
     m_sm->close_all_stuff_drop();
+    m_sm->mark_as_justified();
 }
 
 void al_sm_state_manual::before_exit()
@@ -676,6 +678,7 @@ void state_machine_imp::clear_vp()
     m_vp.m_plate = "";
     m_vp.m_dev_name = "";
     m_vp.m_load = 0;
+    m_vp.m_justified = false;
 }
 void state_machine_imp::start_vp()
 {
@@ -698,6 +701,10 @@ void state_machine_imp::update_load2vp()
     {
         m_vp.m_load = current_load;
     }
+}
+void state_machine_imp::mark_as_justified()
+{
+    m_vp.m_justified = true;
 }
 state_machine_imp::~state_machine_imp()
 {

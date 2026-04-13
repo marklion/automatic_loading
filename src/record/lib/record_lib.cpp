@@ -19,7 +19,8 @@ static std::string make_one_line_record(const al_record::vehicle_pass_record &re
            record.m_end_time + "," +
            record.m_dev_name + "," +
            al_utils::double2string(record.m_load) + "," +
-           record.m_video_file_name;
+           record.m_video_file_name + "," +
+           (record.m_justified ? "1" : "0");
 }
 
 static std::unique_ptr<al_record::vehicle_pass_record> parse_one_line_record(const std::string &line)
@@ -46,6 +47,7 @@ static std::unique_ptr<al_record::vehicle_pass_record> parse_one_line_record(con
     std::string dev_name = line.substr(pos3 + 1);
     double load = 0;
     std::string file_name;
+    bool justified = false;
     if (pos4 != std::string::npos)
     {
         dev_name = line.substr(pos3 + 1, pos4 - pos3 - 1);
@@ -55,10 +57,17 @@ static std::unique_ptr<al_record::vehicle_pass_record> parse_one_line_record(con
         {
             load = atof(line.substr(pos4 + 1, pos5 - pos4 - 1).c_str());
             file_name = line.substr(pos5 + 1);
+            size_t pos6 = line.find(",", pos5 + 1);
+            if (pos6 != std::string::npos)
+            {
+                file_name = line.substr(pos5 + 1, pos6 - pos5 - 1);
+                std::string justified_str = line.substr(pos6 + 1);
+                justified = justified_str == "1";
+            }
         }
     }
 
-    auto ret = std::make_unique<al_record::vehicle_pass_record>(plate, begin_time, end_time, dev_name, load);
+    auto ret = std::make_unique<al_record::vehicle_pass_record>(plate, begin_time, end_time, dev_name, load, justified);
     ret->m_video_file_name = file_name;
     return ret;
 }
@@ -248,7 +257,7 @@ void al_record::vehicle_pass_record::generate_video()
             client.generate_video(make_url_dev_map(true)[m_dev_name], m_begin_time, m_end_time);
             for (auto i = 0; i < 78; i++)
             {
-                AD_RPC_SC::get_instance()->yield_by_timer(0,260);
+                AD_RPC_SC::get_instance()->yield_by_timer(0, 260);
                 std::vector<video_download_progress> new_list;
                 client.get_video_download_progress(new_list);
                 for (const auto &item : new_list)

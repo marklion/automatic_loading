@@ -52,6 +52,7 @@ static void list_record(std::ostream &out, std::vector<std::string> _params)
                 record.make_live_url());
             json_record.Add("video_file_name", record.m_video_file_name);
             json_record.Add("video_download_progress", record.m_video_download_progress);
+            json_record.Add("justified", record.m_justified);
             json_array.Add(json_record);
         }
         out << json_array.ToString() << std::endl;
@@ -59,7 +60,7 @@ static void list_record(std::ostream &out, std::vector<std::string> _params)
     else
     {
         tabulate::Table table;
-        table.add_row({"开始时间", "结束时间", "车牌号", "设备名称", "载重", "视频文件", "下载进度"});
+        table.add_row({"开始时间", "结束时间", "车牌号", "设备名称", "载重", "视频文件", "下载进度", "是否干预"});
         for (const auto &itr : record_list)
         {
             table.add_row({itr.m_begin_time,
@@ -68,7 +69,8 @@ static void list_record(std::ostream &out, std::vector<std::string> _params)
                            itr.m_dev_name,
                            al_utils::double2string(itr.m_load),
                            itr.m_video_file_name,
-                           std::to_string(itr.m_video_download_progress)});
+                           std::to_string(itr.m_video_download_progress),
+                           itr.m_justified ? "是" : "否"});
         }
         table.format().multi_byte_characters(true);
         out << table << std::endl;
