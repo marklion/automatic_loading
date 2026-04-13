@@ -1,5 +1,5 @@
 <template>
-    <div class="loading-system">
+    <div class="loading-system" :class="{ 'waiting-flash': systemState === 'waiting' }">
         <!-- 顶部状态栏 -->
         <div class="status-bar">
             <div class="status-left">
@@ -56,7 +56,8 @@
                                 <div class="button-label">急停</div>
                             </button>
 
-                            <button v-if="systemState != 'waiting'" class="control-button supplement" @click="changeManual">
+                            <button v-if="systemState != 'waiting'" class="control-button supplement"
+                                @click="changeManual">
                                 <div class="button-icon">+</div>
                                 <div class="button-label">手动</div>
                             </button>
@@ -306,6 +307,10 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+.loading-system.waiting-flash {
+    animation: waitingBackgroundFlash 1.2s ease-in-out infinite;
 }
 
 /* 顶部状态栏 */
@@ -732,6 +737,18 @@ onUnmounted(() => {
 
     50% {
         opacity: 0.3;
+    }
+}
+
+@keyframes waitingBackgroundFlash {
+
+    0%,
+    100% {
+        background: linear-gradient(135deg, #ed0202 0%, #eb0505 100%);
+    }
+
+    50% {
+        background: linear-gradient(135deg, #2a2200 0%, #3a3000 100%);
     }
 }
 
