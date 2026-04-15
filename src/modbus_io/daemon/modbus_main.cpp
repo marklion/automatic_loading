@@ -265,6 +265,62 @@ public:
         auto &ci = config::root_config::get_instance();
         return ci(CONFIG_ITEM_MODBUS_IO_ACTIVE) == "1";
     }
+
+    virtual void set_pump_param(const pump_param &param)
+    {
+        auto &ci = config::root_config::get_instance();
+        if (!param.open_device_name.empty() && !param.close_device_name.empty() && param.delay_time > 0)
+        {
+            ci.set_child(CONFIG_ITEM_MODBUS_IO_PUMP_OPEN_DEV, param.open_device_name);
+            ci.set_child(CONFIG_ITEM_MODBUS_IO_PUMP_CLOSE_DEV, param.close_device_name);
+            ci.set_child(CONFIG_ITEM_MODBUS_IO_PUMP_DELAY, std::to_string(param.delay_time));
+        }
+        else
+        {
+            ci.set_child(CONFIG_ITEM_MODBUS_IO_PUMP_OPEN_DEV, "");
+            ci.set_child(CONFIG_ITEM_MODBUS_IO_PUMP_CLOSE_DEV, "");
+            ci.set_child(CONFIG_ITEM_MODBUS_IO_PUMP_DELAY, "0");
+        }
+    }
+    virtual void get_pump_param(pump_param &_return)
+    {
+        auto &ci = config::root_config::get_instance();
+        _return.open_device_name = ci(CONFIG_ITEM_MODBUS_IO_PUMP_OPEN_DEV);
+        _return.close_device_name = ci(CONFIG_ITEM_MODBUS_IO_PUMP_CLOSE_DEV);
+        _return.delay_time = atoi(ci(CONFIG_ITEM_MODBUS_IO_PUMP_DELAY).c_str());
+    }
+    virtual void pump_control(const bool turn_on)
+    {
+        auto param = pump_param();
+        get_pump_param(param);
+        if (param.open_device_name.empty() || param.close_device_name.empty() || param.delay_time <= 0)
+        {
+            m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Pump parameters are not set properly");
+            return;
+        }
+        auto open_dev_ptr = find_device_by_name(param.open_device_name);
+        auto close_dev_ptr = find_device_by_name(param.close_device_name);
+        if (!open_dev_ptr || !close_dev_ptr)
+        {
+            m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Pump devices are not found");
+            return;
+        }
+        std::shared_ptr<modbus_device> opt_device;
+        if (turn_on)
+        {
+            opt_device = open_dev_ptr;
+        }
+        else
+        {
+            opt_device = close_dev_ptr;
+        }
+        if (opt_device->is_output)
+        {
+            device_io_set(opt_device->device_name, true);
+            AD_RPC_SC::get_instance()->yield_by_timer(param.delay_time);
+            device_io_set(opt_device->device_name, false);
+        }
+    }
 };
 
 int main(int argc, char const *argv[])

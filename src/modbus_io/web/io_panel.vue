@@ -2,7 +2,11 @@
   <div style="height: 100%;">
     <el-table :data="all_devices" style="width: 100%">
       <el-table-column prop="device_name" label="名称" />
-      <el-table-column label="操作/状态">
+      <el-table-column>
+        <template #header>
+          <el-button class="pump_button" type="success" size="small" @click="pump_control(true)">开油泵</el-button>
+          <el-button class="pump_button" type="danger" size="small" @click="pump_control(false)">关油泵</el-button>
+        </template>
         <template #default="scope">
           <div v-if="scope.row.is_output">
             <el-button v-if="scope.row.is_opened" @click="set_io(scope.row.device_name, false)"
@@ -38,6 +42,16 @@ async function set_io(device_name, is_opened) {
   );
 }
 
+async function pump_control(turn_on) {
+  await instance.appContext.config.globalProperties.$call_remote_cli(
+    `modbus_io pump_control ${turn_on ? 1 : 0}`
+  );
+}
+
 </script>
 
-<style></style>
+<style scoped>
+.pump_button {
+  margin: 0px;
+}
+</style>

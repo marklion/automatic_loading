@@ -157,6 +157,49 @@ static void active_io(std::ostream &out, std::vector<std::string> _params)
     }
 }
 
+static void set_pump_param(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请输入打开设备名称:");
+    check_resp += common_cli::check_params(_params, 1, "请输入关闭设备名称:");
+    check_resp += common_cli::check_params(_params, 2, "请输入延迟时间(毫秒):");
+    if (check_resp.empty())
+    {
+        pump_param param;
+        param.open_device_name = _params[0];
+        param.close_device_name = _params[1];
+        param.delay_time = atoi(_params[2].c_str());
+        modbus_io::call_remote_modbus_service(
+            [&](modbus_io_serviceClient &client)
+            {
+                client.set_pump_param(param);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+        return;
+    }
+}
+
+static void pump_control(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "0-关闭油泵, 1-打开油泵");
+    if (check_resp.empty())
+    {
+        bool turn_on = (atoi(_params[0].c_str()) == 1);
+        modbus_io::call_remote_modbus_service(
+            [&](modbus_io_serviceClient &client)
+            {
+                client.pump_control(turn_on);
+            });
+    }
+    else
+    {
+        out << check_resp << std::endl;
+        return;
+    }
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> sm_menu(new cli::Menu("modbus_io"));
@@ -166,6 +209,8 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(set_modbus_tcp), "设置Modbus TCP参数", {"<host_name>", "<port>", "<device_id>"});
     sm_menu->Insert(CLI_MENU_ITEM(device_operate), "操作设备IO状态", {"<name>", "<0-查询/1-设置>", "[<0-断开/1-吸合>]"});
     sm_menu->Insert(CLI_MENU_ITEM(active_io), "激活/关闭IO操作", {"<1-激活/0-关闭>"});
+    sm_menu->Insert(CLI_MENU_ITEM(set_pump_param), "设置油泵参数", {"<open_device_name>", "<close_device_name>", "<delay_time>"});
+    sm_menu->Insert(CLI_MENU_ITEM(pump_control), "控制油泵", {"<0-关闭/1-打开>"});
     return sm_menu;
 }
 modbus_io_cli::modbus_io_cli() : common_cli(make_menu(), "modbus_io")
@@ -196,6 +241,12 @@ std::string modbus_io_cli::make_bdr()
             {
                 ret += "active_io 0\n";
             }
+            pump_param tmp_param;
+            client.get_pump_param(tmp_param);
+            if (!tmp_param.open_device_name.empty() && !tmp_param.close_device_name.empty() && tmp_param.delay_time > 0)
+            {
+                ret += "set_pump_param \"" + tmp_param.open_device_name + "\" \"" + tmp_param.close_device_name + "\" " + std::to_string(tmp_param.delay_time) + "\n";
+            }
         });
     return ret;
 }
@@ -216,5 +267,10 @@ void modbus_io_cli::clear()
             tmp_config.port = 0;
             tmp_config.device_id = 0;
             client.set_modbus_tcp(tmp_config);
+            pump_param tmp_param;
+            tmp_param.open_device_name = "";
+            tmp_param.close_device_name = "";
+            tmp_param.delay_time = 0;
+            client.set_pump_param(tmp_param);
         });
 }
