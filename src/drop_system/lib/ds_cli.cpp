@@ -157,10 +157,13 @@ static void show_status(std::ostream &out, std::vector<std::string> _params)
     drop_system::call_remote_ds(
         [&](drop_system_serviceClient &client)
         {
-            neb::CJsonObject status_json("[]");
+            neb::CJsonObject status_json;
             std::vector<ds_param_info> param_infos;
             client.get_all_params(param_infos);
-            for (auto &itr:param_infos)
+            auto is_turned_on = client.is_turned_on();
+            status_json.Add("system_on", is_turned_on);
+            neb::CJsonObject status_array("[]");
+            for (auto &itr : param_infos)
             {
                 ds_readout tmp;
                 client.readout(tmp, itr.device_name);
@@ -168,8 +171,9 @@ static void show_status(std::ostream &out, std::vector<std::string> _params)
                 one_dev.Add("device_name", itr.device_name);
                 one_dev.Add("value", tmp.value);
                 one_dev.Add("rate", tmp.rate);
-                status_json.Add(one_dev);
+                status_array.Add(one_dev);
             }
+            status_json.Add("devices", status_array);
             out << status_json.ToString() << std::endl;
         });
 }
