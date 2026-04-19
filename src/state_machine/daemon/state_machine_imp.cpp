@@ -368,10 +368,12 @@ void state_machine_imp::push_vehicle_tail_position(const double tail_x)
     auto &ci = config::root_config::get_instance();
     double tail_min_x = 0.0;
     double tail_max_x = 0.0;
+    double tail_call_x = 0.0;
     try
     {
         tail_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X));
         tail_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X));
+        tail_call_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_CALL_X));
     }
     catch (...)
     {
@@ -388,7 +390,11 @@ void state_machine_imp::push_vehicle_tail_position(const double tail_x)
         {
             sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_LEAVE);
         }
-        else if (sm_get_vehicle_tail_x() > tail_max_x)
+        else if (sm_get_vehicle_tail_x() > tail_max_x && sm_get_vehicle_tail_x() <= tail_call_x)
+        {
+            sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_OVER_FORWARD);
+        }
+        else if (sm_get_vehicle_tail_x() > tail_call_x)
         {
             sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_DISAPPEAR);
         }
@@ -404,6 +410,7 @@ bool state_machine_imp::set_basic_config(const sm_basic_config &config)
     ci.set_child(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X, std::to_string(config.front_max_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X, std::to_string(config.tail_min_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X, std::to_string(config.tail_max_x));
+    ci.set_child(CONFIG_ITEM_SM_CONFIG_TAIL_CALL_X, std::to_string(config.tail_call_x));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_CHANNEL_NAME, config.channel_name);
     ci.set_child(CONFIG_ITEM_SM_CONFIG_EMPTY_OFFSET, std::to_string(config.empty_offset));
     ci.set_child(CONFIG_ITEM_SM_CONFIG_LACK_OFFSET, std::to_string(config.lack_offset));
@@ -422,6 +429,7 @@ void state_machine_imp::get_basic_config(sm_basic_config &_return)
         _return.front_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_FRONT_MAX_X));
         _return.tail_min_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MIN_X));
         _return.tail_max_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X));
+        _return.tail_call_x = std::stod(ci(CONFIG_ITEM_SM_CONFIG_TAIL_CALL_X));
         _return.channel_name = ci(CONFIG_ITEM_SM_CONFIG_CHANNEL_NAME);
         _return.empty_offset = std::stod(ci(CONFIG_ITEM_SM_CONFIG_EMPTY_OFFSET));
         _return.lack_offset = std::stod(ci(CONFIG_ITEM_SM_CONFIG_LACK_OFFSET));
@@ -1016,6 +1024,9 @@ std::unique_ptr<al_sm_state> al_sm_state_working::handle_event(al_sm_event event
     case AL_SM_EVENT_EXCEPTION_EMPTY:
         new_state = std::make_unique<al_sm_state_first_heap>();
         break;
+    case AL_SM_EVENT_VEHICLE_OVER_FORWARD:
+        new_state = std::make_unique<al_sm_state_callback>();
+        break;
     default:
         break;
     }
@@ -1123,6 +1134,9 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
             new_state = std::make_unique<al_sm_state_cleanup>();
         }
         break;
+    case AL_SM_EVENT_VEHICLE_OVER_FORWARD:
+        new_state = std::make_unique<al_sm_state_callback>();
+        break;
     default:
         break;
     }
@@ -1188,6 +1202,9 @@ std::string al_sm_state::state_name(al_sm_event _event)
         break;
     case AL_SM_EVENT_NO_STUFF:
         ret = "无货";
+        break;
+    case AL_SM_EVENT_VEHICLE_OVER_FORWARD:
+        ret = "车辆前移过度";
         break;
     default:
         ret = "未知事件";
@@ -1391,6 +1408,9 @@ std::unique_ptr<al_sm_state> al_sm_state_first_heap::handle_event(al_sm_event ev
     case AL_SM_EVENT_REACH_FULL:
         new_state = std::make_unique<al_sm_state_working>();
         break;
+    case AL_SM_EVENT_VEHICLE_OVER_FORWARD:
+        new_state = std::make_unique<al_sm_state_callback>();
+        break;
     default:
         break;
     }
@@ -1408,4 +1428,46 @@ void al_sm_state_first_heap::make_output_matrix(std::vector<pid_output_producer>
 double al_sm_state_first_heap::output_offset()
 {
     return -0.05;
+}
+
+al_sm_state_callback::al_sm_state_callback()
+{
+    m_name = "叫回";
+}
+
+void al_sm_state_callback::after_enter()
+{
+    m_sm->sm_set_current_prompt("请倒车");
+    m_sm->sm_set_current_ann("后退后退", -1);
+    m_sm->close_all_stuff_drop();
+}
+
+void al_sm_state_callback::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_callback::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> new_state;
+
+    switch (event)
+    {
+    case AL_SM_EVENT_VEHICLE_LEAVE:
+        new_state = std::make_unique<al_sm_state_ending>();
+        break;
+    case AL_SM_EVENT_LOAD_ACHIEVED:
+        new_state = std::make_unique<al_sm_state_cleanup>();
+        break;
+    case AL_SM_EVENT_VEHICLE_DISAPPEAR:
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        new_state = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        new_state = std::make_unique<al_sm_state_manual>();
+        break;
+    default:
+        break;
+    }
+
+    return new_state;
 }
