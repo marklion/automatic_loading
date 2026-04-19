@@ -682,7 +682,6 @@ void lidar_driver_info::head_get_distance(myPointCloud::Ptr _cloud)
     else
     {
         update_distance(0);
-        update_side_z(0);
     }
     put_cloud(pc_after_split_ret.content);
     put_cloud(shape);
