@@ -6,7 +6,7 @@ export const useStatusInfo = defineStore("statusInfo", {
         'xlrd0': {},
         'xlrd1': {},
         'scale': {},
-        'drop_system':[],
+        'drop_system':{},
     }),
     actions: {
         setModbusIO(data) {

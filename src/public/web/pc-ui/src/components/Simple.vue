@@ -106,6 +106,16 @@
                         <div class="data-value">{{ item.value }}<span v-if="item.unit">{{ item.unit }}</span></div>
                     </div>
                 </div>
+
+                <div class="drop-mode-switch">
+                    <span class="drop-mode-label">放料模式:</span>
+                    <label class="switch">
+                        <input type="checkbox" :checked="isAutoDropMode" @change="turn_on_off" />
+                        <span class="slider"></span>
+                    </label>
+                    <span class="drop-mode-text">{{ isAutoDropMode ? '自动放料' : '手动放料' }}</span>
+                </div>
+
             </div>
         </div>
     </div>
@@ -211,10 +221,21 @@ const rightData = computed(() => {
     },
     ]
 })
+// 放料模式计算属性（自动放料: true，手动放料: false）
+const isAutoDropMode = computed(() => {
+    return statusInfoStore.drop_system?.system_on || false;
+})
+
 // 计算属性
 const progressPercentage = computed(() => {
     return Math.round((loadedWeight.value / totalWeight.value) * 100)
 })
+
+async function turn_on_off() {
+    await instance.appContext.config.globalProperties.$call_remote_cli(
+        `drop_system turn_on_off "${isAutoDropMode.value ? "off" : "on"}"`
+    );
+}
 
 // 定时器更新当前时间
 let timer
@@ -424,6 +445,69 @@ onUnmounted(() => {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     margin-bottom: 20px;
+}
+
+.drop-mode-switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+}
+
+.drop-mode-label {
+    font-size: 13px;
+    color: #aaa;
+}
+
+.drop-mode-text {
+    font-size: 13px;
+    color: #fff;
+    min-width: 60px;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #555;
+    border-radius: 26px;
+    transition: 0.3s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #fff;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.switch input:checked+.slider {
+    background-color: #4caf50;
+}
+
+.switch input:checked+.slider:before {
+    transform: translateX(22px);
 }
 
 .data-item {
