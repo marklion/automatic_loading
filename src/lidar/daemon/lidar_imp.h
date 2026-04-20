@@ -107,7 +107,6 @@ enum LIDAR_POS_TYPE
 class lidar_imp;
 class lidar_driver_info
 {
-    LowPassFilter m_lp_filter;
     double m_distance = 0;
     double m_side_z = 0;
     std::recursive_mutex m_mutex;
@@ -182,6 +181,7 @@ public:
     lidar_ply_info save_ply2file(const std::string &_file_tag, bool only_focus = false);
     lidar_imp *m_parent = nullptr;
     bool m_need_work = true;
+    LowPassFilter m_lp_filter;
     static LIDAR_POS_TYPE get_type_by_index(int _index);
     void serial_pc();
 };

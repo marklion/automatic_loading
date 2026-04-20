@@ -247,6 +247,9 @@ const updateTime = () => {
         minute: '2-digit',
         second: '2-digit'
     })
+    if (currentTime.value.split(":")[1] == "00") {
+        window.location.reload();
+    }
 }
 // 按钮处理函数
 const handleEmergencyStop = async () => {
