@@ -1,5 +1,5 @@
 <template>
-    <div class="loading-system" :class="{ 'waiting-flash': systemState === 'waiting' }">
+    <div class="loading-system" :class="{ 'waiting-flash': systemState === 'waiting' || systemState === 'error' }">
         <!-- 顶部状态栏 -->
         <div class="status-bar">
             <div class="status-left">

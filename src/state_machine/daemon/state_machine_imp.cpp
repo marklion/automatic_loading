@@ -398,6 +398,10 @@ void state_machine_imp::push_vehicle_tail_position(const double tail_x)
         {
             sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_DISAPPEAR);
         }
+        else if (sm_get_vehicle_tail_x() < tail_min_x && sm_get_vehicle_tail_x() > -100)
+        {
+            sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_GOBACK);
+        }
     }
 }
 
@@ -1206,6 +1210,9 @@ std::string al_sm_state::state_name(al_sm_event _event)
     case AL_SM_EVENT_VEHICLE_OVER_FORWARD:
         ret = "车辆前移过度";
         break;
+    case AL_SM_EVENT_VEHICLE_GOBACK:
+        ret = "车辆后退过度";
+        break;
     default:
         ret = "未知事件";
         break;
@@ -1453,6 +1460,7 @@ std::unique_ptr<al_sm_state> al_sm_state_callback::handle_event(al_sm_event even
     switch (event)
     {
     case AL_SM_EVENT_VEHICLE_LEAVE:
+    case AL_SM_EVENT_VEHICLE_GOBACK:
         new_state = std::make_unique<al_sm_state_ending>();
         break;
     case AL_SM_EVENT_LOAD_ACHIEVED:

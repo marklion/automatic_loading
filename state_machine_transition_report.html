@@ -229,7 +229,7 @@
   </table>
 </div>
 
-<div class="card" data-keywords="叫回 倒车 关闭落料 请倒车 后退后退 close_all_stuff_drop 车辆离开 达到装载量 急停 车辆消失 切换到手动模式">
+<div class="card" data-keywords="叫回 倒车 关闭落料 请倒车 后退后退 close_all_stuff_drop 车辆离开 车辆后退过度 达到装载量 急停 车辆消失 切换到手动模式">
   <div class="card-header"><span class="state-badge">叫回</span><span style="color:var(--muted);font-size:12px">al_sm_state_callback</span></div>
   <div class="card-section-title">进入动作 after_enter</div>
   <span class="tag enter">提示语 → "请倒车"</span>
@@ -241,6 +241,7 @@
   <table class="trans-table">
     <tr><th>事件</th><th>→ 下一状态</th><th>条件</th></tr>
     <tr><td><span class="tag event">车辆离开</span></td><td class="arrow">→ 收尾</td><td>车尾坐标进入 [tail_min_x, tail_max_x]</td></tr>
+    <tr><td><span class="tag event">车辆后退过度</span></td><td class="arrow">→ 收尾</td><td>车尾坐标 &lt; tail_min_x 且 &gt; -100</td></tr>
     <tr><td><span class="tag event">达到装载量</span></td><td class="arrow">→ 清理</td><td>实时重量 ≥ max_load</td></tr>
     <tr><td><span class="tag event">急停 / 车辆消失</span></td><td class="arrow">→ 急停</td><td>—</td></tr>
     <tr><td><span class="tag event">切换到手动模式</span></td><td class="arrow">→ 手动</td><td>—</td></tr>
@@ -285,7 +286,7 @@
 </div>
 
 <div class="section" id="section-event">
-<h2>事件触发条件总表（15 个事件）</h2>
+<h2>事件触发条件总表（16 个事件）</h2>
 <div class="event-table-wrap">
 <table class="event-table" id="event-table">
   <tr><th>事件名称</th><th>枚举值</th><th>触发来源 / 条件</th><th>触发函数</th></tr>
@@ -335,6 +336,12 @@
     <td><span class="tag event">车辆前移过度</span></td>
     <td>AL_SM_EVENT_VEHICLE_OVER_FORWARD</td>
     <td>车尾坐标 tail_x ∈ (tail_max_x, tail_call_x]（车辆前冲超出装车区但未消失）</td>
+    <td>push_vehicle_tail_position(tail_x)</td>
+  </tr>
+  <tr data-keywords="车辆后退过度 VEHICLE_GOBACK tail_min_x 倒车 收尾">
+    <td><span class="tag event">车辆后退过度</span></td>
+    <td>AL_SM_EVENT_VEHICLE_GOBACK</td>
+    <td>车尾坐标 tail_x &lt; tail_min_x 且 &gt; -100（叫回过程中倒车超过离开判定下限）</td>
     <td>push_vehicle_tail_position(tail_x)</td>
   </tr>
   <tr data-keywords="车辆消失 VEHICLE_DISAPPEAR tail_call_x 驶离">

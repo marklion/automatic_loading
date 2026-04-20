@@ -40,8 +40,9 @@ struct al_sm_state
         AL_SM_EVENT_REACH_FULL,
         AL_SM_EVENT_LC_READY,
         AL_SM_EVENT_EXCEPTION_EMPTY,
-        AL_SM_EVENT_VEHICLE_OVER_FORWARD,
         AL_SM_EVENT_NO_STUFF,
+        AL_SM_EVENT_VEHICLE_OVER_FORWARD,
+        AL_SM_EVENT_VEHICLE_GOBACK,
     };
     state_machine_imp *m_sm = nullptr;
     std::string m_name;
