@@ -243,6 +243,7 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
     check_resp += common_cli::check_params(_params, 7, "料空偏移:");
     check_resp += common_cli::check_params(_params, 8, "料缺偏移:");
     check_resp += common_cli::check_params(_params, 9, "近满载偏移:");
+    check_resp += common_cli::check_params(_params, 10, "车尾呼叫位置:");
     if (check_resp.empty())
     {
         sm_basic_config config;
@@ -258,6 +259,7 @@ static void set_basic_config(std::ostream &out, std::vector<std::string> _params
             config.empty_offset = std::stod(_params[7]);
             config.lack_offset = std::stod(_params[8]);
             config.almost_full_offset = std::stod(_params[9]);
+            config.tail_call_x = std::stod(_params[10]);
         }
         catch (...)
         {
@@ -362,7 +364,7 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(kit_delete_item), "删除配置项", {"<kit_name>", "<item_key>"});
     sm_menu->Insert(CLI_MENU_ITEM(delete_kit), "删除配置套件", {"<kit_name>"});
     sm_menu->Insert(CLI_MENU_ITEM(list_kits_json), "列出配置套件", {});
-    sm_menu->Insert(CLI_MENU_ITEM(set_basic_config), "设置基本配置", {"<max_load>", "<max_full_offset>", "<front_min_x>", "<front_max_x>", "<tail_min_x>", "<tail_max_x>", "<channel_name> <max_drop_speed>"});
+    sm_menu->Insert(CLI_MENU_ITEM(set_basic_config), "设置基本配置", {"<max_load>", "<max_full_offset>", "<front_min_x>", "<front_max_x>", "<tail_min_x>", "<tail_max_x>", "<channel_name>", "<max_drop_speed>", "<empty_offset>", "<lack_offset>", "<almost_full_offset>", "<tail_call_x>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_load), "模拟当前重量", {"<load_value>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_offset), "模拟满载偏移", {"<offset_value>"});
     sm_menu->Insert(CLI_MENU_ITEM(mock_front_x), "模拟车头位置", {"<front_x>"});
@@ -415,7 +417,8 @@ std::string state_machine_cli::make_bdr()
                     bc.channel_name + "\" " +
                     std::to_string(bc.empty_offset) + " " +
                     std::to_string(bc.lack_offset) + " " +
-                    std::to_string(bc.almost_full_offset) + "\n";
+                    std::to_string(bc.almost_full_offset) + " " +
+                    std::to_string(bc.tail_call_x) + "\n";
             }
             std::string default_kit;
             client.get_default_kit(default_kit);

@@ -41,6 +41,8 @@ struct al_sm_state
         AL_SM_EVENT_LC_READY,
         AL_SM_EVENT_EXCEPTION_EMPTY,
         AL_SM_EVENT_NO_STUFF,
+        AL_SM_EVENT_VEHICLE_OVER_FORWARD,
+        AL_SM_EVENT_VEHICLE_GOBACK,
     };
     state_machine_imp *m_sm = nullptr;
     std::string m_name;
@@ -144,6 +146,12 @@ struct al_sm_state_first_heap:public al_sm_state{
     virtual double output_offset() override;
 };
 
+struct al_sm_state_callback:public al_sm_state{
+    al_sm_state_callback();
+    void after_enter() override;
+    void before_exit() override;
+    std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
+};
 
 
 class state_machine_imp : public state_machine_serviceIf

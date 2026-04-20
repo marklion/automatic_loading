@@ -23,6 +23,7 @@ struct sm_basic_config{
     8: double empty_offset,
     9: double lack_offset,
     10: double almost_full_offset,
+    11: double tail_call_x,
 }
 struct state_machine_status{
     1: string status,
