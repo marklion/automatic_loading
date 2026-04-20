@@ -105,6 +105,8 @@ bool lidar_imp::turn_on_off_lidar(const bool is_on)
     {
         auto drop_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_DROP)];
         auto tail_lidar = m_lidar_result[get_lidar_index_by_type(LIDAR_POS_TAIL)];
+        drop_lidar->m_lp_filter.reset();
+        tail_lidar->m_lp_filter.reset();
         drop_lidar->m_need_work = is_on;
         tail_lidar->m_need_work = is_on;
     }
