@@ -247,7 +247,7 @@ const updateTime = () => {
         minute: '2-digit',
         second: '2-digit'
     })
-    if (currentTime.value.split(":")[1] == "00") {
+    if (currentTime.value.split(":")[1] == "00" && currentTime.value.split(":")[2] == "00") {
         window.location.reload();
     }
 }
