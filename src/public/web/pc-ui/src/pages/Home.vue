@@ -53,7 +53,7 @@ import LogExplore from "../../../../../log/web/log_explore.vue";
 import XlrdShow from "../../../../../xlrd/web/xlrd_show.vue";
 import LiveCamera from "../../../../../live_camera/web/live_camera.vue";
 import DropSystem from "../../../../../drop_system/web/drop_system.vue";
-import PcdShow from "@/components/PcdShow.vue";
+// import PcdShow from "@/components/PcdShow.vue";
 import Scale from "../../../../../scale/web/scale.vue";
 import Record from "../../../../../record/web/record.vue";
 import { ref, computed, onMounted, getCurrentInstance } from "vue";
@@ -74,7 +74,7 @@ const my_components = {
   '4': LiveCamera,
   '5': Scale,
   '6': DropSystem,
-  '7': PcdShow,
+  // '7': PcdShow,
 }
 
 const instance = getCurrentInstance();
@@ -137,13 +137,13 @@ function reset_layout() {
         "h": 4,
         "i": "5",
       },
-      {
-        "x": 0,
-        "y": 21,
-        "w": 12,
-        "h": 12,
-        "i": "7",
-      }
+      // {
+      //   "x": 0,
+      //   "y": 21,
+      //   "w": 12,
+      //   "h": 12,
+      //   "i": "7",
+      // }
     ]
 
   saveLayout(layout.value);

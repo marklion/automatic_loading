@@ -404,25 +404,34 @@ pc_after_split lidar_driver_info::split_cloud_to_side_and_content(myPointCloud::
     return ret;
 }
 
-static std::vector<int> findPeakIndices(float ava_z_array[], int size, float _shape_filter_req) {
+static std::vector<int> findPeakIndices(float ava_z_array[], int size, float _shape_filter_req)
+{
     std::vector<int> peakIndices;
     // 计算数组平均值
     float sum = 0.0f;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
         sum += ava_z_array[i];
     }
     float mean = sum / size;
 
     // 计算标准差
     float variance = 0.0f;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
         variance += std::pow(ava_z_array[i] - mean, 2);
     }
     float stdDev = std::sqrt(variance / size);
+    if (stdDev < 0.1)
+    {
+        stdDev = 0.1;
+    }
 
     float threshold = mean + _shape_filter_req * stdDev;
-    for (int i = 0; i < size; i++) {
-        if (ava_z_array[i] > threshold) {
+    for (int i = 0; i < size; i++)
+    {
+        if (ava_z_array[i] > threshold)
+        {
             peakIndices.push_back(i);
         }
     }
@@ -433,7 +442,7 @@ static std::vector<int> findPeakIndices(float ava_z_array[], int size, float _sh
 pc_after_pickup lidar_driver_info::pickup_shape_from_side(myPointCloud::Ptr _cloud)
 {
     pc_after_pickup ret;
-    #define SIDE_TOTAL_SEG_NUM 50
+#define SIDE_TOTAL_SEG_NUM 50
     float ava_z_array[SIDE_TOTAL_SEG_NUM] = {0};
 
     float x_min = std::numeric_limits<float>::max();
