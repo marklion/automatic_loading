@@ -1121,7 +1121,16 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
     case AL_SM_EVENT_REACH_FULL:
         if (m_sm->sm_get_current_load() < max_load)
         {
-            new_state = std::make_unique<al_sm_state_manual>();
+            auto tail_max_x = atof(ci(CONFIG_ITEM_SM_CONFIG_TAIL_MAX_X).c_str());
+            auto tail_call_x = atof(ci(CONFIG_ITEM_SM_CONFIG_TAIL_CALL_X).c_str());
+            if (m_sm->sm_get_vehicle_tail_x() > tail_max_x && m_sm->sm_get_vehicle_tail_x() <= tail_call_x)
+            {
+                new_state = std::make_unique<al_sm_state_callback>();
+            }
+            else
+            {
+                new_state = std::make_unique<al_sm_state_manual>();
+            }
         }
         else
         {

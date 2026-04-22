@@ -1,3 +1,3 @@
 #!/bin/bash
-sed -i "5a[web${1}]" ${2}
-sed -i "8asubdomain = ${1}" ${2}
+sed -i "6a[web${1}]" ${2}
+sed -i "9asubdomain = ${1}" ${2}
