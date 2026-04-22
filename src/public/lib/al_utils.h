@@ -152,6 +152,15 @@ namespace al_utils
                    c == '/' || c == '?' || c == '#' || c == '[' || c == ']';
         }
     };
+    struct al_user_info
+    {
+        std::string username;
+        std::string password;
+    };
+    void add_user(const std::string &_username, const std::string &_password);
+    void del_user(const std::string &_username);
+    std::vector<al_user_info> list_users();
+    bool verify_user(const std::string &_username, const std::string &_password);
 }
 
 #endif // _AL_UTILS_H_

@@ -36,6 +36,7 @@
       <el-upload action="/api/upload_firmware" :limit="1" :on-success="confirm_update">
         <el-button type="primary">上传更新包</el-button>
       </el-upload>
+        <el-button type="danger" @click="logout">登出</el-button>
     </div>
     <div v-else-if="current_nav_index == '3'">
       <Record></Record>
@@ -173,6 +174,10 @@ const remote_hostname = computed({
 });
 function handleSelect(key, keyPath) {
   current_nav_index.value = key;
+}
+function logout() {
+  localStorage.removeItem('al_login_info');
+  window.location.href = '/';
 }
 async function confirm_update(response, file, fileList) {
   if (response.status == "success") {
