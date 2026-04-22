@@ -35,3 +35,4 @@ app.config.globalProperties.$call_remote_cli = async function (cmd) {
     }
     return ret;
 }
+router.call_cli = app.config.globalProperties.$call_remote_cli;

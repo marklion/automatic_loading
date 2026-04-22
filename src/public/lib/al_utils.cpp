@@ -2,6 +2,12 @@
 #include "ad_rpc.h"
 #include <sstream>
 #include <iconv.h>
+#include <fstream>
+#include "CJsonObject.hpp"
+#include <algorithm>
+
+#define AL_USER_INFO_FILE "/database/users.json"
+
 namespace al_utils
 {
     std::string g_self_module_name;
@@ -103,6 +109,101 @@ namespace al_utils
             {
                 client.get_health_records(_return);
             });
+    }
+    void update_all_user(const std::vector<al_user_info> &_users)
+    {
+        std::ofstream ofs(AL_USER_INFO_FILE, std::ios::out | std::ios::trunc);
+        if (ofs.is_open())
+        {
+            neb::CJsonObject json_array("[]");
+            for (const auto &user : _users)
+            {
+                neb::CJsonObject json_user;
+                json_user.Add("username", user.username);
+                json_user.Add("password", user.password);
+                json_array.Add(json_user);
+            }
+            ofs << json_array.ToString() << std::endl;
+            ofs.close();
+        }
+
+    }
+    void add_user(const std::string &_username, const std::string &_password)
+    {
+        auto users = list_users();
+        auto exist_user_itr = std::find_if(
+            users.begin(),
+            users.end(),
+            [&_username](const al_user_info &user)
+            {
+                return user.username == _username;
+            });
+        if (exist_user_itr != users.end())
+        {
+            exist_user_itr->password = _password;
+        }
+        else
+        {
+            users.push_back({_username, _password});
+        }
+        update_all_user(users);
+    }
+    void del_user(const std::string &_username)
+    {
+        auto users = list_users();
+        auto exist_user_itr = std::find_if(
+            users.begin(),
+            users.end(),
+            [&_username](const al_user_info &user)
+            {
+                return user.username == _username;
+            });
+        if (exist_user_itr != users.end())
+        {
+            users.erase(exist_user_itr);
+            update_all_user(users);
+        }
+    }
+    std::vector<al_user_info> list_users()
+    {
+        std::vector<al_user_info> ret;
+        std::ifstream ifs(AL_USER_INFO_FILE);
+        if (ifs.is_open())
+        {
+            std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            ifs.close();
+            neb::CJsonObject json_array(content);
+            for (size_t i = 0; i < json_array.GetArraySize(); ++i)
+            {
+                neb::CJsonObject json_user;
+                json_array.Get(i, json_user);
+                al_user_info user;
+                json_user.Get("username", user.username);
+                json_user.Get("password", user.password);
+                ret.push_back(user);
+            }
+        }
+
+        return ret;
+    }
+    bool verify_user(const std::string &_username, const std::string &_password)
+    {
+        auto users = list_users();
+        auto exist_user_itr = std::find_if(
+            users.begin(),
+            users.end(),
+            [&_username](const al_user_info &user)
+            {
+                return user.username == _username;
+            });
+        if (exist_user_itr != users.end())
+        {
+            return exist_user_itr->password == _password;
+        }
+        else
+        {
+            return false;
+        }
     }
     std::string util_utf2gbk(const std::string &_gbk)
     {
