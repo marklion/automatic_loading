@@ -1357,6 +1357,11 @@ void al_sm_state_judge::after_enter()
             {
                 m_sm->sm_set_current_ann(ann_content, ann_gap);
             }
+            if (!m_is_enter && m_last_enter)
+            {
+                m_sm->save_cur_ply(m_sm->sm_get_vehicle_info().plate + "_" + al_utils::ad_utils_date_time().m_datetime_ms + "_judge");
+            }
+            m_last_enter = m_is_enter;
             m_last_ann_content = ann_content;
         });
 }

@@ -71,6 +71,7 @@ struct al_sm_state_judge : public al_sm_state
     std::string m_last_ann_content;
     AD_EVENT_SC_TIMER_NODE_PTR m_judge_timer;
     bool m_is_enter = false;
+    bool m_last_enter = false;
     al_sm_state_judge();
     void after_enter() override;
     void before_exit() override;
