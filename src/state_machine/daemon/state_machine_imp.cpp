@@ -1129,7 +1129,7 @@ std::unique_ptr<al_sm_state> al_sm_state_ending::handle_event(al_sm_event event)
             }
             else
             {
-                new_state = std::make_unique<al_sm_state_manual>();
+                new_state = std::make_unique<al_sm_state_tail_stable>();
             }
         }
         else
@@ -1221,6 +1221,9 @@ std::string al_sm_state::state_name(al_sm_event _event)
         break;
     case AL_SM_EVENT_VEHICLE_GOBACK:
         ret = "车辆后退过度";
+        break;
+    case AL_SM_EVENT_VEHICLE_TAIL_STABLE:
+        ret = "已稳定";
         break;
     default:
         ret = "未知事件";
@@ -1492,4 +1495,57 @@ std::unique_ptr<al_sm_state> al_sm_state_callback::handle_event(al_sm_event even
     }
 
     return new_state;
+}
+
+al_sm_state_tail_stable::al_sm_state_tail_stable()
+{
+    m_name = "尾段消抖";
+}
+
+void al_sm_state_tail_stable::after_enter()
+{
+    m_sm->sm_set_current_prompt("请等待");
+    m_sm->sm_set_current_ann("请等待", -1);
+    m_sm->close_all_stuff_drop();
+    AD_RPC_SC::get_instance()->start_one_time_timer(
+        7,
+        [&]()
+        {
+            m_sm->sm_handle_event(al_sm_state::AL_SM_EVENT_VEHICLE_TAIL_STABLE);
+        });
+}
+
+void al_sm_state_tail_stable::before_exit()
+{
+}
+
+std::unique_ptr<al_sm_state> al_sm_state_tail_stable::handle_event(al_sm_event event)
+{
+    std::unique_ptr<al_sm_state> ret;
+    auto &ci = config::root_config::get_instance();
+    auto max_load_str = ci(CONFIG_ITEM_SM_CONFIG_MAX_LOAD);
+    double max_load = atof(max_load_str.c_str());
+    switch (event)
+    {
+    case al_sm_state::AL_SM_EVENT_VEHICLE_TAIL_STABLE:
+        if (m_sm->sm_get_current_load() < max_load)
+        {
+            ret = std::make_unique<al_sm_state_manual>();
+        }
+        else
+        {
+            ret = std::make_unique<al_sm_state_cleanup>();
+        }
+        break;
+    case AL_SM_EVENT_EMERGENCY_SHUTDOWN:
+        ret = std::make_unique<al_sm_state_emergency>();
+        break;
+    case AL_SM_EVENT_SWITCH_TO_MANUAL_MODE:
+        ret = std::make_unique<al_sm_state_manual>();
+        break;
+    default:
+        break;
+    }
+
+    return ret;
 }

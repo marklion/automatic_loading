@@ -43,6 +43,7 @@ struct al_sm_state
         AL_SM_EVENT_NO_STUFF,
         AL_SM_EVENT_VEHICLE_OVER_FORWARD,
         AL_SM_EVENT_VEHICLE_GOBACK,
+        AL_SM_EVENT_VEHICLE_TAIL_STABLE,
     };
     state_machine_imp *m_sm = nullptr;
     std::string m_name;
@@ -154,6 +155,12 @@ struct al_sm_state_callback:public al_sm_state{
     std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
 };
 
+struct al_sm_state_tail_stable:public al_sm_state{
+    al_sm_state_tail_stable();
+    void after_enter() override;
+    void before_exit() override;
+    std::unique_ptr<al_sm_state> handle_event(al_sm_event event) override;
+};
 
 class state_machine_imp : public state_machine_serviceIf
 {
