@@ -81,7 +81,7 @@ public:
         }
         else
         {
-            if (channel_id < 0 || channel_id >= 8)
+            if (channel_id < -7000 || channel_id >= 70000)
             {
                 m_logger.log_print(al_log::LOG_LEVEL_ERROR, "Channel ID %d is out of range", channel_id);
                 ad_modbus_io_gen_exp exp;
