@@ -23,15 +23,27 @@ app.use(ElementPlus, {
 app.use(router)
 app.mount('#app')
 const hostname_store = useRemoteHostName();
+app.config.globalProperties.$loadingInst = undefined;
 app.config.globalProperties.$call_remote_cli = async function (cmd) {
     const remote_name = hostname_store.remoteName;
     let encoded_cmd = encodeURIComponent(cmd);
     let ret = "";
+    let li_exist = false;
+    if (!app.config.globalProperties.$loadingInst) {
+        app.config.globalProperties.$loadingInst = app.config.globalProperties.$loading({ fullscreen: true });
+    }
+    else {
+        li_exist = true;
+    }
     try {
         let resp = await axios.get(`${remote_name}/api/cli?cmd=${encoded_cmd}`);
         ret = resp.data;
     } catch (error) {
         console.log(error);
+    }
+    if (!li_exist && app.config.globalProperties.$loadingInst) {
+        app.config.globalProperties.$loadingInst.close();
+        app.config.globalProperties.$loadingInst = undefined;
     }
     return ret;
 }
