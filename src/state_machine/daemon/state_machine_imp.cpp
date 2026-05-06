@@ -489,6 +489,12 @@ int state_machine_imp::lc_drop_revoke_control(bool _is_drop)
     return ret;
 }
 
+void state_machine_imp::lc_revoke_with_callback(std::function<void()> _func)
+{
+    auto sec = lc_drop_revoke_control(false);
+    AD_RPC_SC::get_instance()->start_one_time_timer(sec, _func);
+}
+
 void state_machine_imp::close_all_stuff_drop()
 {
     auto &ci = config::root_config::get_instance();
@@ -1052,9 +1058,16 @@ al_sm_state_cleanup::al_sm_state_cleanup()
 
 void al_sm_state_cleanup::after_enter()
 {
-    m_sm->sm_set_current_prompt("装车结束,请驶离");
-    m_sm->sm_set_current_ann("请驶离", -1);
-    m_sm->lc_drop_revoke_control(false);
+    std::string wait_msg = "请等待";
+    std::string leave_msg = "装车结束,请驶离";
+    m_sm->sm_set_current_prompt(wait_msg);
+    m_sm->sm_set_current_ann(wait_msg, -1);
+    m_sm->lc_revoke_with_callback(
+        [this, leave_msg]()
+        {
+            m_sm->sm_set_current_prompt(leave_msg);
+            m_sm->sm_set_current_ann(leave_msg, -1);
+        });
     m_sm->close_all_stuff_drop();
     plate_gate_call_remote(
         [](plate_gate_serviceClient &client)

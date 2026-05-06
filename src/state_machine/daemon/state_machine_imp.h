@@ -283,6 +283,7 @@ public:
     virtual bool set_basic_config(const sm_basic_config &config);
     virtual void get_basic_config(sm_basic_config &_return);
     int lc_drop_revoke_control(bool _is_drop);
+    void lc_revoke_with_callback(std::function<void()> _func);
     void close_all_stuff_drop();
     virtual bool set_default_kit(const std::string &kit_name);
     virtual void get_default_kit(std::string &_return);
