@@ -1063,7 +1063,7 @@ void al_sm_state_cleanup::after_enter()
     m_sm->sm_set_current_prompt(wait_msg);
     m_sm->sm_set_current_ann(wait_msg, -1);
     m_sm->lc_revoke_with_callback(
-        [&]()
+        [this, leave_msg]()
         {
             m_sm->sm_set_current_prompt(leave_msg);
             m_sm->sm_set_current_ann(leave_msg, -1);
