@@ -1062,11 +1062,12 @@ void al_sm_state_cleanup::after_enter()
     std::string leave_msg = "装车结束,请驶离";
     m_sm->sm_set_current_prompt(wait_msg);
     m_sm->sm_set_current_ann(wait_msg, -1);
+    auto sm_p = m_sm;
     m_sm->lc_revoke_with_callback(
-        [this, leave_msg]()
+        [sm_p, leave_msg]()
         {
-            m_sm->sm_set_current_prompt(leave_msg);
-            m_sm->sm_set_current_ann(leave_msg, -1);
+            sm_p->sm_set_current_prompt(leave_msg);
+            sm_p->sm_set_current_ann(leave_msg, -1);
         });
     m_sm->close_all_stuff_drop();
     plate_gate_call_remote(
