@@ -88,8 +88,8 @@ static void set_watch_dog_param(std::ostream &out, std::vector<std::string> _par
     {
         watch_dog_info info;
         info.serial_dev_name = _params[0];
-        info.baud_rate = std::stoi(_params[1]);
-        info.coil_addr = std::stoi(_params[2]);
+        info.baud_rate = atoi(_params[1].c_str());
+        info.coil_addr = atoi(_params[2].c_str());
         al_utils::set_watch_dog_param(info, false);
     }
     else

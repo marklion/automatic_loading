@@ -215,7 +215,10 @@ void modbus_driver::setup_modbus(modbus_t *ctx, int _slave_id)
             modbus_free(ctx);
             ctx = nullptr;
         }
-        modbus_set_slave(ctx, _slave_id);
+        else
+        {
+            modbus_set_slave(ctx, _slave_id);
+        }
     }
     else
     {
