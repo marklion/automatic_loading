@@ -110,6 +110,42 @@ namespace al_utils
                 client.get_health_records(_return);
             });
     }
+    void set_watch_dog_param(const watch_dog_info &info, const bool is_clear)
+    {
+        AD_RPC_SC::get_instance()->call_remote<public_serviceClient>(
+            AD_RPC_PROCESS_SERVER_PORT,
+            [&](public_serviceClient &client)
+            {
+                client.set_watch_dog_param(info, is_clear);
+            });
+    }
+    watch_dog_info get_watch_dog_param()
+    {
+        watch_dog_info ret;
+        AD_RPC_SC::get_instance()->call_remote<public_serviceClient>(
+            AD_RPC_PROCESS_SERVER_PORT,
+            [&](public_serviceClient &client)
+            {
+                client.get_watch_dog_param(ret);
+            });
+        return ret;
+    }
+    void active_watch_dog(bool is_active)
+    {
+        AD_RPC_SC::get_instance()->call_remote<public_serviceClient>(
+            AD_RPC_PROCESS_SERVER_PORT,
+            [&](public_serviceClient &client)
+            {
+                if (is_active)
+                {
+                    client.active_watch_dog();
+                }
+                else
+                {
+                    client.reset_watch_dog();
+                }
+            });
+    }
     void update_all_user(const std::vector<al_user_info> &_users)
     {
         std::ofstream ofs(AL_USER_INFO_FILE, std::ios::out | std::ios::trunc);
@@ -203,6 +239,15 @@ namespace al_utils
         else
         {
             return false;
+        }
+    }
+    void clear_users()
+    {
+        std::ofstream ofs(AL_USER_INFO_FILE, std::ios::out | std::ios::trunc);
+        if (ofs.is_open())
+        {
+            ofs << "[]" << std::endl;
+            ofs.close();
         }
     }
     std::string util_utf2gbk(const std::string &_gbk)

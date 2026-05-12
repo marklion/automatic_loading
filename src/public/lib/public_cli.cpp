@@ -79,6 +79,40 @@ static void verify_user(std::ostream &out, std::vector<std::string> _params)
     }
 }
 
+static void set_watch_dog_param(std::ostream &out, std::vector<std::string> _params)
+{
+    auto check_resp = common_cli::check_params(_params, 0, "请指定序列设备名称");
+    check_resp += common_cli::check_params(_params, 1, "请指定波特率");
+    check_resp += common_cli::check_params(_params, 2, "请指定线圈地址");
+    if (check_resp.empty())
+    {
+        watch_dog_info info;
+        info.serial_dev_name = _params[0];
+        info.baud_rate = atoi(_params[1].c_str());
+        info.coil_addr = atoi(_params[2].c_str());
+        al_utils::set_watch_dog_param(info, false);
+    }
+    else
+    {
+        out << check_resp << std::endl;
+    }
+}
+
+static void active_watch_dog(std::ostream &out, std::vector<std::string> _params)
+{
+    al_utils::active_watch_dog(true);
+}
+
+static void reset_watch_dog(std::ostream &out, std::vector<std::string> _params)
+{
+    al_utils::active_watch_dog(false);
+}
+
+static void clear_watch_dog_param(std::ostream &out, std::vector<std::string> _params)
+{
+    al_utils::set_watch_dog_param(watch_dog_info(), true);
+}
+
 static std::unique_ptr<cli::Menu> make_menu()
 {
     std::unique_ptr<cli::Menu> sm_menu(new cli::Menu("process"));
@@ -87,6 +121,10 @@ static std::unique_ptr<cli::Menu> make_menu()
     sm_menu->Insert(CLI_MENU_ITEM(add_user), "添加用户", {"<username>", "<password>"});
     sm_menu->Insert(CLI_MENU_ITEM(del_user), "删除用户", {"<username>"});
     sm_menu->Insert(CLI_MENU_ITEM(verify_user), "验证用户", {"<username>", "<password>"});
+    sm_menu->Insert(CLI_MENU_ITEM(set_watch_dog_param), "设置看门狗参数", {"<serial_dev_name>", "<baud_rate>", "<coil_addr>"});
+    sm_menu->Insert(CLI_MENU_ITEM(clear_watch_dog_param), "清除看门狗参数");
+    sm_menu->Insert(CLI_MENU_ITEM(active_watch_dog), "激活看门狗");
+    sm_menu->Insert(CLI_MENU_ITEM(reset_watch_dog), "重置看门狗");
     return sm_menu;
 }
 
@@ -102,6 +140,11 @@ std::string public_cli::make_bdr()
     {
         ret += "add_user '" + user.username + "' '" + user.password + "'\n";
     }
+    auto watch_dog_info = al_utils::get_watch_dog_param();
+    if (watch_dog_info.serial_dev_name.length() > 0)
+    {
+        ret += "set_watch_dog_param '" + watch_dog_info.serial_dev_name + "' '" + std::to_string(watch_dog_info.baud_rate) + "' '" + std::to_string(watch_dog_info.coil_addr) + "'\n";
+    }
 
     return ret;
 }
@@ -113,4 +156,5 @@ void public_cli::clear()
     {
         al_utils::del_user(user.username);
     }
+    al_utils::set_watch_dog_param(watch_dog_info(), true);
 }

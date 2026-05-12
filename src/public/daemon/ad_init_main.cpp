@@ -6,7 +6,23 @@
 #include "../gen_code/cpp/public_service.h"
 #include "../lib/al_utils.h"
 #include <fstream>
+#include "../lib/modbus_driver.h"
 
+static modbus_driver *gp_modbus_driver = nullptr;
+static void watch_dog_active()
+{
+    if (gp_modbus_driver)
+    {
+        gp_modbus_driver->write_coil("watch_dog", false);
+    }
+}
+static void watch_dog_reset()
+{
+    if (gp_modbus_driver)
+    {
+        gp_modbus_driver->write_coil("watch_dog", true);
+    }
+}
 static void rerun_config(const std::string &_module_name = "")
 {
     if (_module_name.empty())
@@ -71,6 +87,7 @@ class SUBPROCESS_EVENT_SC_NODE : public AD_EVENT_SC_NODE
     int m_fd;
     std::string m_start_time;
     std::string m_module_name;
+
 public:
     SUBPROCESS_EVENT_SC_NODE(const std::string &_path, const std::vector<std::string> &_argv, const std::string &_name, int _pid, const std::string &_module_name)
         : m_path(_path), m_argv(_argv), m_name(_name), m_pid(_pid), m_module_name(_module_name)
@@ -128,6 +145,7 @@ public:
         }
         if (need_restart)
         {
+            watch_dog_active();
             AD_RPC_SC::get_instance()->yield_by_timer(2);
             auto new_pid = create_sub_process(m_path, m_argv);
             close(m_fd);
@@ -216,6 +234,9 @@ static void start_all_daemons(DaemonService *_service)
     start_daemon(_service->path, _service->args, _service->name, _service->m_module_name);
     _service->was_started = true;
 }
+
+static watch_dog_info g_watch_dog_info;
+
 class public_service_imp : public public_serviceIf
 {
 public:
@@ -276,7 +297,50 @@ public:
         }
         health_record_file.close();
     }
+
+    virtual void set_watch_dog_param(const watch_dog_info &info, const bool is_clear)
+    {
+        g_watch_dog_info = info;
+        if (is_clear)
+        {
+            g_watch_dog_info.serial_dev_name = "";
+            g_watch_dog_info.baud_rate = 0;
+            g_watch_dog_info.coil_addr = 0;
+            if (gp_modbus_driver)
+            {
+                delete gp_modbus_driver;
+                gp_modbus_driver = nullptr;
+            }
+        }
+        else
+        {
+            if (gp_modbus_driver)
+            {
+                delete gp_modbus_driver;
+                gp_modbus_driver = nullptr;
+            }
+            gp_modbus_driver = new modbus_driver(
+                g_watch_dog_info.serial_dev_name,
+                g_watch_dog_info.baud_rate, 1);
+            gp_modbus_driver->add_coil_write_meta("watch_dog", g_watch_dog_info.coil_addr);
+        }
+    }
+    virtual void get_watch_dog_param(watch_dog_info &_return)
+    {
+        _return = g_watch_dog_info;
+    }
+
+    virtual void active_watch_dog()
+    {
+        watch_dog_active();
+    }
+
+    virtual void reset_watch_dog()
+    {
+        watch_dog_reset();
+    }
 };
+
 int main(int argc, char const *argv[])
 {
     int wait_seconds = 0;
@@ -302,7 +366,13 @@ int main(int argc, char const *argv[])
         });
     sc->enable_rpc_server(AD_RPC_PROCESS_SERVER_PORT);
     sc->add_rpc_server(std::make_shared<public_serviceProcessor>(std::make_shared<public_service_imp>()));
-    sc->start_server();
+    sc->start_server(
+        []()
+        {
+            al_utils::clear_users();
+            rerun_config("process");
+            watch_dog_reset();
+        });
 
     return 0;
 }

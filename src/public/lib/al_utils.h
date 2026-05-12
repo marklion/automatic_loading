@@ -25,6 +25,9 @@ namespace al_utils
     void start_server_notify_started(const std::string &module_name);
     void record_self_health(const std::string &_except_info);
     void get_health_records(std::vector<health_info> &_return);
+    void set_watch_dog_param(const watch_dog_info &info, const bool is_clear);
+    watch_dog_info get_watch_dog_param();
+    void active_watch_dog(bool is_active);
 
     struct ad_utils_date_time
     {
@@ -161,6 +164,7 @@ namespace al_utils
     void del_user(const std::string &_username);
     std::vector<al_user_info> list_users();
     bool verify_user(const std::string &_username, const std::string &_password);
+    void clear_users();
 }
 
 #endif // _AL_UTILS_H_

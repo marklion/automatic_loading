@@ -23,7 +23,7 @@ float convertRegistersToFloat(uint16_t reg0, uint16_t reg1)
     return result;
 }
 
-void modbus_driver::batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta)
+void modbus_driver::batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta, bool _is_retry)
 {
     if (_coil_write_meta.size() > 0)
     {
@@ -45,13 +45,21 @@ void modbus_driver::batch_bits_set(std::map<std::string, coil_addr_pair> _coil_w
         auto modbus_ret = modbus_write_bits(m_ctx, base_addr, reg_num, write_buf);
         if (modbus_ret != reg_num)
         {
-            m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
+            if (_is_retry)
+            {
+                m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
+            }
+            else
+            {
+                m_logger->log("modbus write bits failed, retrying once, error: %s", modbus_strerror(errno));
+                batch_bits_set(_coil_write_meta, true);
+            }
         }
         free(write_buf);
     }
 }
 
-void modbus_driver::batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_read_meta)
+void modbus_driver::batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_read_meta, bool _is_retry)
 {
     if (_coil_read_meta.size() > 0)
     {
@@ -75,7 +83,15 @@ void modbus_driver::batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_
         }
         else
         {
-            m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
+            if (_is_retry)
+            {
+                m_exception_info = std::to_string(modbus_ret) + ":" + modbus_strerror(errno);
+            }
+            else
+            {
+                m_logger->log("modbus read input bits failed, retrying once, error: %s", modbus_strerror(errno));
+                batch_bits_get(_coil_read_meta, true);
+            }
         }
         free(read_buf);
     }
@@ -154,23 +170,61 @@ void modbus_driver::batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_met
 modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger) : m_logger(_logger), m_ip(_ip), m_port(_port), m_slave_id(_slave_id), m_is_working(false)
 {
     auto ret = modbus_new_tcp(_ip.c_str(), _port);
-    if (ret)
+    setup_modbus(ret, _slave_id);
+}
+
+class no_action_modbus_logger : public modbus_logger
+{
+    virtual void log(const char *_fmt, ...)
     {
-        modbus_set_response_timeout(ret, 0, 500000);
-        modbus_set_byte_timeout(ret, 0, 500000);
-        if (modbus_connect(ret) == -1)
+    }
+};
+
+modbus_driver::modbus_driver(const std::string &_dev_name, int _baud_rate, int _slave_id):m_logger(new no_action_modbus_logger())
+{
+    auto ret = modbus_new_rtu(_dev_name.c_str(), _baud_rate, 'N', 8, 1);
+    setup_modbus(ret, _slave_id);
+}
+
+modbus_driver::~modbus_driver()
+{
+    m_is_working = false;
+    if (m_work_thread)
+    {
+        m_work_thread->join();
+        delete m_work_thread;
+        m_work_thread = nullptr;
+    }
+    if (m_ctx)
+    {
+        modbus_close(m_ctx);
+        modbus_free(m_ctx);
+        m_ctx = nullptr;
+    }
+}
+
+void modbus_driver::setup_modbus(modbus_t *ctx, int _slave_id)
+{
+    if (ctx)
+    {
+        modbus_set_response_timeout(ctx, 0, 500000);
+        modbus_set_byte_timeout(ctx, 0, 500000);
+        if (modbus_connect(ctx) == -1)
         {
             m_logger->log("modbus_connect failed: %s", modbus_strerror(errno));
-            modbus_free(ret);
-            ret = nullptr;
+            modbus_free(ctx);
+            ctx = nullptr;
         }
-        modbus_set_slave(ret, _slave_id);
+        else
+        {
+            modbus_set_slave(ctx, _slave_id);
+        }
     }
     else
     {
         m_logger->log("modbus_new_tcp failed:%s", modbus_strerror(errno));
     }
-    m_ctx = ret;
+    m_ctx = ctx;
     if (m_ctx)
     {
         m_is_working = true;
@@ -207,23 +261,6 @@ modbus_driver::modbus_driver(const std::string &_ip, unsigned short _port, int _
     {
         m_logger->log("modbus context is null");
         m_exception_info = std::string("open :") + modbus_strerror(errno);
-    }
-}
-
-modbus_driver::~modbus_driver()
-{
-    m_is_working = false;
-    if (m_work_thread)
-    {
-        m_work_thread->join();
-        delete m_work_thread;
-        m_work_thread = nullptr;
-    }
-    if (m_ctx)
-    {
-        modbus_close(m_ctx);
-        modbus_free(m_ctx);
-        m_ctx = nullptr;
     }
 }
 

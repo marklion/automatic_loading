@@ -33,8 +33,8 @@ class modbus_driver {
     std::mutex m_mutex;
     std::unique_ptr<modbus_logger> m_logger;
     std::thread *m_work_thread = nullptr;
-    void batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta);
-    void batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_read_meta);
+    void batch_bits_set(std::map<std::string, coil_addr_pair> _coil_write_meta, bool _is_retry = false);
+    void batch_bits_get(std::map<std::string, coil_addr_pair> &_coil_read_meta, bool _is_retry = false);
     void batch_float32_abcd_get(std::map<std::string, float_addr_pair> &_float32_abcd_meta);
     void batch_u16_get(std::map<std::string, u16_addr_pair> &_u16_meta, bool _is_retry = false);
     std::string m_ip;
@@ -42,7 +42,9 @@ class modbus_driver {
     int m_slave_id = 0;
 public:
     modbus_driver(const std::string &_ip, unsigned short _port, int _slave_id, modbus_logger *_logger);
+    modbus_driver(const std::string &_dev_name, int _baud_rate, int _slave_id);
     ~modbus_driver();
+    void setup_modbus(modbus_t *_ctx, int _slave_id = 0);
     void add_float32_abcd_meta(const std::string &_name, int addr);
     void add_coil_write_meta(const std::string &_name, int addr);
     void del_coil_write_meta(const std::string &_name);
