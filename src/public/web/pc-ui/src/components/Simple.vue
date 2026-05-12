@@ -3,8 +3,21 @@
         <!-- 顶部状态栏 -->
         <div class="status-bar">
             <div class="status-left">
-                <div class="status-indicator" :class="systemState"></div>
-                <div class="status-text">{{ statusText }}</div>
+            </div>
+            <div class="system-info">
+                <div class="info-strip">
+                    <span class="info-value status info-status" :class="systemState">{{ systemStatus }}</span>
+                    <span class="info-value info-material">{{ material }}</span>
+                    <span class="info-value info-plate">{{ licensePlate }}</span>
+                    <div class="drop-mode-switch control-switch-item">
+                        <span class="drop-mode-label">放料模式</span>
+                        <label class="switch">
+                            <input type="checkbox" :checked="isAutoDropMode" @change="turn_on_off" />
+                            <span class="slider"></span>
+                        </label>
+                        <span class="drop-mode-text">{{ isAutoDropMode ? '自动放料' : '手动放料' }}</span>
+                    </div>
+                </div>
             </div>
             <div class="status-clock">{{ currentTime }}</div>
         </div>
@@ -17,24 +30,7 @@
                     <div class="control-main-layout">
                         <div class="control-info-column">
                             <!-- 状态信息 -->
-                            <div class="system-info">
-                                <div class="info-row">
-                                    <span class="info-label">系统状态:</span>
-                                    <span class="info-value status" :class="systemState">{{ systemStatus }}</span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">物料:</span>
-                                    <span class="info-value">{{ material }}</span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">车牌号:</span>
-                                    <span class="info-value">{{ licensePlate }}</span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">已装载:</span>
-                                    <span class="info-value">{{ loadedWeight }}吨</span>
-                                </div>
-                            </div>
+
 
                             <!-- 进度条 -->
                             <div class="progress-container">
@@ -46,6 +42,18 @@
                                     <div class="progress-fill" :style="{ width: `${progressPercentage}%` }"></div>
                                 </div>
                                 <div class="progress-percentage">{{ progressPercentage }}%</div>
+
+                                <div class="fullness-progress">
+                                    <div class="progress-header">
+                                        <span>料堆满度</span>
+                                        <span>{{ full_offset_progress }}%</span>
+                                    </div>
+                                    <div class="progress-bar full-progress-bar">
+                                        <div class="progress-fill full-progress-fill"
+                                            :style="{ width: `${full_offset_progress}%` }"></div>
+                                    </div>
+                                    <div class="progress-percentage full-progress-percentage">{{ full_offset_progress }}%</div>
+                                </div>
                             </div>
                         </div>
 
@@ -56,8 +64,7 @@
                                 <div class="button-label">急停</div>
                             </button>
 
-                            <button v-if="systemState != 'waiting'" class="control-button supplement"
-                                @click="changeManual">
+                            <button v-if="systemState != 'waiting'" class="control-button supplement" @click="changeManual">
                                 <div class="button-icon">+</div>
                                 <div class="button-label">手动</div>
                             </button>
@@ -72,8 +79,7 @@
                                 <div class="button-label">重置</div>
                             </button>
 
-                            <button v-if="!is_recording" class="control-button broadcast"
-                                @click="my_startAudioStreaming">
+                            <button v-if="!is_recording" class="control-button broadcast" @click="my_startAudioStreaming">
                                 <div class="button-icon">📢</div>
                                 <div class="button-label">广播</div>
                             </button>
@@ -86,36 +92,9 @@
 
                 </div>
 
-                <!-- 左侧监控区域 -->
                 <div class="monitor-panel left-panel">
-                    <div class="panel-title">监控</div>
                     <LiveCamera></LiveCamera>
                 </div>
-            </div>
-
-            <!-- 右侧监控区域 -->
-            <div class="monitor-panel right-panel">
-                <div class="panel-title">车辆监控</div>
-                <div class="truck-diagram">
-                    <div class="truck-outline"></div>
-                    <div class="loading-level" :style="{ height: `${full_offset_progress}%` }"></div>
-                </div>
-                <div class="data-grid">
-                    <div class="data-item" v-for="(item, index) in rightData" :key="index">
-                        <div class="data-label">{{ item.label }}</div>
-                        <div class="data-value">{{ item.value }}<span v-if="item.unit">{{ item.unit }}</span></div>
-                    </div>
-                </div>
-
-                <div class="drop-mode-switch">
-                    <span class="drop-mode-label">放料模式:</span>
-                    <label class="switch">
-                        <input type="checkbox" :checked="isAutoDropMode" @change="turn_on_off" />
-                        <span class="slider"></span>
-                    </label>
-                    <span class="drop-mode-text">{{ isAutoDropMode ? '自动放料' : '手动放料' }}</span>
-                </div>
-
             </div>
         </div>
     </div>
@@ -165,7 +144,7 @@ const systemStatus = computed(() => {
 })
 
 const statusText = computed(() => {
-    return `${systemStatus.value} - 物料: ${material.value} - 车牌号: ${licensePlate.value} - 已装载: ${loadedWeight.value}吨`
+    return [systemStatus.value, material.value, licensePlate.value].join(' · ')
 })
 
 // 数据定义
@@ -188,7 +167,7 @@ const full_offset_progress = computed(() => {
     }
     const offset = sm_status.value.stuff_full_offset || 0;
     const max_offset = sm_status.value.basic_config.max_full_offset || 0;
-    const min_offset = sm_status.value.basic_config.max_full_offset ? (sm_status.value.basic_config.max_full_offset - 4) : 0;
+    const min_offset = sm_status.value.basic_config.max_full_offset ? (sm_status.value.basic_config.max_full_offset - 1.2) : 0;
     if (offset >= max_offset) {
         return 100;
     } else if (offset <= min_offset) {
@@ -198,29 +177,6 @@ const full_offset_progress = computed(() => {
     }
 })
 
-// 右侧监控数据
-const rightData = computed(() => {
-    return [{
-        label: '车厢前壁位置',
-        value: sm_status.value.vehicle_front_x || 0,
-        unit: 'm'
-    },
-    {
-        label: '车厢后壁位置',
-        value: sm_status.value.vehicle_tail_x || 0,
-        unit: 'm'
-    },
-    {
-        label: '料堆满度',
-        value: sm_status.value.stuff_full_offset || 0,
-        unit: 'm'
-    },
-    {
-        label: '应用套件',
-        value: sm_status.value.applied_kit || '未知'
-    },
-    ]
-})
 // 放料模式计算属性（自动放料: true，手动放料: false）
 const isAutoDropMode = computed(() => {
     return statusInfoStore.drop_system?.system_on || false;
@@ -385,6 +341,7 @@ onUnmounted(() => {
     color: #4CAF50;
     text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
     letter-spacing: 1px;
+    white-space: nowrap;
 }
 
 .status-clock {
@@ -577,22 +534,21 @@ onUnmounted(() => {
 .control-main-layout {
     width: 100%;
     display: flex;
-    gap: 14px;
+    flex-direction: row;
+    gap: 12px;
     align-items: flex-start;
     justify-content: space-between;
 }
 
 .control-info-column {
-    flex: 0 1 1107px;
-    width: 1107px;
-    max-width: 100%;
+    flex: 1 1 auto;
+    width: auto;
     min-width: 0;
 }
 
 /* 系统信息 */
 .system-info {
     width: 100%;
-    max-width: 1107px;
     background: rgba(40, 40, 40, 0.8);
     border-radius: 8px;
     padding: 12px;
@@ -600,79 +556,105 @@ onUnmounted(() => {
     border: 1px solid #555;
 }
 
-.info-row {
+.info-strip {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px dashed #444;
-}
-
-.info-row:last-child {
-    margin-bottom: 0;
-    border-bottom: none;
-}
-
-.info-label {
-    font-size: 16px;
-    color: #aaa;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .info-value {
-    font-size: 18px;
     font-weight: 600;
+    line-height: 1.2;
 }
 
-.info-value.status {
+.info-status {
+    font-size: 18px;
     padding: 2px 10px;
     border-radius: 4px;
     background-color: rgba(76, 175, 80, 0.2);
     color: #4CAF50;
 }
 
+.info-material {
+    font-size: 15px;
+    color: #ff4d4f;
+}
+
+.info-plate {
+    font-size: 22px;
+    color: #111;
+    background: #f5d400;
+    border-radius: 4px;
+    padding: 4px 12px;
+    letter-spacing: 1px;
+}
+
 /* 进度条 */
 .progress-container {
     width: 100%;
-    max-width: 1107px;
+    max-width: 860px;
+    height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     margin-bottom: 0;
 }
 
 .progress-header {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 16px;
+    margin-bottom: 2px;
+    font-size: 13px;
 }
 
 .progress-bar {
-    height: 20px;
+    height: 8px;
     background-color: #333;
-    border-radius: 10px;
+    border-radius: 999px;
     overflow: hidden;
     border: 1px solid #555;
-    margin-bottom: 8px;
+    margin-bottom: 2px;
 }
 
 .progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #4CAF50, #8BC34A);
-    border-radius: 10px;
+    border-radius: 999px;
     transition: width 0.5s ease;
 }
 
 .progress-percentage {
-    text-align: center;
-    font-size: 18px;
+    text-align: right;
+    font-size: 12px;
     font-weight: 600;
+    line-height: 1;
     color: #4CAF50;
+}
+
+.fullness-progress {
+    margin-top: 0;
+}
+
+.full-progress-bar {
+    border-color: #805d00;
+}
+
+.full-progress-fill {
+    background: linear-gradient(90deg, #ff9800, #ffd54f);
+}
+
+.full-progress-percentage {
+    color: #ffb300;
 }
 
 /* 控制按钮 */
 .control-buttons {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-    width: 280px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    width: 414px;
+    flex: 0 0 414px;
     align-content: start;
 }
 
@@ -681,11 +663,11 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: min(120px, 100%);
+    width: 96px;
     aspect-ratio: 1 / 1;
     border: none;
     border-radius: 50%;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -693,6 +675,7 @@ onUnmounted(() => {
     position: relative;
     overflow: hidden;
     justify-self: center;
+    flex: 0 0 auto;
 }
 
 .control-button:hover {
@@ -740,13 +723,41 @@ onUnmounted(() => {
 }
 
 .button-icon {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 700;
     margin-bottom: 6px;
 }
 
 .button-label {
-    font-size: 18px;
+    font-size: 15px;
+}
+
+.control-switch-item {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    height: 32px;
+    border-radius: 48px;
+    border: 1px solid #555;
+    background: rgba(40, 40, 40, 0.7);
+    white-space: nowrap;
+}
+
+.info-strip .control-switch-item {
+    margin-left: auto;
+}
+
+.control-switch-item .drop-mode-label {
+    font-size: 13px;
+    color: #aaa;
+}
+
+.control-switch-item .drop-mode-text {
+    font-size: 13px;
+    color: #fff;
+    min-width: 60px;
 }
 
 .button-status {
@@ -900,26 +911,40 @@ onUnmounted(() => {
         margin-bottom: 10px;
     }
 
-    .info-label,
-    .info-value,
+    .info-status,
+    .info-material,
+    .info-plate,
     .progress-header,
     .progress-percentage,
-    .button-label {
+    .button-label,
+    .control-switch-item .drop-mode-label,
+    .control-switch-item .drop-mode-text {
         font-size: 14px;
     }
 
     .control-buttons {
         width: 100%;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        flex: 0 0 auto;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        overflow-x: hidden;
+    }
+
+    .control-switch-item {
+        display: none;
     }
 
     .control-button {
-        width: min(120px, 100%);
+        width: 100%;
+        max-width: 88px;
     }
 
     .button-icon {
         font-size: 26px;
+    }
+
+    .control-switch-item {
+        height: 86px;
     }
 
     .right-panel .truck-diagram {
