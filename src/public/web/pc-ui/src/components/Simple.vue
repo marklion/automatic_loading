@@ -334,16 +334,6 @@ onUnmounted(() => {
     background-color: #f31313;
     animation: blink 1s infinite;
 }
-
-.status-text {
-    font-size: 18px;
-    font-weight: 600;
-    color: #4CAF50;
-    text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
-    letter-spacing: 1px;
-    white-space: nowrap;
-}
-
 .status-clock {
     margin-left: 20px;
     font-size: 20px;
@@ -861,11 +851,6 @@ onUnmounted(() => {
         padding: 10px 12px;
     }
 
-    .status-text {
-        font-size: 14px;
-        letter-spacing: 0;
-    }
-
     .status-clock {
         font-size: 16px;
         letter-spacing: 1px;
@@ -941,10 +926,6 @@ onUnmounted(() => {
 
     .button-icon {
         font-size: 26px;
-    }
-
-    .control-switch-item {
-        height: 86px;
     }
 
     .right-panel .truck-diagram {
