@@ -22,3 +22,4 @@ systemctl --user restart gnome-remote-desktop.service
 # 7. 查看结果
 sleep 2
 grdctl status
+systemctl --user restart wireplumber pipewire pipewire-pulse
