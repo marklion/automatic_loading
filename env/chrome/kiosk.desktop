@@ -1,0 +1,9 @@
+zczh@zczh:~/.config/autostart$ cat kiosk.desktop
+[Desktop Entry]
+Type=Application
+Name=Kiosk Mode
+Exec=/usr/local/bin/kiosk-start.sh
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Comment=Start Chrome in Kiosk Mode

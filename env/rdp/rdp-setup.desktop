@@ -1,0 +1,7 @@
+zczh@zczh:~/.config/autostart$ cat rdp-setup.desktop
+[Desktop Entry]
+Type=Application
+Name=RDP Setup
+Exec=bash -c "sleep 5 && /home/zczh/rdp/setup.sh"
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
