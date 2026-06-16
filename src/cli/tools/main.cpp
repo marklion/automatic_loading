@@ -18,6 +18,7 @@
 #include "../../scale/lib/scale_cli.h"
 #include "../../drop_system/lib/ds_cli.h"
 #include "../../record/lib/record_cli.h"
+#include "../../public/lib/httplib.h"
 
 #define CLI_DEFAULT_CONFIG_FILE "/database/init.txt"
 
@@ -102,6 +103,35 @@ int un_safe_main(int argc, char const *argv[])
             system("/bin/bash");
             tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
         });
+    root_menu->Insert("http_post", [&](std::ostream &_out, std::vector<std::string> _params) {
+        auto check_resp = common_cli::check_params(_params, 0, "请指定URL");
+        check_resp = common_cli::check_params(_params, 1, "请指定body");
+        if (check_resp.empty())
+        {
+            std::string url = _params[0];
+            std::string body = _params[1];
+            auto parse_res = httplib::parseUrl(url);
+            auto hostname = parse_res.host;
+            auto path = parse_res.path;
+            _out << "Hostname: " << hostname << std::endl;
+            _out << "Path: " << path << std::endl;
+            httplib::Client cli(parse_res.protocol + "://" + hostname);
+            auto res = cli.Post(path, body, "application/json");
+            if (res)
+            {
+                _out << "Status: " << res->status << std::endl;
+                _out << "Body: " << res->body << std::endl;
+            }
+            else
+            {
+                _out << "HTTP request failed" << std::endl;
+            }
+        }
+        else
+        {
+            _out << check_resp << std::endl;
+        }
+    });
     cli::LoopScheduler *plsc = nullptr;
     cli::Cli cli(std::move(root_menu));
     cli.ExitAction(

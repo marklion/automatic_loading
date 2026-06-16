@@ -126,7 +126,7 @@ public:
     ~AD_EVENT_SC();
 
     // 注册 AD_EVENT_SC_NODE 对象
-    void registerNode(AD_EVENT_SC_NODE_PTR _node);
+    void registerNode(AD_EVENT_SC_NODE_PTR _node, bool _concern_output = false);
     // 注销 AD_EVENT_SC_NODE 对象
     void unregisterNode(AD_EVENT_SC_NODE_PTR _node);
 
@@ -136,7 +136,7 @@ public:
     void start_one_time_timer(int _timeout, int _micro_sec, std::function<void()> _callback);
     void stopTimer(AD_EVENT_SC_TIMER_NODE_PTR _timer);
 
-    bool yield_by_fd(int _fd, int _micro_sec = 0);
+    bool yield_by_fd(int _fd, int _micro_sec = 0, bool _concern_output = false);
     void yield_by_timer(int _timeout, int yield_micro_sec = 0);
     std::string co_list();
 

@@ -27,13 +27,17 @@ AD_EVENT_SC::~AD_EVENT_SC()
     close(m_epollFd);
 }
 
-void AD_EVENT_SC::registerNode(AD_EVENT_SC_NODE_PTR _node)
+void AD_EVENT_SC::registerNode(AD_EVENT_SC_NODE_PTR _node, bool _concern_output)
 {
     int fd = _node->getFd();
     if (m_fdToNode.find(fd) == m_fdToNode.end())
     {
         struct epoll_event ev = {0};
         ev.events = EPOLLIN; // 监听读事件
+        if (_concern_output)
+        {
+            ev.events = EPOLLOUT; // 监听写事件
+        }
         ev.data.fd = fd;
 
         if (epoll_ctl(m_epollFd, EPOLL_CTL_ADD, fd, &ev) != -1)
@@ -132,10 +136,10 @@ public:
         m_event_sc->unregisterNode(shared_from_this());
     }
 };
-bool AD_EVENT_SC::yield_by_fd(int _fd, int _micro_sec)
+bool AD_EVENT_SC::yield_by_fd(int _fd, int _micro_sec, bool _concern_output)
 {
     auto co_node = std::make_shared<AD_CO_EVENT_NODE>(shared_from_this(), _fd, _micro_sec);
-    registerNode(co_node);
+    registerNode(co_node, _concern_output);
     yield_co();
     return m_current_co->get_yield_result();
 }
