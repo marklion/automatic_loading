@@ -16,10 +16,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, getCurrentInstance } from "vue";
+import { ref, onMounted, onUnmounted, getCurrentInstance, onDeactivated } from "vue";
 const instance = getCurrentInstance();
 const kits = ref([]);
-let timer = null;
 async function fetch_kits() {
     let resp = await instance.appContext.config.globalProperties.$call_remote_cli(
         "state_machine list_kits_json"
@@ -41,14 +40,9 @@ async function change_stuff(kit_name, orig_stuff_name) {
 }
 onMounted(async () => {
     await fetch_kits();
-    timer = setInterval(async () => {
+    setTimeout(async () => {
         await fetch_kits();
     }, 5000);
-})
-onUnmounted(() => {
-    if (timer) {
-        clearInterval(timer);
-    }
 })
 
 </script>

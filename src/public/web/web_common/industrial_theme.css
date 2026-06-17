@@ -1,0 +1,102 @@
+.industrial-panel {
+  --bg-1: #0b213a;
+  --bg-2: #12385b;
+  --line: #3e8fd1;
+  --line-soft: #2f6ea3;
+  --text-main: #d9efff;
+  --text-sub: #9dc6e8;
+  --btn-main: #1f74b8;
+  --btn-main-hover: #2a87cf;
+  --btn-warn: #b96d1f;
+  --btn-warn-hover: #d98227;
+
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background:
+    radial-gradient(circle at 85% -10%, rgba(117, 199, 255, 0.18), transparent 45%),
+    linear-gradient(135deg, var(--bg-1), var(--bg-2));
+  color: var(--text-main);
+  box-shadow: inset 0 0 0 1px rgba(110, 189, 247, 0.1), 0 8px 24px rgba(1, 10, 20, 0.3);
+}
+
+.panel-title {
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 1px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-tag {
+  border: 1px solid #4fa8e8;
+  background: rgba(43, 132, 198, 0.24);
+  color: #b8e3ff;
+}
+
+.status-tag-off {
+  border-color: #e28b45;
+  background: rgba(185, 109, 31, 0.2);
+  color: #ffd5b0;
+}
+
+:deep(.industrial-table.el-table) {
+  --el-table-bg-color: rgba(7, 24, 43, 0.55);
+  --el-table-tr-bg-color: transparent;
+  --el-table-border-color: rgba(78, 150, 210, 0.35);
+  --el-table-header-bg-color: rgba(23, 68, 108, 0.75);
+  --el-table-text-color: var(--text-main);
+  --el-table-header-text-color: #b9e0ff;
+  --el-table-row-hover-bg-color: rgba(61, 131, 188, 0.28);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+:deep(.industrial-table .el-table__cell) {
+  background: transparent;
+}
+
+:deep(.industrial-table th.el-table__cell) {
+  border-bottom: 1px solid rgba(95, 169, 231, 0.5);
+}
+
+.industrial-btn {
+  margin: 0;
+  border: 1px solid #54a8ea;
+  background: linear-gradient(180deg, #2b86cb 0%, var(--btn-main) 100%);
+  color: #ecf8ff;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(189, 232, 255, 0.35);
+}
+
+.industrial-btn:hover {
+  border-color: #70bdf6;
+  background: linear-gradient(180deg, #3a94d8 0%, var(--btn-main-hover) 100%);
+  color: #ffffff;
+}
+
+.industrial-btn.btn-outline {
+  background: rgba(28, 102, 161, 0.2);
+  color: #bfe3ff;
+}
+
+.industrial-btn.btn-outline:hover {
+  background: rgba(37, 123, 190, 0.34);
+}
+
+.industrial-btn.btn-warn {
+  border-color: #e89b53;
+  background: linear-gradient(180deg, #cc7a2a 0%, var(--btn-warn) 100%);
+}
+
+.industrial-btn.btn-warn:hover {
+  border-color: #f6b274;
+  background: linear-gradient(180deg, #de8c3c 0%, var(--btn-warn-hover) 100%);
+}

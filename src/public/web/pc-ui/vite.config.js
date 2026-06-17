@@ -11,20 +11,20 @@ export default defineConfig({
     port: 5173,
     proxy:{
       '/api': {
-        target: 'https://ayx.d8sis.cn',
+        target: 'https://test_ad.d8sis.cn',
         changeOrigin: true,
       },
       '/live': {
-        target: 'https://ayx.d8sis.cn',
+        target: 'https://test_ad.d8sis.cn',
         changeOrigin: true,
       },
       '/ws':{
-        target: 'https://ayx.d8sis.cn',
+        target: 'https://test_ad.d8sis.cn',
         changeOrigin: true,
         ws:true,
       },
       '/logo':{
-        target: 'https://ayx.d8sis.cn',
+        target: 'https://test_ad.d8sis.cn',
         changeOrigin: true,
       }
     },

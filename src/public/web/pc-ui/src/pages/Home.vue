@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div >
     <el-row>
       <el-col :span="8">
         <el-menu default-active="4" mode="horizontal" :ellipsis="false" @select="handleSelect">
@@ -15,15 +15,17 @@
         <el-button @click="reset_layout">重置布局</el-button>
       </el-col>
     </el-row>
-    <grid-layout v-if="current_nav_index == '0'" :layout="layout" :col-num="12" :row-height="30"
-      :is-draggable="resize_switch" :is-resizable="resize_switch" :auto-size="false" @layout-updated="saveLayout">
-      <grid-item v-for="item in layout" :key="item.i" :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i">
-        <!-- 你的组件内容 -->
-        <div style="width: 100%; height: 100%; padding:5px;">
-          <component :is="my_components[item.i]"></component>
-        </div>
-      </grid-item>
-    </grid-layout>
+    <div v-if="current_nav_index == '0'" :class="['home-page', { 'expert-mode': current_nav_index == '0' }]">
+      <grid-layout  :layout="layout" :col-num="12" :row-height="30"
+        :is-draggable="resize_switch" :is-resizable="resize_switch" :auto-size="false" @layout-updated="saveLayout">
+        <grid-item v-for="item in layout" :key="item.i" :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i">
+          <!-- 你的组件内容 -->
+          <div style="width: 100%; height: 100%; padding:5px;">
+            <component :is="my_components[item.i]"></component>
+          </div>
+        </grid-item>
+      </grid-layout>
+    </div>
     <div v-else-if="current_nav_index == '1'">
       <iframe src="/wetty" style="width: 100vw; height: 80vh; border: none"></iframe>
     </div>
@@ -73,8 +75,7 @@ const my_components = {
   '2': LogExplore,
   '3': XlrdShow,
   '4': LiveCamera,
-  '5': Scale,
-  '6': DropSystem,
+  '5': DropSystem,
   // '7': PcdShow,
 }
 
@@ -88,64 +89,14 @@ const saveLayout = (newLayout) => {
 
 function reset_layout() {
   layout.value =
-    [
-      {
-        "x": 2,
-        "y": 7,
-        "w": 5,
-        "h": 4,
-        "i": "6",
-      },
-      {
-        "x": 0,
-        "y": 0,
-        "w": 2,
-        "h": 19,
-        "i": "0",
-      },
-      {
-        "x": 2,
-        "y": 0,
-        "w": 7,
-        "h": 7,
-        "i": "1",
-      },
-      {
-        "x": 9,
-        "y": 0,
-        "w": 3,
-        "h": 11,
-        "i": "2",
-      },
-      {
-        "x": 0,
-        "y": 19,
-        "w": 2,
-        "h": 3,
-        "i": "3",
-      },
-      {
-        "x": 2,
-        "y": 11,
-        "w": 10,
-        "h": 11,
-        "i": "4",
-      },
-      {
-        "x": 7,
-        "y": 7,
-        "w": 2,
-        "h": 4,
-        "i": "5",
-      },
-      // {
-      //   "x": 0,
-      //   "y": 21,
-      //   "w": 12,
-      //   "h": 12,
-      //   "i": "7",
-      // }
-    ]
+ [
+  {"x":5,"y":4,"w":3,"h":3,"i":"0",},
+  {"x":0,"y":0,"w":5,"h":7,"i":"1",},
+  {"x":0,"y":7,"w":3,"h":14,"i":"2",},
+  {"x":5,"y":0,"w":3,"h":4,"i":"3",},
+  {"x":3,"y":7,"w":9,"h":14,"i":"4",},
+  {"x":8,"y":0,"w":4,"h":7,"i":"5",}
+]
 
   saveLayout(layout.value);
 }
@@ -202,4 +153,15 @@ async function confirm_update(response, file, fileList) {
 }
 </script>
 
-<style></style>
+<style scoped>
+.home-page {
+  min-height: 100vh;
+}
+
+.home-page.expert-mode {
+  background:
+    radial-gradient(circle at 10% -20%, rgba(104, 179, 235, 0.18), transparent 45%),
+    radial-gradient(circle at 90% 0%, rgba(74, 144, 204, 0.16), transparent 38%),
+    linear-gradient(135deg, #081a2e 0%, #102d4b 100%);
+}
+</style>
