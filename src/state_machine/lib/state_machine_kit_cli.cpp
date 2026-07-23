@@ -87,6 +87,8 @@ static std::unique_ptr<cli::Menu> make_menu()
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_SEG_LENGTH_REQ, "分段长度要求");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_STUFF_NAME, "物料名称");
     add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_VIDEO_NAME, "监控名称");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_DS_INPUT_DEV, "拉绳传感器输入设备");
+    add_kit_config_cmd(*sm_kit_menu, CONFIG_ITEM_SM_CONFIG_KIT_LC_DROP_MAX_HEIGHT, "溜槽下降所需最大车厢壁高度");
 
     return sm_kit_menu;
 }
