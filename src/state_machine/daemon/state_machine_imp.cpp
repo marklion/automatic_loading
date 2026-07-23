@@ -851,7 +851,7 @@ bool state_machine_imp::sm_need_drop_lc()
     bool ret = true;
     auto &ci = config::root_config::get_instance();
     auto cur_kit = ci[CONFIG_ITEM_SM_CONFIG_KITS][sm_get_current_kit()];
-    auto drop_lc_z = atof(cur_kit[CONFIG_ITEM_SM_CONFIG_KIT_LC_DROP_MAX_HEIGHT]().c_str());
+    auto drop_lc_z = atof(cur_kit(CONFIG_ITEM_SM_CONFIG_KIT_LC_DROP_MAX_HEIGHT).c_str());
     if (sm_get_side_z() > drop_lc_z)
     {
         ret = false;
